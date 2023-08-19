@@ -28,6 +28,7 @@
 *.app
 
 # CLion
+libraries/
 
 # User-specific stuff
 .idea/**/workspace.xml
