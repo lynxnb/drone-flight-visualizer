@@ -1,0 +1,21 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+# Editor-based HTTP Client requests
+/httpRequests/
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+
+# User specific files
+*.iml
+misc.xml
+modules/
+modules.xml
+caches/
+
+# Version control
+vcs.xml
+
+# Discord plugin for IntelliJ IDEA
+discord.xml
