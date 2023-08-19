@@ -2,8 +2,8 @@
 <project version="4">
   <component name="CMakeSharedSettings">
     <configurations>
-      <configuration PROFILE_NAME="Debug" ENABLED="true" GENERATION_DIR="build/debug" CONFIG_NAME="Debug" TOOLCHAIN_NAME="System" />
-      <configuration PROFILE_NAME="Release" ENABLED="true" GENERATION_DIR="build/release" CONFIG_NAME="Release" TOOLCHAIN_NAME="System" />
+      <configuration PROFILE_NAME="Debug" ENABLED="true" GENERATION_DIR="build/debug" CONFIG_NAME="Debug" TOOLCHAIN_NAME="System" GENERATION_OPTIONS="-G Ninja" />
+      <configuration PROFILE_NAME="Release" ENABLED="true" GENERATION_DIR="build/release" CONFIG_NAME="Release" TOOLCHAIN_NAME="System" GENERATION_OPTIONS="-G Ninja" />
     </configurations>
   </component>
 </project>
