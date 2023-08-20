@@ -1,58 +1,30 @@
-
 #include <vulkan/vulkan.h>
-#include <VkBootstrap.h>
-#include <iostream>
 #include <GLFW/glfw3.h>
 
 bool init_vulkan() {
-    vkb::InstanceBuilder builder;
+    VkApplicationInfo applicationInfo{
+            .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+            .pApplicationName = "drone_flight_visualizer",
+            .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+            .pEngineName = "No Engine",
+            .engineVersion = VK_MAKE_VERSION(1, 0, 0),
+            .apiVersion = VK_API_VERSION_1_1,
+    };
 
-    auto inst_ret = builder.set_app_name("Example Vulkan Application")
-            .request_validation_layers()
-            .use_default_debug_messenger()
-            .build();
-    if (!inst_ret) {
-        std::cerr << "Failed to create Vulkan instance. Error: " << inst_ret.error().message() << "\n";
-        return false;
-    }
-    vkb::Instance vkb_inst = inst_ret.value();
+    VkInstanceCreateInfo createInfo{
+            .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+            .pApplicationInfo = &applicationInfo,
+            .enabledLayerCount = 0,
+            .enabledExtensionCount = 0,
+    };
+
+    VkInstance vkInstance;
+    vkCreateInstance(&createInfo, nullptr, &vkInstance);
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    GLFWwindow* window = glfwCreateWindow(640, 480, "Window Title", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(640, 480, "Window Title", nullptr, nullptr);
     VkSurfaceKHR surface;
-    VkResult err = glfwCreateWindowSurface(vkb_inst, window, NULL, &surface);
+    glfwCreateWindowSurface(vkInstance, window, nullptr, &surface);
 
-    vkb::PhysicalDeviceSelector selector{vkb_inst};
-
-    auto phys_ret = selector.set_surface(surface)
-            .set_minimum_version(1, 1) // require a vulkan 1.1 capable device
-            .require_dedicated_transfer_queue()
-            .select();
-    if (!phys_ret) {
-        std::cerr << "Failed to select Vulkan Physical Device. Error: " << phys_ret.error().message() << "\n";
-        return false;
-    }
-
-    vkb::DeviceBuilder device_builder{phys_ret.value()};
-    // automatically propagate needed data from instance & physical device
-    auto dev_ret = device_builder.build();
-    if (!dev_ret) {
-        std::cerr << "Failed to create Vulkan device. Error: " << dev_ret.error().message() << "\n";
-        return false;
-    }
-    vkb::Device vkb_device = dev_ret.value();
-
-    // Get the VkDevice handle used in the rest of a vulkan application
-    VkDevice device = vkb_device.device;
-
-    // Get the graphics queue with a helper function
-    auto graphics_queue_ret = vkb_device.get_queue(vkb::QueueType::graphics);
-    if (!graphics_queue_ret) {
-        std::cerr << "Failed to get graphics queue. Error: " << graphics_queue_ret.error().message() << "\n";
-        return false;
-    }
-    VkQueue graphics_queue = graphics_queue_ret.value();
-
-    // Turned 400-500 lines of boilerplate into less than fifty.
     return true;
 }

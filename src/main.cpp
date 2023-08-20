@@ -1,5 +1,7 @@
 #include <iostream>
-#include <glaze.hpp>
+#include <glaze/glaze.hpp>
+
+bool init_vulkan();
 
 struct my_struct
 {
@@ -24,5 +26,7 @@ int main() {
     my_struct s{};
     std::string buffer = glz::write_json(s);
     std::cout << buffer << std::endl;
+
+    std::cout << "init_vulkan: " << init_vulkan() << std::endl;
     return 0;
 }
