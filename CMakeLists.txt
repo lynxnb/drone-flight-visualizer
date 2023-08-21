@@ -42,7 +42,7 @@ include_directories(SYSTEM ${Vulkan_INCLUDE_DIRS})
 # Build the executable
 add_executable(drone_flight_visualizer
         ${source_DIR}/main.cpp
-        ${source_DIR}/vulkan/vulkan.cpp
+        ${source_DIR}/vulkan/context.cpp
 )
 
 # Link the executable to the libraries
