@@ -2,9 +2,11 @@
 #include "fetcher.h"
 #include <cpr/cpr.h>
 #include <iostream>
+#include <glaze/glaze.hpp>
 
 
-/*template<>
+
+template<>
 struct glz::meta<point> {
     using T = point;
     static constexpr auto value = object(
@@ -12,7 +14,7 @@ struct glz::meta<point> {
             "longitude", &T::longitude,
             "elevation", &T::elevation
     );
-};*/
+};
 
 namespace dfv::utils {
     std::vector<point> Fetcher::FetchElevation(const std::vector<point>& points) {
@@ -27,9 +29,8 @@ namespace dfv::utils {
         std::string text = r.text;
 
         std::cout << text << std::endl;
-     /*   auto s = glz::read_json<std::vector<point>>(text);
+        auto s = glz::read_json<std::vector<point>>(text);
         if (!s) return {};
-        return s.value();*/
-        return {};
+        return s.value();
     }
 }
