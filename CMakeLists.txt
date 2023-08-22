@@ -43,6 +43,8 @@ include_directories(SYSTEM ${Vulkan_INCLUDE_DIRS})
 add_executable(drone_flight_visualizer
         ${source_DIR}/main.cpp
         ${source_DIR}/vulkan/context.cpp
+        ${source_DIR}/utils/fetcher.cpp
+        ${source_DIR}/objects/objects.cpp
 )
 
 # Link the executable to the libraries
