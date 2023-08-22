@@ -197,9 +197,8 @@ namespace dfv::vulkan {
             SwapChainSupportDetails swapChainSupport = QuerySwapChainSupport(pDevice);
             swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
         }
-
-        return deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU &&
-               hasRequiredQueues &&
+        
+        return hasRequiredQueues &&
                extensionsSupported &&
                swapChainAdequate;
     }
