@@ -1,13 +1,10 @@
-#include <vector>
-#include "../objects/objects.cpp"
+#pragma once
 
-using point = dfv::objects::point;
+#include <vector>
+#include <objects/objects.h>
 
 namespace dfv::utils {
-    class Fetcher {
-    public:
-        static std::vector<point> FetchElevation(const std::vector<point>& points);
-    private:
+    using point = dfv::objects::point;
 
-    };
+    std::vector<point> FetchElevation(const std::vector<point>& points);
 }

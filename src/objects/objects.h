@@ -1,4 +1,7 @@
+#pragma once
+
 #include <glaze/glaze.hpp>
+#include <glaze/core/macros.hpp>
 
 namespace dfv::objects {
         struct point {
@@ -8,3 +11,4 @@ namespace dfv::objects {
         };
 }
 
+GLZ_META(dfv::objects::point, latitude, longitude, elevation);

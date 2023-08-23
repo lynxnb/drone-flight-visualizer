@@ -1,23 +1,10 @@
-
-#include "fetcher.h"
-#include <cpr/cpr.h>
 #include <iostream>
 #include <glaze/glaze.hpp>
-
-
-
-template<>
-struct glz::meta<point> {
-    using T = point;
-    static constexpr auto value = object(
-            "latitude", &T::latitude,
-            "longitude", &T::longitude,
-            "elevation", &T::elevation
-    );
-};
+#include <cpr/cpr.h>
+#include "fetcher.h"
 
 namespace dfv::utils {
-    std::vector<point> Fetcher::FetchElevation(const std::vector<point>& points) {
+    std::vector<point> FetchElevation(const std::vector<point>& points) {
         std::string locations;
         for (auto &point: points) {
             locations += std::to_string(point.latitude) + "," + std::to_string(point.longitude) + "|";

@@ -44,7 +44,6 @@ add_executable(drone_flight_visualizer
         ${source_DIR}/main.cpp
         ${source_DIR}/vulkan/context.cpp
         ${source_DIR}/utils/fetcher.cpp
-        ${source_DIR}/objects/objects.cpp
 )
 target_include_directories(drone_flight_visualizer PRIVATE ${source_DIR})
 
