@@ -6,5 +6,5 @@
 namespace dfv::utils {
     using point = dfv::objects::point;
 
-    std::vector<point> FetchElevation(const std::vector<point>& points);
+    std::vector<double> FetchElevation(const std::vector<point>& points);
 }

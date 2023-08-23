@@ -3,21 +3,38 @@
 #include <cpr/cpr.h>
 #include "fetcher.h"
 
+
 namespace dfv::utils {
-    std::vector<point> FetchElevation(const std::vector<point>& points) {
-        std::string locations;
-        for (auto &point: points) {
-            locations += std::to_string(point.latitude) + "," + std::to_string(point.longitude) + "|";
-        }
-        cpr::Response r = cpr::Get(cpr::Url{"https://api.open-elevation.com/api/v1/lookup"},
-                                   cpr::Parameters{{"locations", locations}});
+    using dfv::objects::location;
+    std::vector<double> FetchElevation(const std::vector<point>& points) {
+        // transform points to locations and write to json
+        std::vector<location> locations(points.size());
+        std::transform(points.begin(), points.end(), locations.begin(),
+                       [](const point& point) -> location {
+                           return {point.latitude, point.longitude};
+                       });
+        std::string buffer = glz::write_json(locations);
+
+        // send request to open-elevation api
+        cpr::Response r = cpr::Post(cpr::Url{"https://api.open-elevation.com/api/v1/lookup"},
+                                    cpr::Body{"{\"locations\":" + buffer + "}"},
+                                    cpr::Header{{"Content-Type", "application/json"}, {"Accept", "application/json"}});
         if (r.status_code != 200)
-            throw std::runtime_error("Error in response while fetching elevation data.");
+            throw std::runtime_error("Error in response while fetching elevation data with code " + std::to_string(r.status_code));
         std::string text = r.text;
 
-        std::cout << text << std::endl;
-        auto s = glz::read_json<std::vector<point>>(text);
-        if (!s) return {};
-        return s.value();
+        // parse response and return elevations
+        auto s = glz::get_as_json<std::vector<point>,"/results">(text);
+        if(s.has_value()) {
+            std::vector<double> elevations(s.value().size());
+            std::transform(s.value().begin(), s.value().end(), elevations.begin(),
+                           [](const point& point) -> double {
+                               return point.elevation;
+                           });
+            return elevations;
+        } else {
+            throw std::runtime_error("Error in response while fetching elevation data");
+        }
     }
 }
+
