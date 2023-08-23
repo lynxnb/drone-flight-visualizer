@@ -46,6 +46,7 @@ add_executable(drone_flight_visualizer
         ${source_DIR}/utils/fetcher.cpp
         ${source_DIR}/objects/objects.cpp
 )
+target_include_directories(drone_flight_visualizer PRIVATE ${source_DIR})
 
 # Link the executable to the libraries
 target_link_libraries(drone_flight_visualizer PRIVATE
