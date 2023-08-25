@@ -10,10 +10,10 @@ int main() {
 
     try {
         dfv::vulkan::VulkanContext vkContext{};
-        objects::point point1{40.0, 40.0};
-        objects::point point2{41.0, 41.0};
-        std::vector<objects::point> points{point1, point2};
-        auto pointsWithElevation = utils::FetchElevation(points);
+        auto data = utils::FetchOSMData("46.09680990990991, 9.719069961104724, 46.276990090090095, 9.979330038895275");
+        utils::PopulateElevation(data.nodes);
+
+
         while (!glfwWindowShouldClose(vkContext.window)) {
             glfwPollEvents();
         }

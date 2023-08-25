@@ -18,6 +18,10 @@ include(cmake/CPM.cmake)
 CPMAddPackage("gh:stephenberry/glaze@1.3.5")
 include_directories(SYSTEM ${glaze_SOURCE_DIR}/include)
 
+# Glaze: JSON/CSV parsing
+CPMAddPackage("gh:Tencent/rapidjson@1.1.0")
+include_directories(SYSTEM ${rapidjson_SOURCE_DIR}/include)
+
 # CPR: C++ Requests
 # TODO: update to the latest tag once PR 948 is merged and released
 # PR 948 fixes a bug where the library would try to link with stdc++fs on Windows
