@@ -4,12 +4,13 @@
 #include <cpr/cpr.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
+#include <csv.hpp>
 #include "dataReader.h"
 
 
 namespace dfv::utils {
     namespace {
-        constexpr int BATCH_SIZE = 10000;
+        constexpr int BATCH_SIZE = 20000;
     }
 
     using namespace dfv::objects;
@@ -73,7 +74,7 @@ namespace dfv::utils {
         auto startTime = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < nodes.size(); i += BATCH_SIZE) {
             auto startIter = nodes.begin() + i;
-            auto endIter = nodes.begin() + (nodes.size() > i + BATCH_SIZE? i + BATCH_SIZE : nodes.size());
+            auto endIter = nodes.begin() + (nodes.size() > i + BATCH_SIZE ? i + BATCH_SIZE : nodes.size());
             std::vector<node> batch(startIter, endIter);
             PopulateBatch(batch);
         }
@@ -147,6 +148,40 @@ namespace dfv::utils {
 
         }
         return osmData;
+    }
+
+    std::vector<objects::flight_data_point> ReadFlightData(const std::string &csvPath) {
+
+        using namespace csv;
+        try {
+            auto startTime = std::chrono::high_resolution_clock::now();
+            CSVReader reader(csvPath);
+            std::vector<objects::flight_data_point> flightData;
+            for (CSVRow &row: reader) {
+                for (CSVField &field: row) {
+                    auto heading = !row["OSD.directionOfTravel"].is_null() ? row["OSD.directionOfTravel"].get<double>()
+                                                                           : 0;
+                    flightData.emplace_back(
+                            row["OSD.flyTime [s]"].get<double>(),
+                            row["OSD.latitude"].get<double>(),
+                            row["OSD.longitude"].get<double>(),
+                            row["OSD.altitude [ft]"].get<double>(),
+                            heading,
+                            row["OSD.pitch"].get<double>(),
+                            row["OSD.roll"].get<double>(),
+                            row["OSD.yaw"].get<double>());
+
+                }
+
+            }
+            auto endTime = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+            std::cout << "Flight data read in " << duration.count() << "ms" << std::endl;
+            return flightData;
+        } catch (const std::exception &e) {
+            std::cout << "Error while reading flight data: " << e.what() << std::endl;
+        }
+        return {};
     }
 }
 

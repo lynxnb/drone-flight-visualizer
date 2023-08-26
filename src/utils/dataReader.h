@@ -4,7 +4,7 @@
 #include <objects/objects.h>
 
 namespace dfv::utils {
-    void ReadDroneFlightData(const std::string &path);
+    std::vector<objects::flight_data_point> ReadFlightData(const std::string &csvPath);
     void PopulateElevation(std::vector<objects::node> &nodes);
     objects::osm_data FetchOSMData(const std::string &bbox);
 }
