@@ -18,9 +18,13 @@ include(cmake/CPM.cmake)
 CPMAddPackage("gh:stephenberry/glaze@1.3.5")
 include_directories(SYSTEM ${glaze_SOURCE_DIR}/include)
 
-# Glaze: JSON/CSV parsing
+# rapidjson: JSON parsing
 CPMAddPackage("gh:Tencent/rapidjson@1.1.0")
 include_directories(SYSTEM ${rapidjson_SOURCE_DIR}/include)
+
+# csv-parser: CSV parsing
+CPMAddPackage("gh:vincentlaucsb/csv-parser#2.1.3")
+include_directories(SYSTEM ${csv-parser_SOURCE_DIR}/single_include)
 
 # CPR: C++ Requests
 # TODO: update to the latest tag once PR 948 is merged and released
@@ -47,7 +51,7 @@ include_directories(SYSTEM ${Vulkan_INCLUDE_DIRS})
 add_executable(drone_flight_visualizer
         ${source_DIR}/main.cpp
         ${source_DIR}/vulkan/context.cpp
-        ${source_DIR}/utils/fetcher.cpp
+        ${source_DIR}/utils/dataReader.cpp
 )
 target_include_directories(drone_flight_visualizer PRIVATE ${source_DIR})
 
