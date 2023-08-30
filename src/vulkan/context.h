@@ -26,9 +26,17 @@ namespace dfv::vulkan {
         std::vector<VkImageView> swapChainImageViews;
         VkFormat swapChainImageFormat;
         VkExtent2D swapChainExtent;
+        std::vector<VkFramebuffer> swapChainFramebuffers;
+
         VkRenderPass renderPass;
         VkPipelineLayout pipelineLayout;
         VkPipeline graphicsPipeline;
+        VkCommandPool commandPool;
+        VkCommandBuffer commandBuffer;
+
+        VkSemaphore imageAvailableSemaphore;
+        VkSemaphore renderFinishedSemaphore;
+        VkFence inFlightFence;
 
         // Disallow copy and assignment
         VulkanContext(const VulkanContext &) = delete;
@@ -38,6 +46,8 @@ namespace dfv::vulkan {
         VulkanContext(VulkanContext &&) = delete;
 
         VulkanContext &operator=(VulkanContext &&) = delete;
+
+        void DrawFrame();
 
     private:
         struct QueueFamilyIndices {
@@ -84,6 +94,16 @@ namespace dfv::vulkan {
         void CreateRenderPass();
 
         void CreateGraphicsPipeline();
+
+        void CreateFrameBuffers();
+
+        void CreateCommandPool();
+
+        void CreateCommandBuffer();
+
+        void CreateSyncObjects();
+
+        void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
         /**
          * create a shader module from a giver shader bytecode
