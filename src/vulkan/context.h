@@ -26,6 +26,9 @@ namespace dfv::vulkan {
         std::vector<VkImageView> swapChainImageViews;
         VkFormat swapChainImageFormat;
         VkExtent2D swapChainExtent;
+        VkRenderPass renderPass;
+        VkPipelineLayout pipelineLayout;
+        VkPipeline graphicsPipeline;
 
         // Disallow copy and assignment
         VulkanContext(const VulkanContext &) = delete;
@@ -77,5 +80,17 @@ namespace dfv::vulkan {
         void CreateSwapChain();
 
         void CreateImageViews();
+
+        void CreateRenderPass();
+
+        void CreateGraphicsPipeline();
+
+        /**
+         * create a shader module from a giver shader bytecode
+         * @param code
+         * @return
+         */
+        VkShaderModule CreateShaderModule(const std::vector<char>& code) const;
+
     };
 }
