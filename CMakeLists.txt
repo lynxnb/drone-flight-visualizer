@@ -51,7 +51,10 @@ include_directories(SYSTEM ${Vulkan_INCLUDE_DIRS})
 add_executable(drone_flight_visualizer
         ${source_DIR}/main.cpp
         ${source_DIR}/vulkan/context.cpp
+        ${source_DIR}/vulkan/renderer.cpp
         ${source_DIR}/utils/dataReader.cpp
+        src/objects/world_object.h
+        src/objects/drone_object.h
 )
 target_include_directories(drone_flight_visualizer PRIVATE ${source_DIR})
 

@@ -5,7 +5,7 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 #include <csv.hpp>
-#include "dataReader.h"
+#include "data_reader.h"
 
 
 namespace dfv::utils {
@@ -17,7 +17,7 @@ namespace dfv::utils {
     using namespace rapidjson;
 
 
-    void PopulateBatch(std::vector<Code> &nodes) {
+    void PopulateBatch(std::vector<Node> &nodes) {
         // write locations to json
         StringBuffer s;
         Writer<StringBuffer> writer(s);
@@ -70,12 +70,12 @@ namespace dfv::utils {
         }
     }
 
-    void populateElevation(std::vector<objects::Code> &nodes) {
+    void populateElevation(std::vector<objects::Node> &nodes) {
         auto startTime = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < nodes.size(); i += BATCH_SIZE) {
             auto startIter = nodes.begin() + i;
             auto endIter = nodes.begin() + (nodes.size() > i + BATCH_SIZE ? i + BATCH_SIZE : nodes.size());
-            std::vector<Code> batch(startIter, endIter);
+            std::vector<Node> batch(startIter, endIter);
             PopulateBatch(batch);
         }
         auto endTime = std::chrono::high_resolution_clock::now();

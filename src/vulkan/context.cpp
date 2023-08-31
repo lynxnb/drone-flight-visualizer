@@ -7,8 +7,9 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <glm.hpp>
 #include "context.h"
-#include "utils/dataReader.h"
+#include "utils/data_reader.h"
 
 namespace dfv::vulkan {
     namespace {
@@ -606,7 +607,6 @@ namespace dfv::vulkan {
 
         renderPassInfo.dependencyCount = 1;
         renderPassInfo.pDependencies = &dependency;
-
     }
 
     VkShaderModule VulkanContext::createShaderModule(const std::vector<char> &code) const {
@@ -776,8 +776,6 @@ namespace dfv::vulkan {
         presentInfo.pResults = nullptr;
 
         vkQueuePresentKHR(presentQueue, &presentInfo);
-
-
     }
 
 }

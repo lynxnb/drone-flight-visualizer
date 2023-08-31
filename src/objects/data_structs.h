@@ -2,7 +2,7 @@
 #include <map>
 
 namespace dfv::objects {
-    struct Code {
+    struct Node {
         std::string type;
         int64_t id;
         double lat;
@@ -10,7 +10,7 @@ namespace dfv::objects {
         double elev = 0;
         std::map<std::string, std::string> tags;
 
-        Code(std::string type, int64_t id, double lat, double lon, std::map<std::string, std::string> tags) :
+        Node(std::string type, int64_t id, double lat, double lon, std::map<std::string, std::string> tags) :
                 type(std::move(type)), id(id), lat(lat), lon(lon), tags(std::move(tags)) {}
     };
 
@@ -25,7 +25,7 @@ namespace dfv::objects {
     };
 
     struct OsmData {
-        std::vector<Code> nodes;
+        std::vector<Node> nodes;
         std::vector<Way> ways;
     };
 
