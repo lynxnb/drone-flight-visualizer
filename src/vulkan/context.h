@@ -47,7 +47,7 @@ namespace dfv::vulkan {
 
         VulkanContext &operator=(VulkanContext &&) = delete;
 
-        void DrawFrame();
+        void drawFrame();
 
     private:
         struct QueueFamilyIndices {
@@ -65,52 +65,51 @@ namespace dfv::vulkan {
             std::vector<VkPresentModeKHR> presentModes;
         };
 
-        void CreateWindow();
+        void createWindow();
 
-        void CreateInstance();
+        void createInstance();
 
-        void CreateSurface();
+        void createSurface();
 
-        QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device) const;
+        QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) const;
 
-        SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice pDevice) const;
+        SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice pDevice) const;
 
-        bool IsDeviceSuitable(VkPhysicalDevice pDevice);
+        bool isDeviceSuitable(VkPhysicalDevice pDevice);
 
-        void SelectPhysicalDevice();
+        void selectPhysicalDevice();
 
-        void CreateLogicalDevice();
+        void createLogicalDevice();
 
-        VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
+        VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
 
-        VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);
+        VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);
 
-        VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);
+        VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);
 
-        void CreateSwapChain();
+        void createSwapChain();
 
-        void CreateImageViews();
+        void createImageViews();
 
-        void CreateRenderPass();
+        void createRenderPass();
 
-        void CreateGraphicsPipeline();
+        void createGraphicsPipeline();
 
-        void CreateFrameBuffers();
+        void createFrameBuffers();
 
-        void CreateCommandPool();
+        void createCommandPool();
 
-        void CreateCommandBuffer();
+        void createCommandBuffer();
 
-        void CreateSyncObjects();
+        void createSyncObjects();
 
-        void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+        void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
         /**
          * create a shader module from a giver shader bytecode
          * @param code
          * @return
          */
-        VkShaderModule CreateShaderModule(const std::vector<char>& code) const;
-
+        VkShaderModule createShaderModule(const std::vector<char>& code) const;
     };
 }

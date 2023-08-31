@@ -28,19 +28,19 @@ namespace dfv::vulkan {
     }
 
     VulkanContext::VulkanContext() { // NOLINT(*-pro-type-member-init)
-        CreateWindow();
-        CreateInstance();
-        CreateSurface();
-        SelectPhysicalDevice();
-        CreateLogicalDevice();
-        CreateSwapChain();
-        CreateImageViews();
-        CreateRenderPass();
-        CreateGraphicsPipeline();
-        CreateFrameBuffers();
-        CreateCommandPool();
-        CreateCommandBuffer();
-        CreateSyncObjects();
+        createWindow();
+        createInstance();
+        createSurface();
+        selectPhysicalDevice();
+        createLogicalDevice();
+        createSwapChain();
+        createImageViews();
+        createRenderPass();
+        createGraphicsPipeline();
+        createFrameBuffers();
+        createCommandPool();
+        createCommandBuffer();
+        createSyncObjects();
     }
 
     VulkanContext::~VulkanContext() {
@@ -64,7 +64,7 @@ namespace dfv::vulkan {
         glfwTerminate();
     }
 
-    void VulkanContext::CreateWindow() {
+    void VulkanContext::createWindow() {
         glfwInit();
 
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -87,7 +87,7 @@ namespace dfv::vulkan {
         return requiredLayers.empty();
     }
 
-    void VulkanContext::CreateInstance() {
+    void VulkanContext::createInstance() {
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "Simplify"
         bool hasValidationLayers = CheckValidationLayerSupport();
@@ -130,17 +130,17 @@ namespace dfv::vulkan {
             throw std::runtime_error("Failed to create instance!");
     }
 
-    void VulkanContext::CreateSurface() {
+    void VulkanContext::createSurface() {
         if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
             throw std::runtime_error("Failed to create window surface!");
     }
 
-    VulkanContext::QueueFamilyIndices VulkanContext::FindQueueFamilies(VkPhysicalDevice pDevice) const {
+    VulkanContext::QueueFamilyIndices VulkanContext::findQueueFamilies(VkPhysicalDevice device) const {
         uint32_t queueFamilyCount = 0;
-        vkGetPhysicalDeviceQueueFamilyProperties(pDevice, &queueFamilyCount, nullptr);
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
 
         std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-        vkGetPhysicalDeviceQueueFamilyProperties(pDevice, &queueFamilyCount, queueFamilies.data());
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 
         // Look for at least one queue family that supports VK_QUEUE_GRAPHICS_BIT
         QueueFamilyIndices indices;
@@ -150,7 +150,7 @@ namespace dfv::vulkan {
                 indices.graphicsFamily = i;
 
             VkBool32 presentSupport = false;
-            vkGetPhysicalDeviceSurfaceSupportKHR(pDevice, i, surface, &presentSupport);
+            vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
             if (presentSupport)
                 indices.presentFamily = i;
 
@@ -179,7 +179,7 @@ namespace dfv::vulkan {
         return requiredExtensions.empty();
     }
 
-    VulkanContext::SwapChainSupportDetails VulkanContext::QuerySwapChainSupport(VkPhysicalDevice pDevice) const {
+    VulkanContext::SwapChainSupportDetails VulkanContext::querySwapChainSupport(VkPhysicalDevice pDevice) const {
         SwapChainSupportDetails details;
 
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pDevice, surface, &details.capabilities);
@@ -201,19 +201,19 @@ namespace dfv::vulkan {
         return details;
     }
 
-    bool VulkanContext::IsDeviceSuitable(VkPhysicalDevice pDevice) {
+    bool VulkanContext::isDeviceSuitable(VkPhysicalDevice pDevice) {
         VkPhysicalDeviceProperties deviceProperties;
         VkPhysicalDeviceFeatures deviceFeatures;
         vkGetPhysicalDeviceProperties(pDevice, &deviceProperties);
         vkGetPhysicalDeviceFeatures(pDevice, &deviceFeatures);
 
-        QueueFamilyIndices indices = FindQueueFamilies(pDevice);
+        QueueFamilyIndices indices = findQueueFamilies(pDevice);
         bool hasRequiredQueues = indices.IsComplete();
 
         bool extensionsSupported = CheckDeviceExtensionSupport(pDevice);
         bool swapChainAdequate;
         if (extensionsSupported) {
-            SwapChainSupportDetails swapChainSupport = QuerySwapChainSupport(pDevice);
+            SwapChainSupportDetails swapChainSupport = querySwapChainSupport(pDevice);
             swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
         }
 
@@ -222,7 +222,7 @@ namespace dfv::vulkan {
                swapChainAdequate;
     }
 
-    void VulkanContext::SelectPhysicalDevice() {
+    void VulkanContext::selectPhysicalDevice() {
         auto getPhysicalDeviceName = [](VkPhysicalDevice pDevice) -> std::string {
             VkPhysicalDeviceProperties deviceProperties;
             vkGetPhysicalDeviceProperties(pDevice, &deviceProperties);
@@ -239,7 +239,7 @@ namespace dfv::vulkan {
         vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
         for (const auto dev: devices) {
-            if (IsDeviceSuitable(dev)) {
+            if (isDeviceSuitable(dev)) {
                 physicalDevice = dev;
                 std::cout << "Using physical device: " << getPhysicalDeviceName(physicalDevice) << std::endl;
                 break;
@@ -250,8 +250,8 @@ namespace dfv::vulkan {
             throw std::runtime_error("Failed to find a suitable GPU!");
     }
 
-    void VulkanContext::CreateLogicalDevice() {
-        QueueFamilyIndices indices = FindQueueFamilies(physicalDevice);
+    void VulkanContext::createLogicalDevice() {
+        QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
         std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
         std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
@@ -286,7 +286,7 @@ namespace dfv::vulkan {
         vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
     }
 
-    VkSurfaceFormatKHR VulkanContext::ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats) {
+    VkSurfaceFormatKHR VulkanContext::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats) {
         for (const auto &availableFormat: availableFormats) {
             if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB &&
                 availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
@@ -297,11 +297,11 @@ namespace dfv::vulkan {
         return availableFormats[0];
     }
 
-    VkPresentModeKHR VulkanContext::ChooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes) {
+    VkPresentModeKHR VulkanContext::chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes) {
         return VK_PRESENT_MODE_FIFO_KHR;
     }
 
-    VkExtent2D VulkanContext::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities) {
+    VkExtent2D VulkanContext::chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities) {
         if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
             return capabilities.currentExtent;
         } else {
@@ -322,12 +322,12 @@ namespace dfv::vulkan {
         }
     }
 
-    void VulkanContext::CreateSwapChain() {
-        SwapChainSupportDetails swapChainSupport = QuerySwapChainSupport(physicalDevice);
+    void VulkanContext::createSwapChain() {
+        SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
 
-        VkSurfaceFormatKHR surfaceFormat = ChooseSwapSurfaceFormat(swapChainSupport.formats);
-        VkPresentModeKHR presentMode = ChooseSwapPresentMode(swapChainSupport.presentModes);
-        VkExtent2D extent = ChooseSwapExtent(swapChainSupport.capabilities);
+        VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
+        VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
+        VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
 
         uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
         if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount)
@@ -349,7 +349,7 @@ namespace dfv::vulkan {
                 .oldSwapchain = VK_NULL_HANDLE,
         };
 
-        QueueFamilyIndices indices = FindQueueFamilies(physicalDevice);
+        QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
         uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
         if (indices.graphicsFamily != indices.presentFamily) {
@@ -373,7 +373,7 @@ namespace dfv::vulkan {
         swapChainExtent = extent;
     }
 
-    void VulkanContext::CreateImageViews() {
+    void VulkanContext::createImageViews() {
         swapChainImageViews.resize(swapChainImages.size());
 
         for (size_t i = 0; i < swapChainImages.size(); i++) {
@@ -402,13 +402,15 @@ namespace dfv::vulkan {
         }
     }
 
-    void VulkanContext::CreateGraphicsPipeline() {
+    void VulkanContext::createGraphicsPipeline() {
         // TODO: use relative paths
-        std::vector<char> vertShaderCode = utils::ReadFile(R"(C:\Users\milob\Documents\dev\drone-flight-visualizer\src\shaders\testVert.spv)");
-        std::vector<char> fragShaderCode = utils::ReadFile(R"(C:\Users\milob\Documents\dev\drone-flight-visualizer\src\shaders\testFrag.spv)");
+        std::vector<char> vertShaderCode = utils::readFile(
+                R"(C:\Users\milob\Documents\dev\drone-flight-visualizer\src\shaders\testVert.spv)");
+        std::vector<char> fragShaderCode = utils::readFile(
+                R"(C:\Users\milob\Documents\dev\drone-flight-visualizer\src\shaders\testFrag.spv)");
 
-        VkShaderModule vertShaderModule = CreateShaderModule(vertShaderCode);
-        VkShaderModule fragShaderModule = CreateShaderModule(fragShaderCode);
+        VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
+        VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
 
         VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
         // telling Vulkan in which pipeline stage the shader is going to be used
@@ -562,7 +564,7 @@ namespace dfv::vulkan {
         vkDestroyShaderModule(device, vertShaderModule, nullptr);
     }
 
-    void VulkanContext::CreateRenderPass() {
+    void VulkanContext::createRenderPass() {
         VkAttachmentDescription colorAttachment{};
         colorAttachment.format = swapChainImageFormat;
         colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -607,7 +609,7 @@ namespace dfv::vulkan {
 
     }
 
-    VkShaderModule VulkanContext::CreateShaderModule(const std::vector<char> &code) const {
+    VkShaderModule VulkanContext::createShaderModule(const std::vector<char> &code) const {
         VkShaderModuleCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
         createInfo.codeSize = code.size();
@@ -619,7 +621,7 @@ namespace dfv::vulkan {
         return shaderModule;
     }
 
-    void VulkanContext::CreateFrameBuffers() {
+    void VulkanContext::createFrameBuffers() {
         swapChainFramebuffers.resize(swapChainImageViews.size());
 
         // iterate through the image views and create framebuffers from them
@@ -644,8 +646,8 @@ namespace dfv::vulkan {
 
     }
 
-    void VulkanContext::CreateCommandPool() {
-        QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(physicalDevice);
+    void VulkanContext::createCommandPool() {
+        QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);
 
         VkCommandPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -657,7 +659,7 @@ namespace dfv::vulkan {
         }
     }
 
-    void VulkanContext::CreateCommandBuffer() {
+    void VulkanContext::createCommandBuffer() {
         VkCommandBufferAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         allocInfo.commandPool = commandPool;
@@ -669,7 +671,7 @@ namespace dfv::vulkan {
         }
     }
 
-    void VulkanContext::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+    void VulkanContext::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = 0; // Optional
@@ -718,7 +720,7 @@ namespace dfv::vulkan {
         }
     }
 
-    void VulkanContext::CreateSyncObjects() {
+    void VulkanContext::createSyncObjects() {
         VkSemaphoreCreateInfo semaphoreInfo{};
         semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
         VkFenceCreateInfo fenceInfo{};
@@ -732,14 +734,14 @@ namespace dfv::vulkan {
         }
     }
 
-    void VulkanContext::DrawFrame() {
+    void VulkanContext::drawFrame() {
         vkWaitForFences(device, 1, &inFlightFence, VK_TRUE, UINT64_MAX);
         vkResetFences(device, 1, &inFlightFence);
 
         uint32_t imageIndex;
         vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
         vkResetCommandBuffer(commandBuffer, 0);
-        RecordCommandBuffer(commandBuffer, imageIndex);
+        recordCommandBuffer(commandBuffer, imageIndex);
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;

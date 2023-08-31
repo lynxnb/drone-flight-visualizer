@@ -17,7 +17,7 @@ namespace dfv::utils {
     using namespace rapidjson;
 
 
-    void PopulateBatch(std::vector<node> &nodes) {
+    void PopulateBatch(std::vector<Code> &nodes) {
         // write locations to json
         StringBuffer s;
         Writer<StringBuffer> writer(s);
@@ -70,12 +70,12 @@ namespace dfv::utils {
         }
     }
 
-    void PopulateElevation(std::vector<node> &nodes) {
+    void populateElevation(std::vector<objects::Code> &nodes) {
         auto startTime = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < nodes.size(); i += BATCH_SIZE) {
             auto startIter = nodes.begin() + i;
             auto endIter = nodes.begin() + (nodes.size() > i + BATCH_SIZE ? i + BATCH_SIZE : nodes.size());
-            std::vector<node> batch(startIter, endIter);
+            std::vector<Code> batch(startIter, endIter);
             PopulateBatch(batch);
         }
         auto endTime = std::chrono::high_resolution_clock::now();
@@ -83,7 +83,7 @@ namespace dfv::utils {
         std::cout << "Elevation data fetched in " << duration.count() << "ms" << std::endl;
     }
 
-    osm_data FetchOSMData(const std::string &bbox) {
+    OsmData fetchOsmData(const std::string &bbox) {
         auto startTime = std::chrono::high_resolution_clock::now();
         std::string overpassQuery = R"([out:json];(node()" + bbox + R"();way()" + bbox + R"(););out body;)";
         cpr::Response r = cpr::Get(cpr::Url{"http://overpass-api.de/api/interpreter"},
@@ -97,7 +97,7 @@ namespace dfv::utils {
                     "Error in response while fetching OSM data with code " + std::to_string(r.status_code));
         std::string text = r.text;
 
-        osm_data osmData;
+        OsmData osmData;
         rapidjson::Document responseData;
         responseData.Parse(text.c_str());
         if (!responseData.IsObject()) {
@@ -150,13 +150,13 @@ namespace dfv::utils {
         return osmData;
     }
 
-    std::vector<objects::flight_data_point> ReadFlightData(const std::string &csvPath) {
+    std::vector<objects::FlightDataPoint> readFlightData(const std::string &csvPath) {
 
         using namespace csv;
         try {
             auto startTime = std::chrono::high_resolution_clock::now();
             CSVReader reader(csvPath);
-            std::vector<objects::flight_data_point> flightData;
+            std::vector<objects::FlightDataPoint> flightData;
             for (CSVRow &row: reader) {
                 for (CSVField &field: row) {
                     auto heading = !row["OSD.directionOfTravel"].is_null() ? row["OSD.directionOfTravel"].get<double>()
@@ -184,7 +184,7 @@ namespace dfv::utils {
         return {};
     }
 
-    std::vector<char> ReadFile(const std::string &filename) {
+    std::vector<char> readFile(const std::string &filename) {
         std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
         if (!file.is_open()) {
