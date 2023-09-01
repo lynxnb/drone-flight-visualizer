@@ -2,11 +2,11 @@
 
 #include <vector>
 #include <string>
-#include "objects/data_structs.h"
+#include "structs/data_structs.h"
 
 namespace dfv::utils {
-    std::vector<objects::FlightDataPoint> readFlightData(const std::string &csvPath);
-    void populateElevation(std::vector<objects::Node> &nodes);
-    objects::OsmData fetchOsmData(const std::string &bbox);
+    std::vector<structs::FlightDataPoint> readFlightData(const std::string &csvPath);
+    void populateElevation(std::vector<structs::Node> &nodes);
+    structs::OsmData fetchOsmData(const std::string &bbox);
     std::vector<char> readFile(const std::string &filename);
 }

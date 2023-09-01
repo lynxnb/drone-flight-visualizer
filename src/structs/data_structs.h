@@ -1,7 +1,9 @@
 #pragma once
 #include <map>
+#include <string>
+#include <vector>
 
-namespace dfv::objects {
+namespace dfv::structs {
     struct Node {
         std::string type;
         int64_t id;

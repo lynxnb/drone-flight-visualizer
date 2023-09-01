@@ -13,7 +13,7 @@ namespace dfv::utils {
         constexpr int BATCH_SIZE = 20000;
     }
 
-    using namespace dfv::objects;
+    using namespace dfv::structs;
     using namespace rapidjson;
 
 
@@ -70,7 +70,7 @@ namespace dfv::utils {
         }
     }
 
-    void populateElevation(std::vector<objects::Node> &nodes) {
+    void populateElevation(std::vector<structs::Node> &nodes) {
         auto startTime = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < nodes.size(); i += BATCH_SIZE) {
             auto startIter = nodes.begin() + i;
@@ -150,13 +150,13 @@ namespace dfv::utils {
         return osmData;
     }
 
-    std::vector<objects::FlightDataPoint> readFlightData(const std::string &csvPath) {
+    std::vector<structs::FlightDataPoint> readFlightData(const std::string &csvPath) {
 
         using namespace csv;
         try {
             auto startTime = std::chrono::high_resolution_clock::now();
             CSVReader reader(csvPath);
-            std::vector<objects::FlightDataPoint> flightData;
+            std::vector<structs::FlightDataPoint> flightData;
             for (CSVRow &row: reader) {
                 for (CSVField &field: row) {
                     auto heading = !row["OSD.directionOfTravel"].is_null() ? row["OSD.directionOfTravel"].get<double>()
