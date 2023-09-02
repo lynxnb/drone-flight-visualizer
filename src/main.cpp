@@ -3,7 +3,6 @@
 #include "vulkan/context.h"
 #include "vulkan/renderer.h"
 #include "utils/data_reader.h"
-#include "objects/data_structs.h"
 
 using namespace dfv;
 
