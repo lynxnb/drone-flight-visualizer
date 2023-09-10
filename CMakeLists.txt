@@ -32,6 +32,11 @@ include_directories(SYSTEM ${csv-parser_SOURCE_DIR}/single_include)
 CPMAddPackage("gh:libcpr/cpr#d7cec83e9480253bacf11ff6441e9d00c08c71bf")
 include_directories(SYSTEM ${cpr_SOURCE_DIR}/include)
 
+# vk-bootstrap
+set(VK_BOOTSTRAP_VULKAN_HEADER_DIR ${Vulkan_INCLUDE_DIRS})
+CPMAddPackage("gh:charles-lunarg/vk-bootstrap#61f7761")
+include_directories(SYSTEM ${vk-bootstrap_SOURCE_DIR}/src)
+
 # GLFW
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -50,8 +55,8 @@ include_directories(SYSTEM ${Vulkan_INCLUDE_DIRS})
 # Build the executable
 add_executable(drone_flight_visualizer
         ${source_DIR}/main.cpp
-        ${source_DIR}/vulkan/context.cpp
-        ${source_DIR}/vulkan/renderer.cpp
+        ${source_DIR}/vulkan/vk_initializers.cpp
+        ${source_DIR}/vulkan/vk_engine.cpp
         ${source_DIR}/utils/data_reader.cpp
         ${source_DIR}/objects/world_object.h
         ${source_DIR}/objects/drone_object.h
@@ -63,6 +68,7 @@ target_link_libraries(drone_flight_visualizer PRIVATE
         glaze::glaze
         cpr::cpr
         Vulkan::Vulkan
+        vk-bootstrap::vk-bootstrap
         glfw
         glm
 )
