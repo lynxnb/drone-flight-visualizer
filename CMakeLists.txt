@@ -14,11 +14,10 @@ endif()
 set(CPM_SOURCE_CACHE ${CMAKE_SOURCE_DIR}/libraries)
 include(cmake/CPM.cmake)
 
-# Glaze: JSON/CSV parsing
-CPMAddPackage("gh:stephenberry/glaze@1.3.5")
-include_directories(SYSTEM ${glaze_SOURCE_DIR}/include)
-
 # rapidjson: JSON parsing
+set(RAPIDJSON_BUILD_DOC OFF)
+set(RAPIDJSON_BUILD_EXAMPLES OFF)
+set(RAPIDJSON_BUILD_TESTS ON)
 CPMAddPackage("gh:Tencent/rapidjson@1.1.0")
 include_directories(SYSTEM ${rapidjson_SOURCE_DIR}/include)
 
@@ -38,9 +37,10 @@ CPMAddPackage("gh:charles-lunarg/vk-bootstrap#61f7761")
 include_directories(SYSTEM ${vk-bootstrap_SOURCE_DIR}/src)
 
 # GLFW
-set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_DOCS OFF)
+set(GLFW_BUILD_TESTS OFF)
+set(GLFW_BUILD_EXAMPLES OFF)
+set(GLFW_INSTALL OFF)
 CPMAddPackage("gh:glfw/glfw#3.3.8")
 include_directories(SYSTEM ${glfw_SOURCE_DIR}/include)
 
@@ -65,7 +65,6 @@ target_include_directories(drone_flight_visualizer PRIVATE ${source_DIR})
 
 # Link the executable to the libraries
 target_link_libraries(drone_flight_visualizer PRIVATE
-        glaze::glaze
         cpr::cpr
         Vulkan::Vulkan
         vk-bootstrap::vk-bootstrap
