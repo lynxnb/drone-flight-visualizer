@@ -51,3 +51,4 @@ include_directories(SYSTEM ${Vulkan_INCLUDE_DIRS})
 
 add_subdirectory(src)
 
+add_subdirectory(shaders)

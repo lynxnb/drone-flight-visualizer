@@ -22,6 +22,9 @@
 *.a
 *.lib
 
+# Compiled SPIR-V shaders
+.spv
+
 # Executables
 *.exe
 *.out
