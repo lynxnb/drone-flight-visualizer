@@ -27,7 +27,7 @@
 *.out
 *.app
 
-# CLion
+# Dependencies
 libraries/
 
 # User-specific stuff
@@ -37,5 +37,6 @@ libraries/
 .idea/**/dictionaries
 .idea/**/shelf
 
-# CMake
+# CMake build directory and output binaries
 build/
+bin/

@@ -3,12 +3,9 @@ project(drone_flight_visualizer)
 
 set(CMAKE_CXX_STANDARD 20)
 
-set(source_DIR ${CMAKE_SOURCE_DIR}/src)
-
-if(WIN32) # Install dlls in the same directory as the executable on Windows
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
-endif()
+set(OUTPUT_BINARY_DIR "${PROJECT_SOURCE_DIR}/bin/${CMAKE_BUILD_TYPE}")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_BINARY_DIR}")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
 # CPM.cmake: package management utility for CMake
 set(CPM_SOURCE_CACHE ${CMAKE_SOURCE_DIR}/libraries)
@@ -52,22 +49,5 @@ include_directories(SYSTEM ${glm_SOURCE_DIR}/glm)
 find_package(Vulkan REQUIRED)
 include_directories(SYSTEM ${Vulkan_INCLUDE_DIRS})
 
-# Build the executable
-add_executable(drone_flight_visualizer
-        ${source_DIR}/main.cpp
-        ${source_DIR}/vulkan/vk_initializers.cpp
-        ${source_DIR}/vulkan/vk_engine.cpp
-        ${source_DIR}/utils/data_reader.cpp
-        ${source_DIR}/objects/world_object.h
-        ${source_DIR}/objects/drone_object.h
-)
-target_include_directories(drone_flight_visualizer PRIVATE ${source_DIR})
+add_subdirectory(src)
 
-# Link the executable to the libraries
-target_link_libraries(drone_flight_visualizer PRIVATE
-        cpr::cpr
-        Vulkan::Vulkan
-        vk-bootstrap::vk-bootstrap
-        glfw
-        glm
-)
