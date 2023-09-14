@@ -1,0 +1,41 @@
+{
+    "configurations": [
+        {
+            "type": "command",
+            "name": "Configure Debug",
+            "workingDir": "$PROJECT_DIR$",
+            "program": "cmake.exe",
+            "args": ["-B build", "-S .", "-G Ninja", "-DCMAKE_BUILD_TYPE=Debug"],
+        },
+        {
+            "type": "command",
+            "name": "Configure Release",
+            "workingDir": "$PROJECT_DIR$",
+            "program": "cmake.exe",
+            "args": ["-B build", "-S .", "-G Ninja", "-DCMAKE_BUILD_TYPE=Release"],
+        },
+        {
+            "type": "command",
+            "name": "Build Current Configuration",
+            "workingDir": "$PROJECT_DIR$",
+            "program": "cmake.exe",
+            "args": ["--build", "build"],
+        },
+        {
+            "type": "command",
+            "name": "Build Debug",
+            "dependsOn": ["Configure Debug"],
+            "workingDir": "$PROJECT_DIR$",
+            "program": "cmake.exe",
+            "args": ["--build", "build"],
+        },
+        {
+            "type": "command",
+            "name": "Build Release",
+            "dependsOn": ["Configure Release"],
+            "workingDir": "$PROJECT_DIR$",
+            "program": "cmake.exe",
+            "args": ["--build", "build"],
+        },
+    ]
+}

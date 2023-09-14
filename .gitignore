@@ -43,3 +43,6 @@ libraries/
 # CMake build directory and output binaries
 build/
 bin/
+
+# Clangd cache
+.cache/
