@@ -1,23 +1,21 @@
 ﻿#include "vk_engine.h"
 
-#include <iostream>
 #include <cstdlib>
+#include <iostream>
 
 #include "VkBootstrap.h"
-
-#include "vk_types.h"
 #include "vk_initializers.h"
+#include "vk_types.h"
 
 #define SOURCE_LOCATION __builtin_FILE() << ":" << __builtin_LINE() << " (" << __builtin_FUNCTION() << ")"
 
-#define VK_CHECK(x)                                                                             \
-    do                                                                                          \
-    {                                                                                           \
-        VkResult err = x;                                                                       \
-        if (err) {                                                                              \
-            std::cerr << SOURCE_LOCATION << ": Detected Vulkan error: " << err << std::endl;    \
-            std::abort();                                                                       \
-        }                                                                                       \
+#define VK_CHECK(x)                                                                          \
+    do {                                                                                     \
+        VkResult err = x;                                                                    \
+        if (err) {                                                                           \
+            std::cerr << SOURCE_LOCATION << ": Detected Vulkan error: " << err << std::endl; \
+            std::abort();                                                                    \
+        }                                                                                    \
     } while (0)
 
 namespace dfv {
@@ -55,10 +53,10 @@ namespace dfv {
 
         // Make the Vulkan instance with basic debug features
         auto inst_ret = builder.set_app_name("drone_flight_visualizer")
-                .request_validation_layers(true)
-                .require_api_version(1, 1, 0)
-                .use_default_debug_messenger()
-                .build();
+                                .request_validation_layers(true)
+                                .require_api_version(1, 1, 0)
+                                .use_default_debug_messenger()
+                                .build();
 
         vkb::Instance vkb_inst = inst_ret.value();
 
@@ -73,10 +71,10 @@ namespace dfv {
         // Automatically picks the dedicated GPU if available
         vkb::PhysicalDeviceSelector selector{vkb_inst};
         vkb::PhysicalDevice physicalDevice = selector
-                .set_minimum_version(1, 1)
-                .set_surface(surface)
-                .select()
-                .value();
+                                                     .set_minimum_version(1, 1)
+                                                     .set_surface(surface)
+                                                     .select()
+                                                     .value();
 
         // Create the final Vulkan device
         vkb::DeviceBuilder deviceBuilder{physicalDevice};
@@ -96,11 +94,11 @@ namespace dfv {
         vkb::SwapchainBuilder swapchainBuilder{chosenGPU, device, surface};
 
         vkb::Swapchain vkbSwapchain = swapchainBuilder
-                .use_default_format_selection()
-                .set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR) // Use vsync present mode
-                .set_desired_extent(windowExtent.width, windowExtent.height)
-                .build()
-                .value();
+                                              .use_default_format_selection()
+                                              .set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR) // Use vsync present mode
+                                              .set_desired_extent(windowExtent.width, windowExtent.height)
+                                              .build()
+                                              .value();
 
         // Store the swapchain and its related images
         swapchain = vkbSwapchain.swapchain;
@@ -335,4 +333,4 @@ namespace dfv {
         }
     }
 
-}
+} // namespace dfv

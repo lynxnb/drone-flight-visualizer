@@ -7,7 +7,7 @@
 namespace dfv {
 
     class VulkanEngine {
-    public:
+      public:
         bool isInitialized{false};
         int frameNumber{0};
 
@@ -56,7 +56,7 @@ namespace dfv {
          */
         void run();
 
-    private:
+      private:
         /**
          * Loads the core Vulkan structures
          */
@@ -88,4 +88,4 @@ namespace dfv {
         void initSyncStructures();
     };
 
-}
+} // namespace dfv
