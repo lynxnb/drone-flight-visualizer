@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include <filesystem>
 #include <vector>
 
 #include "vk_types.h"
@@ -11,7 +12,7 @@ namespace dfv {
         bool isInitialized{false};
         int frameNumber{0};
 
-        VkExtent2D windowExtent{1700, 900};
+        VkExtent2D windowExtent{1280, 720};
         GLFWwindow *window{nullptr};
 
         VkInstance instance; // Vulkan library handle
@@ -36,6 +37,9 @@ namespace dfv {
         VkSemaphore presentSemaphore, renderSemaphore;
         VkFence renderFence;
 
+        VkPipelineLayout trianglePipelineLayout;
+        VkPipeline trianglePipeline;
+
         /**
          * Initializes the engine
          */
@@ -55,6 +59,8 @@ namespace dfv {
          * Runs the main loop
          */
         void run();
+
+        bool loadShaderModule(std::filesystem::path filePath, VkShaderModule *outShaderModule);
 
       private:
         /**
@@ -86,6 +92,8 @@ namespace dfv {
          * Creates the synchronization structures
          */
         void initSyncStructures();
+
+        void initPipelines();
     };
 
 } // namespace dfv

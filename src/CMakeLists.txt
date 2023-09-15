@@ -1,8 +1,9 @@
 # Build the executable
 add_executable(drone_flight_visualizer
         main.cpp
-        vulkan/vk_initializers.cpp
         vulkan/vk_engine.cpp
+        vulkan/vk_initializers.cpp
+        vulkan/vk_pipeline.cpp
         utils/data_reader.cpp
         objects/world_object.h
         objects/drone_object.h

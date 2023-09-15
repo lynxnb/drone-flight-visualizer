@@ -1,10 +1,12 @@
 ﻿#include "vk_engine.h"
 
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
 
 #include "VkBootstrap.h"
 #include "vk_initializers.h"
+#include "vk_pipeline.h"
 #include "vk_types.h"
 
 #define SOURCE_LOCATION __builtin_FILE() << ":" << __builtin_LINE() << " (" << __builtin_FUNCTION() << ")"
@@ -44,6 +46,9 @@ namespace dfv {
 
         // Creates synchronization structures
         initSyncStructures();
+
+        // Create pipelines
+        initPipelines();
 
         isInitialized = true;
     }
@@ -202,6 +207,67 @@ namespace dfv {
         VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &renderSemaphore));
     }
 
+    void VulkanEngine::initPipelines() {
+        VkShaderModule triangleFragShader;
+        if (!loadShaderModule("shaders/triangle.frag.spv", &triangleFragShader))
+            std::cout << "Error when building the triangle fragment shader module" << std::endl;
+        else
+            std::cout << "Triangle fragment shader successfully loaded" << std::endl;
+
+        VkShaderModule triangleVertexShader;
+        if (!loadShaderModule("shaders/triangle.vert.spv", &triangleVertexShader))
+            std::cout << "Error when building the triangle vertex shader module" << std::endl;
+        else
+            std::cout << "Triangle vertex shader successfully loaded" << std::endl;
+
+        // Build the pipeline layout that controls the inputs/outputs of the shader
+        // We are not using descriptor sets or other systems yet, so no need to use anything other than empty default
+        VkPipelineLayoutCreateInfo pipeline_layout_info = vkinit::pipeline_layout_create_info();
+
+        VK_CHECK(vkCreatePipelineLayout(device, &pipeline_layout_info, nullptr, &trianglePipelineLayout));
+
+        // Build the stage-create-info for both vertex and fragment stages
+        PipelineBuilder pipelineBuilder;
+
+        pipelineBuilder.shaderStages.push_back(
+                vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, triangleVertexShader));
+        pipelineBuilder.shaderStages.push_back(
+                vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, triangleFragShader));
+
+        // Vertex input controls how to read vertices from vertex buffers. We aren't using it yet
+        pipelineBuilder.vertexInputInfo = vkinit::vertex_input_state_create_info();
+
+        // Input assembly is the configuration for drawing triangle lists, strips, or individual points
+        // We are just going to draw triangle list
+        pipelineBuilder.inputAssembly = vkinit::input_assembly_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+
+        // Build viewport and scissor from the swapchain extents
+        pipelineBuilder.viewport.x = 0.0f;
+        pipelineBuilder.viewport.y = 0.0f;
+        pipelineBuilder.viewport.width = (float) windowExtent.width;
+        pipelineBuilder.viewport.height = (float) windowExtent.height;
+        pipelineBuilder.viewport.minDepth = 0.0f;
+        pipelineBuilder.viewport.maxDepth = 1.0f;
+
+        pipelineBuilder.scissor.offset = {0, 0};
+        pipelineBuilder.scissor.extent = windowExtent;
+
+        // Configure the rasterizer to draw filled triangles
+        pipelineBuilder.rasterizer = vkinit::rasterization_state_create_info(VK_POLYGON_MODE_FILL);
+
+        // We don't use multisampling, so just run the default one
+        pipelineBuilder.multisampling = vkinit::multisampling_state_create_info();
+
+        // A single blend attachment with no blending and writing to RGBA
+        pipelineBuilder.colorBlendAttachment = vkinit::color_blend_attachment_state();
+
+        // Use the triangle layout we created
+        pipelineBuilder.pipelineLayout = trianglePipelineLayout;
+
+        // Finally build the pipeline
+        trianglePipeline = pipelineBuilder.build_pipeline(device, renderPass);
+    }
+
     void VulkanEngine::draw() {
         // Wait until the GPU has finished rendering the last frame, 1 second timeout
         VK_CHECK(vkWaitForFences(device, 1, &renderFence, true, 1000000000));
@@ -248,6 +314,9 @@ namespace dfv {
         rpInfo.pClearValues = &clearValue;
 
         vkCmdBeginRenderPass(cmd, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
+        vkCmdDraw(cmd, 3, 1, 0, 0);
 
         // Finalize the render pass
         vkCmdEndRenderPass(cmd);
@@ -331,6 +400,37 @@ namespace dfv {
             glfwDestroyWindow(window);
             glfwTerminate();
         }
+    }
+
+    bool VulkanEngine::loadShaderModule(std::filesystem::path filePath, VkShaderModule *outShaderModule) {
+        std::ifstream file(filePath, std::ios::ate | std::ios::binary);
+
+        if (!file.is_open())
+            return false;
+
+        std::streamoff fileSize{file.tellg()};
+        // Spirv expects the buffer to be on uint32, reserve an int vector big enough for the entire file
+        std::vector<uint32_t> buffer(fileSize / sizeof(uint32_t));
+
+        file.seekg(0);
+        file.read(reinterpret_cast<char *>(buffer.data()), fileSize);
+
+        file.close();
+
+        // Create a new shader module, using the buffer we loaded
+        VkShaderModuleCreateInfo createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        createInfo.pNext = nullptr;
+        // codeSize has to be in bytes
+        createInfo.codeSize = buffer.size() * sizeof(uint32_t);
+        createInfo.pCode = buffer.data();
+
+        VkShaderModule shaderModule;
+        if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+            return false;
+
+        *outShaderModule = shaderModule;
+        return true;
     }
 
 } // namespace dfv
