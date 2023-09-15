@@ -37,5 +37,19 @@
             "program": "cmake.exe",
             "args": ["--build", "build"],
         },
+        {
+            "type": "command",
+            "name": "Run Debug",
+            "dependsOn": ["Build Debug"],
+            "workingDir": "$PROJECT_DIR$/bin/Debug",
+            "program": "$PROJECT_DIR$/bin/Debug/drone_flight_visualizer.exe"
+        },
+        {
+            "type": "command",
+            "name": "Run Release",
+            "dependsOn": ["Build Release"],
+            "workingDir": "$PROJECT_DIR$/bin/Release",
+            "program": "$PROJECT_DIR$/bin/Release/drone_flight_visualizer.exe"
+        }
     ]
 }
