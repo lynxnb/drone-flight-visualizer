@@ -111,6 +111,11 @@ namespace dfv {
         swapchainImageViews = vkbSwapchain.get_image_views().value();
 
         swapchainImageFormat = vkbSwapchain.image_format;
+
+        // Enqueue the destruction of the swapchain
+        mainDeletionQueue.pushFunction([=, this]() {
+            vkDestroySwapchainKHR(device, swapchain, nullptr);
+        });
     }
 
     void VulkanEngine::initCommands() {
@@ -125,6 +130,11 @@ namespace dfv {
         VkCommandBufferAllocateInfo cmdAllocInfo = vkinit::command_buffer_allocate_info(commandPool, 1);
 
         VK_CHECK(vkAllocateCommandBuffers(device, &cmdAllocInfo, &mainCommandBuffer));
+
+        // Enqueue the destruction of the pool
+        mainDeletionQueue.pushFunction([=, this]() {
+            vkDestroyCommandPool(device, commandPool, nullptr);
+        });
     }
 
     void VulkanEngine::initDefaultRenderpass() {
@@ -161,6 +171,11 @@ namespace dfv {
         renderPassInfo.pSubpasses = &subpass;
 
         VK_CHECK(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass));
+
+        // Enqueue the destruction of the renderpass
+        mainDeletionQueue.pushFunction([=, this]() {
+            vkDestroyRenderPass(device, renderPass, nullptr);
+        });
     }
 
     void VulkanEngine::initFramebuffers() {
@@ -183,28 +198,36 @@ namespace dfv {
         for (int i = 0; i < swapchainImageCount; i++) {
             fbInfo.pAttachments = &swapchainImageViews[i];
             VK_CHECK(vkCreateFramebuffer(device, &fbInfo, nullptr, &framebuffers[i]));
+
+            // Enqueue the destruction of the framebuffers
+            mainDeletionQueue.pushFunction([=, this]() {
+                vkDestroyFramebuffer(device, framebuffers[i], nullptr);
+                vkDestroyImageView(device, swapchainImageViews[i], nullptr);
+            });
         }
     }
 
     void VulkanEngine::initSyncStructures() {
-        // Create synchronization structures
-        VkFenceCreateInfo fenceCreateInfo = {};
-        fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fenceCreateInfo.pNext = nullptr;
-
         // We want to create the fence with the Create Signaled flag, so we can wait on it before using it on a GPU command (for the first frame)
-        fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        VkFenceCreateInfo fenceCreateInfo = vkinit::fence_create_info(VK_FENCE_CREATE_SIGNALED_BIT);
 
         VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &renderFence));
 
-        // For the semaphores we don't need any flags
-        VkSemaphoreCreateInfo semaphoreCreateInfo = {};
-        semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        semaphoreCreateInfo.pNext = nullptr;
-        semaphoreCreateInfo.flags = 0;
+        // Enqueue the destruction of the fence
+        mainDeletionQueue.pushFunction([=, this]() {
+            vkDestroyFence(device, renderFence, nullptr);
+        });
+
+        VkSemaphoreCreateInfo semaphoreCreateInfo = vkinit::semaphore_create_info();
 
         VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &presentSemaphore));
         VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &renderSemaphore));
+
+        // Enqueue the destruction of semaphores
+        mainDeletionQueue.pushFunction([=, this]() {
+            vkDestroySemaphore(device, presentSemaphore, nullptr);
+            vkDestroySemaphore(device, renderSemaphore, nullptr);
+        });
     }
 
     void VulkanEngine::initPipelines() {
@@ -284,6 +307,21 @@ namespace dfv {
         pipelineBuilder.shaderStages.push_back(vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, redTriangleVertShader));
         pipelineBuilder.shaderStages.push_back(vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, redTriangleFragShader));
         redTrianglePipeline = pipelineBuilder.build_pipeline(device, renderPass);
+
+        // Destroy all shader modules, outside the queue
+        vkDestroyShaderModule(device, redTriangleVertShader, nullptr);
+        vkDestroyShaderModule(device, redTriangleFragShader, nullptr);
+        vkDestroyShaderModule(device, triangleFragShader, nullptr);
+        vkDestroyShaderModule(device, triangleVertexShader, nullptr);
+
+        mainDeletionQueue.pushFunction([=, this]() {
+            // Destroy the 2 pipelines we have created
+            vkDestroyPipeline(device, redTrianglePipeline, nullptr);
+            vkDestroyPipeline(device, trianglePipeline, nullptr);
+
+            // Destroy the pipeline layout that they use
+            vkDestroyPipelineLayout(device, trianglePipelineLayout, nullptr);
+        });
     }
 
     void VulkanEngine::draw() {
@@ -407,18 +445,9 @@ namespace dfv {
 
     void VulkanEngine::cleanup() {
         if (isInitialized) {
-            vkDestroyCommandPool(device, commandPool, nullptr);
+            vkWaitForFences(device, 1, &renderFence, true, 1000000000);
 
-            vkDestroySwapchainKHR(device, swapchain, nullptr);
-
-            vkDestroyRenderPass(device, renderPass, nullptr);
-
-            // Destroy swapchain resources
-            for (int i = 0; i < framebuffers.size(); i++) {
-                vkDestroyFramebuffer(device, framebuffers[i], nullptr);
-
-                vkDestroyImageView(device, swapchainImageViews[i], nullptr);
-            }
+            mainDeletionQueue.flush();
 
             vkDestroyDevice(device, nullptr);
             vkDestroySurfaceKHR(instance, surface, nullptr);

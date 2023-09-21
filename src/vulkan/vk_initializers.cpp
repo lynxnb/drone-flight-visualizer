@@ -117,4 +117,20 @@ namespace dfv::vkinit {
         return info;
     }
 
+    VkFenceCreateInfo fence_create_info(VkFenceCreateFlags flags) {
+        VkFenceCreateInfo fenceCreateInfo = {};
+        fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceCreateInfo.pNext = nullptr;
+        fenceCreateInfo.flags = flags;
+        return fenceCreateInfo;
+    }
+
+    VkSemaphoreCreateInfo semaphore_create_info(VkSemaphoreCreateFlags flags) {
+        VkSemaphoreCreateInfo semCreateInfo = {};
+        semCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        semCreateInfo.pNext = nullptr;
+        semCreateInfo.flags = flags;
+        return semCreateInfo;
+    }
+
 } // namespace dfv::vkinit

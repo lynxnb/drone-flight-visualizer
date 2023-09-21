@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <vector>
 
+#include "deletion_queue.h"
 #include "vk_types.h"
 
 namespace dfv {
@@ -40,6 +41,8 @@ namespace dfv {
         VkPipelineLayout trianglePipelineLayout;
         VkPipeline trianglePipeline;
         VkPipeline redTrianglePipeline;
+
+        DeletionQueue mainDeletionQueue;
 
         int selectedShader{0};
 
