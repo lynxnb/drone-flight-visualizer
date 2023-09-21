@@ -66,7 +66,7 @@ namespace dfv {
          */
         void run();
 
-        bool loadShaderModule(std::filesystem::path filePath, VkShaderModule *outShaderModule);
+        bool loadShaderModule(const std::filesystem::path& filePath, VkShaderModule *outShaderModule) const;
 
       private:
         /**

@@ -458,7 +458,7 @@ namespace dfv {
         }
     }
 
-    bool VulkanEngine::loadShaderModule(std::filesystem::path filePath, VkShaderModule *outShaderModule) {
+    bool VulkanEngine::loadShaderModule(const std::filesystem::path& filePath, VkShaderModule *outShaderModule) const {
         std::ifstream file(filePath, std::ios::ate | std::ios::binary);
 
         if (!file.is_open())
