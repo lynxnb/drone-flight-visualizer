@@ -220,6 +220,18 @@ namespace dfv {
         else
             std::cout << "Triangle vertex shader successfully loaded" << std::endl;
 
+        VkShaderModule redTriangleFragShader;
+        if (!loadShaderModule("shaders/triangle.frag.spv", &redTriangleFragShader))
+            std::cout << "Error when building the triangle fragment shader module" << std::endl;
+        else
+            std::cout << "Triangle fragment shader successfully loaded" << std::endl;
+
+        VkShaderModule redTriangleVertShader;
+        if (!loadShaderModule("shaders/triangle.vert.spv", &redTriangleVertShader))
+            std::cout << "Error when building the triangle vertex shader module" << std::endl;
+        else
+            std::cout << "Triangle vertex shader successfully loaded" << std::endl;
+
         // Build the pipeline layout that controls the inputs/outputs of the shader
         // We are not using descriptor sets or other systems yet, so no need to use anything other than empty default
         VkPipelineLayoutCreateInfo pipeline_layout_info = vkinit::pipeline_layout_create_info();
@@ -266,6 +278,12 @@ namespace dfv {
 
         // Finally build the pipeline
         trianglePipeline = pipelineBuilder.build_pipeline(device, renderPass);
+
+        // Now create the red triangle pipeline, only change shaders but keep the rest of the pipeline settings
+        pipelineBuilder.shaderStages.clear();
+        pipelineBuilder.shaderStages.push_back(vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, redTriangleVertShader));
+        pipelineBuilder.shaderStages.push_back(vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, redTriangleFragShader));
+        redTrianglePipeline = pipelineBuilder.build_pipeline(device, renderPass);
     }
 
     void VulkanEngine::draw() {
@@ -315,7 +333,10 @@ namespace dfv {
 
         vkCmdBeginRenderPass(cmd, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
+        if (selectedShader == 0)
+            vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
+        else
+            vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, redTrianglePipeline);
         vkCmdDraw(cmd, 3, 1, 0, 0);
 
         // Finalize the render pass
@@ -369,10 +390,16 @@ namespace dfv {
     }
 
     void VulkanEngine::run() {
+        glfwSetInputMode(window, GLFW_STICKY_KEYS, GLFW_TRUE);
+
         //main loop
         while (!glfwWindowShouldClose(window)) {
             //Handle events on queue
             glfwPollEvents();
+
+            int state = glfwGetKey(window, GLFW_KEY_SPACE);
+            if (state == GLFW_PRESS)
+                selectedShader = (selectedShader + 1) % 2;
 
             draw();
         }

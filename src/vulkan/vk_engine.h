@@ -39,6 +39,9 @@ namespace dfv {
 
         VkPipelineLayout trianglePipelineLayout;
         VkPipeline trianglePipeline;
+        VkPipeline redTrianglePipeline;
+
+        int selectedShader{0};
 
         /**
          * Initializes the engine
