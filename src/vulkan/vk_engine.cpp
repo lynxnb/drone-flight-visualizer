@@ -430,14 +430,19 @@ namespace dfv {
     void VulkanEngine::run() {
         glfwSetInputMode(window, GLFW_STICKY_KEYS, GLFW_TRUE);
 
+        bool enableSelection = true;
         //main loop
         while (!glfwWindowShouldClose(window)) {
             //Handle events on queue
             glfwPollEvents();
 
             int state = glfwGetKey(window, GLFW_KEY_SPACE);
-            if (state == GLFW_PRESS)
+            if (state == GLFW_PRESS && enableSelection) {
                 selectedShader = (selectedShader + 1) % 2;
+                enableSelection = false;
+            } else if (state == GLFW_RELEASE) {
+                enableSelection = true;
+            }
 
             draw();
         }
@@ -458,7 +463,7 @@ namespace dfv {
         }
     }
 
-    bool VulkanEngine::loadShaderModule(const std::filesystem::path& filePath, VkShaderModule *outShaderModule) const {
+    bool VulkanEngine::loadShaderModule(const std::filesystem::path &filePath, VkShaderModule *outShaderModule) const {
         std::ifstream file(filePath, std::ios::ate | std::ios::binary);
 
         if (!file.is_open())
