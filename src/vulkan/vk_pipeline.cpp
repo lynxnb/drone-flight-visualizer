@@ -4,7 +4,7 @@
 
 namespace dfv {
 
-    VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass) {
+    VkPipeline PipelineBuilder::buildPipeline(VkDevice device, VkRenderPass pass) {
         //make viewport state from our stored viewport and scissor.
         //at the moment we won't support multiple viewports or scissors
         VkPipelineViewportStateCreateInfo viewportState = {};

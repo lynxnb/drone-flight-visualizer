@@ -3,7 +3,10 @@
 #include <filesystem>
 #include <vector>
 
+#include <vk_mem_alloc.h>
+
 #include "deletion_queue.h"
+#include "vk_mesh.h"
 #include "vk_types.h"
 
 namespace dfv {
@@ -12,6 +15,9 @@ namespace dfv {
       public:
         bool isInitialized{false};
         int frameNumber{0};
+
+        VmaAllocator allocator;
+        DeletionQueue mainDeletionQueue;
 
         VkExtent2D windowExtent{1280, 720};
         GLFWwindow *window{nullptr};
@@ -42,7 +48,8 @@ namespace dfv {
         VkPipeline trianglePipeline;
         VkPipeline redTrianglePipeline;
 
-        DeletionQueue mainDeletionQueue;
+        VkPipeline meshPipeline;
+        Mesh triangleMesh;
 
         int selectedShader{0};
 
@@ -66,7 +73,7 @@ namespace dfv {
          */
         void run();
 
-        bool loadShaderModule(const std::filesystem::path& filePath, VkShaderModule *outShaderModule) const;
+        bool loadShaderModule(const std::filesystem::path &filePath, VkShaderModule *outShaderModule) const;
 
       private:
         /**
@@ -100,6 +107,10 @@ namespace dfv {
         void initSyncStructures();
 
         void initPipelines();
+
+        void loadMeshes();
+
+        void uploadMesh(Mesh &mesh);
     };
 
 } // namespace dfv

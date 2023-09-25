@@ -51,6 +51,9 @@ include_directories(SYSTEM ${glm_SOURCE_DIR}/glm)
 find_package(Vulkan REQUIRED)
 include_directories(SYSTEM ${Vulkan_INCLUDE_DIRS})
 
+CPMAddPackage("gh:GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator@3.0.1")
+include_directories(SYSTEM ${VulkanMemoryAllocator_SOURCE_DIR}/include)
+
 add_subdirectory(src)
 
 add_subdirectory(shaders)

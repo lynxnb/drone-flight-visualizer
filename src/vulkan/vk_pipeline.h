@@ -18,7 +18,7 @@ namespace dfv {
         VkPipelineMultisampleStateCreateInfo multisampling;
         VkPipelineLayout pipelineLayout;
 
-        VkPipeline build_pipeline(VkDevice device, VkRenderPass pass);
+        VkPipeline buildPipeline(VkDevice device, VkRenderPass pass);
     };
 
 } // namespace dfv
