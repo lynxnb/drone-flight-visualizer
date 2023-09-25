@@ -1,8 +1,10 @@
 #pragma once
 
-#include "vk_types.h"
-#include <glm/vec3.hpp>
 #include <vector>
+
+#include <glm/glm.hpp>
+
+#include "vk_types.h"
 
 namespace dfv {
 
@@ -25,6 +27,11 @@ namespace dfv {
         std::vector<Vertex> vertices;
 
         AllocatedBuffer vertexBuffer;
+    };
+
+    struct MeshPushConstants {
+        glm::vec4 data;
+        glm::mat4 renderMatrix;
     };
 
 } // namespace dfv

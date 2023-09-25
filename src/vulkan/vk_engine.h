@@ -45,6 +45,7 @@ namespace dfv {
         VkFence renderFence;
 
         VkPipelineLayout trianglePipelineLayout;
+        VkPipelineLayout meshPipelineLayout;
         VkPipeline trianglePipeline;
         VkPipeline redTrianglePipeline;
 
