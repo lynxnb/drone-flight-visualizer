@@ -17,6 +17,7 @@ target_link_libraries(drone_flight_visualizer PRIVATE
         vk-bootstrap::vk-bootstrap
         glfw
         glm
+        VulkanMemoryAllocator
 )
 
 add_dependencies(drone_flight_visualizer Shaders)

@@ -35,7 +35,7 @@ set(VK_BOOTSTRAP_VULKAN_HEADER_DIR ${Vulkan_INCLUDE_DIRS})
 CPMAddPackage("gh:charles-lunarg/vk-bootstrap#61f7761")
 include_directories(SYSTEM ${vk-bootstrap_SOURCE_DIR}/src)
 
-# GLFW
+# GLFW: Vulkan window and wurface
 set(GLFW_BUILD_DOCS OFF)
 set(GLFW_BUILD_TESTS OFF)
 set(GLFW_BUILD_EXAMPLES OFF)
@@ -43,7 +43,7 @@ set(GLFW_INSTALL OFF)
 CPMAddPackage("gh:glfw/glfw#3.3.8")
 include_directories(SYSTEM ${glfw_SOURCE_DIR}/include)
 
-# GLM
+# GLM: Vector and matrix math
 CPMAddPackage("gh:g-truc/glm#0.9.9.8")
 include_directories(SYSTEM ${glm_SOURCE_DIR}/glm)
 
@@ -51,6 +51,7 @@ include_directories(SYSTEM ${glm_SOURCE_DIR}/glm)
 find_package(Vulkan REQUIRED)
 include_directories(SYSTEM ${Vulkan_INCLUDE_DIRS})
 
+# Vulkan Memory Allocator
 CPMAddPackage("gh:GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator@3.0.1")
 include_directories(SYSTEM ${VulkanMemoryAllocator_SOURCE_DIR}/include)
 

@@ -6,7 +6,6 @@
 
 #include <VkBootstrap.h>
 #include <glm/gtx/transform.hpp>
-#define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
 #include "vk_initializers.h"
