@@ -6,6 +6,7 @@
 
 #include <VkBootstrap.h>
 #include <glm/gtx/transform.hpp>
+#include <tiny_obj_loader.h>
 #include <vk_mem_alloc.h>
 
 #include "vk_initializers.h"

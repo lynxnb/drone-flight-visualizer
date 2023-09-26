@@ -18,6 +18,7 @@ target_link_libraries(drone_flight_visualizer PRIVATE
         glfw
         glm
         VulkanMemoryAllocator
+        tinyobjloader
 )
 
 add_dependencies(drone_flight_visualizer Shaders)

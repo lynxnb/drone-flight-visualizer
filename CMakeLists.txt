@@ -55,6 +55,10 @@ include_directories(SYSTEM ${Vulkan_INCLUDE_DIRS})
 CPMAddPackage("gh:GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator@3.0.1")
 include_directories(SYSTEM ${VulkanMemoryAllocator_SOURCE_DIR}/include)
 
+# tinyobjloader: OBJ file loading
+CPMAddPackage("gh:tinyobjloader/tinyobjloader@1.0.6")
+include_directories(SYSTEM ${tinyobjloader_SOURCE_DIR})
+
 add_subdirectory(src)
 
 add_subdirectory(shaders)
