@@ -51,6 +51,7 @@ namespace dfv {
 
         VkPipeline meshPipeline;
         Mesh triangleMesh;
+        Mesh monkeyMesh;
 
         int selectedShader{0};
 

@@ -46,3 +46,6 @@ bin/
 
 # Clangd cache
 .cache/
+
+# Excpetions for the assets folder
+!assets/*

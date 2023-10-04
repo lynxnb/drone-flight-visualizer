@@ -404,7 +404,11 @@ namespace dfv {
 
         // We don't care about the vertex normals
 
+        // Load the monkey
+        monkeyMesh.loadFromObj("assets/monkey_smooth.obj");
+
         uploadMesh(triangleMesh);
+        uploadMesh(monkeyMesh);
     }
 
     void VulkanEngine::uploadMesh(dfv::Mesh &mesh) {
@@ -417,16 +421,16 @@ namespace dfv {
         bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
         // Let the VMA library know that this data should be writeable by CPU, but also readable by GPU
-        VmaAllocationCreateInfo vmaallocInfo = {};
-        vmaallocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+        VmaAllocationCreateInfo vmaAllocInfo = {};
+        vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
         // Allocate the buffer
-        VK_CHECK(vmaCreateBuffer(allocator, &bufferInfo, &vmaallocInfo,
+        VK_CHECK(vmaCreateBuffer(allocator, &bufferInfo, &vmaAllocInfo,
                                  &mesh.vertexBuffer.buffer,
                                  &mesh.vertexBuffer.allocation,
                                  nullptr));
 
-        // Add the destruction of triangle mesh buffer to the deletion queue
+        // Add the destruction of this buffer to the deletion queue
         mainDeletionQueue.pushFunction([=, this]() {
             vmaDestroyBuffer(allocator, mesh.vertexBuffer.buffer, mesh.vertexBuffer.allocation);
         });
@@ -490,10 +494,6 @@ namespace dfv {
         // Bind the mesh pipeline
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipeline);
 
-        // Bind the mesh vertex buffer with offset 0
-        VkDeviceSize offset = 0;
-        vkCmdBindVertexBuffers(cmd, 0, 1, &triangleMesh.vertexBuffer.buffer, &offset);
-
         // Make a model view matrix for rendering the object camera position
         glm::vec3 camPos = {0.f, 0.f, -2.f};
 
@@ -510,13 +510,15 @@ namespace dfv {
         MeshPushConstants constants = {};
         constants.renderMatrix = meshMatrix;
 
-        //upload the matrix to the GPU via push constants
+        // Upload the matrix to the GPU via push constants
         vkCmdPushConstants(cmd, meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);
 
-        //we can now draw
-        vkCmdDraw(cmd, triangleMesh.vertices.size(), 1, 0, 0);
+        // Bind the mesh vertex buffer with offset 0
+        VkDeviceSize offset = 0;
+        vkCmdBindVertexBuffers(cmd, 0, 1, &monkeyMesh.vertexBuffer.buffer, &offset);
+
         // Draw the mesh
-        vkCmdDraw(cmd, triangleMesh.vertices.size(), 1, 0, 0);
+        vkCmdDraw(cmd, monkeyMesh.vertices.size(), 1, 0, 0);
 
         // Finalize the render pass
         vkCmdEndRenderPass(cmd);

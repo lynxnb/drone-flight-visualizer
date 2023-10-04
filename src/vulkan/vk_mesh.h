@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <filesystem>
 
 #include <glm/glm.hpp>
 
@@ -27,6 +28,8 @@ namespace dfv {
         std::vector<Vertex> vertices;
 
         AllocatedBuffer vertexBuffer;
+
+        bool loadFromObj(const std::filesystem::path &filename);
     };
 
     struct MeshPushConstants {
