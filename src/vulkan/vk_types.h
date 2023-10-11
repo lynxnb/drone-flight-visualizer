@@ -14,4 +14,9 @@ namespace dfv {
         VmaAllocation allocation;
     };
 
+    struct AllocatedImage {
+        VkImage image;
+        VmaAllocation allocation;
+    };
+
 } // namespace dfv

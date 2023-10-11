@@ -15,6 +15,7 @@ namespace dfv {
         VkRect2D scissor;
         VkPipelineRasterizationStateCreateInfo rasterizer;
         VkPipelineColorBlendAttachmentState colorBlendAttachment;
+        VkPipelineDepthStencilStateCreateInfo depthStencil;
         VkPipelineMultisampleStateCreateInfo multisampling;
         VkPipelineLayout pipelineLayout;
 

@@ -53,6 +53,10 @@ namespace dfv {
         Mesh triangleMesh;
         Mesh monkeyMesh;
 
+        VkImageView depthImageView;
+        AllocatedImage depthImage;
+        VkFormat depthFormat;
+
         int selectedShader{0};
 
         /**

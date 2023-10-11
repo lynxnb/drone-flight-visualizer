@@ -1,5 +1,6 @@
 ﻿#include "vk_engine.h"
 
+#include <array>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -138,6 +139,33 @@ namespace dfv {
         mainDeletionQueue.pushFunction([=, this]() {
             vkDestroySwapchainKHR(device, swapchain, nullptr);
         });
+
+        //depth image size will match the window
+        VkExtent3D depthImageExtent = {windowExtent.width, windowExtent.height, 1};
+
+        // Set the depth format to 32-bit float
+        depthFormat = VK_FORMAT_D32_SFLOAT;
+
+        // The depth image will be an image with the format we selected and depth attachment usage flag
+        VkImageCreateInfo depthImageInfo = vkinit::image_create_info(depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthImageExtent);
+
+        // For the depth image, we want to allocate it from GPU local memory
+        VmaAllocationCreateInfo depthImageAllocInfo = {};
+        depthImageAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+        depthImageAllocInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+        // Allocate and create the image
+        VK_CHECK(vmaCreateImage(allocator, &depthImageInfo, &depthImageAllocInfo, &depthImage.image, &depthImage.allocation, nullptr));
+
+        //build an image-view for the depth image to use for rendering
+        VkImageViewCreateInfo depthImageViewInfo = vkinit::imageview_create_info(depthFormat, depthImage.image, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+        VK_CHECK(vkCreateImageView(device, &depthImageViewInfo, nullptr, &depthImageView));
+
+        mainDeletionQueue.pushFunction([=, this]() {
+            vkDestroyImageView(device, depthImageView, nullptr);
+            vmaDestroyImage(allocator, depthImage.image, depthImage.allocation);
+        });
     }
 
     void VulkanEngine::initCommands() {
@@ -160,15 +188,16 @@ namespace dfv {
     }
 
     void VulkanEngine::initDefaultRenderpass() {
-        VkAttachmentDescription colorAttachment = {}; // The renderpass will use this color attachment.
+        // Allocate memory for the attachments
+        std::array<VkAttachmentDescription, 2> attachments = {};
+
+        VkAttachmentDescription &colorAttachment = attachments[0]; // The renderpass will use this color attachment.
         colorAttachment.format = swapchainImageFormat; // The attachment will have the format needed by the swapchain
         colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT; // 1 sample, we won't be doing MSAA
         colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; // We Clear when this attachment is loaded
         colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE; // We keep the attachment stored when the renderpass ends
-
         colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; // We don't care about stencil
         colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-
         colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; // We don't know or care about the starting layout of the attachment
         colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; // After the renderpass ends, the image has to be on a layout ready for display
 
@@ -176,21 +205,62 @@ namespace dfv {
         colorAttachmentRef.attachment = 0; // Attachment number will index into the pAttachments array in the parent renderpass itself
         colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+        // Depth attachment
+        VkAttachmentDescription &depthAttachment = attachments[1];
+        depthAttachment.flags = 0;
+        depthAttachment.format = depthFormat;
+        depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+        depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+        VkAttachmentReference depthAttachmentRef = {};
+        depthAttachmentRef.attachment = 1;
+        depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
         // Create 1 subpass, which is the minimum you can do
         VkSubpassDescription subpass = {};
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
         subpass.colorAttachmentCount = 1;
         subpass.pColorAttachments = &colorAttachmentRef;
+        subpass.pDepthStencilAttachment = &depthAttachmentRef;
+
+        // Allocate memory for the subpass dependencies
+        std::array<VkSubpassDependency, 2> dependencies = {};
+
+        // Color dependency
+        VkSubpassDependency &colorDependency = dependencies[0];
+        colorDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+        colorDependency.dstSubpass = 0;
+        colorDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        colorDependency.srcAccessMask = 0;
+        colorDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        colorDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+        // Depth dependency
+        VkSubpassDependency &depthDependency = dependencies[1];
+        depthDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+        depthDependency.dstSubpass = 0;
+        depthDependency.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        depthDependency.srcAccessMask = 0;
+        depthDependency.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        depthDependency.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
         VkRenderPassCreateInfo renderPassInfo = {};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 
-        // Set the color attachment
-        renderPassInfo.attachmentCount = 1;
-        renderPassInfo.pAttachments = &colorAttachment;
+        // Set the color/depth attachments
+        renderPassInfo.attachmentCount = attachments.size();
+        renderPassInfo.pAttachments = attachments.data();
         // Set the subpass
         renderPassInfo.subpassCount = 1;
         renderPassInfo.pSubpasses = &subpass;
+        // Set the subpass dependencies
+        renderPassInfo.dependencyCount = dependencies.size();
+        renderPassInfo.pDependencies = dependencies.data();
 
         VK_CHECK(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass));
 
@@ -207,7 +277,6 @@ namespace dfv {
         fbInfo.pNext = nullptr;
 
         fbInfo.renderPass = renderPass;
-        fbInfo.attachmentCount = 1;
         fbInfo.width = windowExtent.width;
         fbInfo.height = windowExtent.height;
         fbInfo.layers = 1;
@@ -218,7 +287,11 @@ namespace dfv {
 
         // Create framebuffers for each of the swapchain image views
         for (int i = 0; i < swapchainImageCount; i++) {
-            fbInfo.pAttachments = &swapchainImageViews[i];
+            // Allocate memory for the attachments
+            std::array<VkImageView, 2> attachments = {swapchainImageViews[i], depthImageView};
+            fbInfo.attachmentCount = attachments.size();
+            fbInfo.pAttachments = attachments.data();
+
             VK_CHECK(vkCreateFramebuffer(device, &fbInfo, nullptr, &framebuffers[i]));
 
             // Enqueue the destruction of the framebuffers
@@ -317,6 +390,9 @@ namespace dfv {
 
         // A single blend attachment with no blending and writing to RGBA
         pipelineBuilder.colorBlendAttachment = vkinit::color_blend_attachment_state();
+
+        // Default depth testing
+        pipelineBuilder.depthStencil = vkinit::depth_stencil_create_info(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
 
         // Use the triangle layout we created
         pipelineBuilder.pipelineLayout = trianglePipelineLayout;
@@ -478,10 +554,17 @@ namespace dfv {
 
         VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
+        // Allocate memory for the clear values
+        std::array<VkClearValue, 2> clearValues = {};
+
         // Make a clear-color from frame number. This will flash with a 120*pi frame period.
-        VkClearValue clearValue;
+        VkClearValue &colorClear = clearValues[0];
         float flash = abs(sin(static_cast<float>(frameNumber) / 120.f));
-        clearValue.color = {{0.0f, 0.0f, flash, 1.0f}};
+        colorClear.color = {{0.0f, 0.0f, flash, 1.0f}};
+
+        // Clear depth
+        VkClearValue &depthClear = clearValues[1];
+        depthClear.depthStencil.depth = 1.0f;
 
         // Start the main renderpass
         // We will use the clear color from above, and the framebuffer of the index the swapchain gave us
@@ -496,8 +579,8 @@ namespace dfv {
         rpInfo.framebuffer = framebuffers[swapchainImageIndex];
 
         // Set clear values
-        rpInfo.clearValueCount = 1;
-        rpInfo.pClearValues = &clearValue;
+        rpInfo.clearValueCount = clearValues.size();
+        rpInfo.pClearValues = clearValues.data();
 
         vkCmdBeginRenderPass(cmd, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 
