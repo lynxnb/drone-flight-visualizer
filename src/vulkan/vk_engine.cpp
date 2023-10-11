@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
 
 #include <VkBootstrap.h>
 #include <glm/gtx/transform.hpp>
@@ -413,7 +414,8 @@ namespace dfv {
         // We don't care about the vertex normals
 
         // Load the monkey
-        monkeyMesh.loadFromObj("assets/monkey_smooth.obj");
+        if (!monkeyMesh.loadFromObj("assets/monkey_smooth.obj"))
+            throw std::runtime_error("Failed to load the monkey mesh");
 
         uploadMesh(triangleMesh);
         uploadMesh(monkeyMesh);
