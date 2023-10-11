@@ -2,11 +2,13 @@
 
 #include <filesystem>
 #include <vector>
+#include <span>
 
 #include <vk_mem_alloc.h>
 
 #include "deletion_queue.h"
-#include "vk_mesh.h"
+#include "mesh.h"
+#include "render_object.h"
 #include "vk_types.h"
 
 namespace dfv {
@@ -57,6 +59,11 @@ namespace dfv {
         AllocatedImage depthImage;
         VkFormat depthFormat;
 
+        std::vector<RenderObject> renderables;
+
+        std::unordered_map<std::string, Mesh> meshes;
+        std::unordered_map<std::string, Material> materials;
+
         int selectedShader{0};
 
         /**
@@ -80,6 +87,36 @@ namespace dfv {
         void run();
 
         bool loadShaderModule(const std::filesystem::path &filePath, VkShaderModule *outShaderModule) const;
+
+        /**
+         * Creates a new render material with the given name.
+         * @param name The name of the material, used to identify it later.
+         * @param pipeline The pipeline to use for this material.
+         * @param layout The pipeline layout to use for this material.
+         * @return A pointer to the created material.
+         */
+        Material *createMaterial(const std::string &name, VkPipeline pipeline, VkPipelineLayout layout);
+
+        /**
+         * Gets the material with the given name.
+         * @param name The name of the material to get.
+         * @return The material with the given name, or nullptr if no material with that name exists.
+         */
+        Material *getMaterial(const std::string &name);
+
+        /**
+         * Gets the mesh with the given name.
+         * @param name The name of the mesh to get.
+         * @return The mesh with the given name, or nullptr if no mesh with that name exists.
+         */
+        Mesh *getMesh(const std::string &name);
+
+        /**
+         * Draws the given objects using the given command buffer.
+         * @param cmdBuf The command buffer to use for drawing.
+         * @param objects
+         */
+        void drawObjects(VkCommandBuffer cmdBuf, std::span<RenderObject> objects);
 
       private:
         /**
@@ -117,6 +154,8 @@ namespace dfv {
         void loadMeshes();
 
         void uploadMesh(Mesh &mesh);
+
+        void initScene();
     };
 
 } // namespace dfv
