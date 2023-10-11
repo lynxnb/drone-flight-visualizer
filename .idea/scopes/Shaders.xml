@@ -1,0 +1,3 @@
+<component name="DependencyValidationManager">
+  <scope name="Shaders" pattern="file[drone-flight-visualizer]:shaders//*" />
+</component>

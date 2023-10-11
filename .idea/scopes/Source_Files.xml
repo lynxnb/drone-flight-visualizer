@@ -1,0 +1,3 @@
+<component name="DependencyValidationManager">
+  <scope name="Source Files" pattern="file[drone-flight-visualizer]:src//*.cpp||file[drone-flight-visualizer]:src//*.h||file[drone-flight-visualizer]:src//*.inc" />
+</component>
