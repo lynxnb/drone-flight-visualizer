@@ -54,13 +54,6 @@ namespace dfv {
         // Create pipelines
         initPipelines();
 
-        // Initialize the memory allocator
-        VmaAllocatorCreateInfo allocatorInfo = {};
-        allocatorInfo.physicalDevice = chosenGPU;
-        allocatorInfo.device = device;
-        allocatorInfo.instance = instance;
-        vmaCreateAllocator(&allocatorInfo, &allocator);
-
         loadMeshes();
 
         isInitialized = true;
@@ -106,6 +99,21 @@ namespace dfv {
         // Use vkbootstrap to get a Graphics queue
         graphicsQueue = vkbDevice.get_queue(vkb::QueueType::graphics).value();
         graphicsQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::graphics).value();
+
+        // Use vulkan functions already retrieved by vkbootstrap for VMA
+        auto vkFunctions = VmaVulkanFunctions{
+                .vkGetInstanceProcAddr = vkb_inst.fp_vkGetInstanceProcAddr,
+                .vkGetDeviceProcAddr = vkGetDeviceProcAddr,
+        };
+
+        // Initialize the memory allocator
+        VmaAllocatorCreateInfo allocatorInfo = {};
+        allocatorInfo.physicalDevice = chosenGPU;
+        allocatorInfo.device = device;
+        allocatorInfo.instance = instance;
+        allocatorInfo.pVulkanFunctions = &vkFunctions;
+
+        vmaCreateAllocator(&allocatorInfo, &allocator);
     }
 
     void VulkanEngine::initSwapchain() {
