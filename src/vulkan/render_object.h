@@ -2,7 +2,7 @@
 
 #include <glm/mat4x4.hpp>
 
-#include "mesh.h"
+#include "vk_mesh.h"
 
 namespace dfv {
 

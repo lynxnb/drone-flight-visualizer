@@ -7,7 +7,7 @@
 #include <vk_mem_alloc.h>
 
 #include "deletion_queue.h"
-#include "mesh.h"
+#include "vk_mesh.h"
 #include "render_object.h"
 #include "vk_types.h"
 
@@ -21,7 +21,7 @@ namespace dfv {
         VmaAllocator allocator;
         DeletionQueue mainDeletionQueue;
 
-        VkExtent2D windowExtent{1280, 720};
+        VkExtent2D windowExtent;
         GLFWwindow *window{nullptr};
 
         VkInstance instance; // Vulkan library handle
@@ -67,9 +67,13 @@ namespace dfv {
         int selectedShader{0};
 
         /**
-         * Initializes the engine
+         * Initializes the engine.
+         * @param window The GLFWwindow object to retrieve the surface from.
+         * @param width The width of the window.
+         * @param height The height of the window.
+         * @note This function will throw exceptions if initialization fails.
          */
-        void init();
+        void init(GLFWwindow *window, uint32_t width, uint32_t height);
 
         /**
          * Shuts down the engine
@@ -80,11 +84,6 @@ namespace dfv {
          * Draws loop
          */
         void draw();
-
-        /**
-         * Runs the main loop
-         */
-        void run();
 
         bool loadShaderModule(const std::filesystem::path &filePath, VkShaderModule *outShaderModule) const;
 

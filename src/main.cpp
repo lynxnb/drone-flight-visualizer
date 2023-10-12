@@ -1,15 +1,10 @@
-#include <chrono>
 #include <iostream>
+#include <thread>
 
-#include "utils/data_reader.h"
-#include "vulkan/vk_engine.h"
+#include "context.h"
+#include "renderer/renderer.h"
 
 using namespace dfv;
-
-namespace {
-    using clock = std::chrono::steady_clock;
-    using time_point = std::chrono::time_point<clock>;
-} // namespace
 
 /*
  * Command line usage: drone_flight_visualizer $1
@@ -18,14 +13,10 @@ namespace {
 int main(int argc, char **argv) {
     std::cout << "drone_flight_visualizer" << std::endl;
 
-    VulkanEngine engine;
-    try {
-        engine.init();
-        engine.run();
-    } catch (const std::exception &e) {
-        std::cerr << e.what() << std::endl;
-    }
+    Context context;
 
-    engine.cleanup();
+    startRendererThread(context);
+
+    context.waitExit();
     return 0;
 }

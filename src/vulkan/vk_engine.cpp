@@ -28,12 +28,9 @@
 
 namespace dfv {
 
-    void VulkanEngine::init() {
-        glfwInit();
-
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        window = glfwCreateWindow((int) windowExtent.width, (int) windowExtent.height, "drone_flight_visualizer",
-                                  nullptr, nullptr);
+    void VulkanEngine::init(GLFWwindow *pWindow, uint32_t width, uint32_t height) {
+        window = pWindow;
+        windowExtent = {width, height};
 
         // Load core Vulkan structures
         initVulkan();
@@ -67,16 +64,16 @@ namespace dfv {
         vkb::InstanceBuilder builder;
 
         // Make the Vulkan instance with basic debug features
-        auto inst_ret = builder.set_app_name("drone_flight_visualizer")
+        auto instanceResult = builder.set_app_name("drone_flight_visualizer")
                                 .request_validation_layers(true)
                                 .require_api_version(1, 1, 0)
                                 .use_default_debug_messenger()
                                 .build();
 
-        vkb::Instance vkb_inst = inst_ret.value();
+        vkb::Instance vkbInstance = instanceResult.value();
 
-        instance = vkb_inst.instance;
-        debugMessenger = vkb_inst.debug_messenger;
+        instance = vkbInstance.instance;
+        debugMessenger = vkbInstance.debug_messenger;
 
         // Get the surface of the window we opened with GLFW
         VK_CHECK(glfwCreateWindowSurface(instance, window, nullptr, &surface));
@@ -84,7 +81,7 @@ namespace dfv {
         // Use vkbootstrap to select a GPU.
         // We want a GPU that can write to the GLFW surface and supports Vulkan 1.1
         // Automatically picks the dedicated GPU if available
-        vkb::PhysicalDeviceSelector selector{vkb_inst};
+        vkb::PhysicalDeviceSelector selector{vkbInstance};
         vkb::PhysicalDevice physicalDevice = selector
                                                      .set_minimum_version(1, 1)
                                                      .set_surface(surface)
@@ -106,8 +103,8 @@ namespace dfv {
 
         // Use vulkan functions already retrieved by vkbootstrap for VMA
         auto vkFunctions = VmaVulkanFunctions{
-                .vkGetInstanceProcAddr = vkb_inst.fp_vkGetInstanceProcAddr,
-                .vkGetDeviceProcAddr = vkGetDeviceProcAddr,
+                .vkGetInstanceProcAddr = vkbInstance.fp_vkGetInstanceProcAddr,
+                .vkGetDeviceProcAddr = vkbInstance.fp_vkGetDeviceProcAddr,
         };
 
         // Initialize the memory allocator
@@ -732,27 +729,6 @@ namespace dfv {
         frameNumber++;
     }
 
-    void VulkanEngine::run() {
-        glfwSetInputMode(window, GLFW_STICKY_KEYS, GLFW_TRUE);
-
-        bool enableSelection = true;
-        //main loop
-        while (!glfwWindowShouldClose(window)) {
-            //Handle events on queue
-            glfwPollEvents();
-
-            int state = glfwGetKey(window, GLFW_KEY_SPACE);
-            if (state == GLFW_PRESS && enableSelection) {
-                selectedShader = (selectedShader + 1) % 2;
-                enableSelection = false;
-            } else if (state == GLFW_RELEASE) {
-                enableSelection = true;
-            }
-
-            draw();
-        }
-    }
-
     void VulkanEngine::cleanup() {
         if (isInitialized) {
             vkWaitForFences(device, 1, &renderFence, true, 1000000000);
@@ -764,8 +740,6 @@ namespace dfv {
             vkDestroySurfaceKHR(instance, surface, nullptr);
             vkb::destroy_debug_utils_messenger(instance, debugMessenger);
             vkDestroyInstance(instance, nullptr);
-            glfwDestroyWindow(window);
-            glfwTerminate();
         }
     }
 
