@@ -46,15 +46,6 @@ namespace dfv {
         VkSemaphore presentSemaphore, renderSemaphore;
         VkFence renderFence;
 
-        VkPipelineLayout trianglePipelineLayout;
-        VkPipelineLayout meshPipelineLayout;
-        VkPipeline trianglePipeline;
-        VkPipeline redTrianglePipeline;
-
-        VkPipeline meshPipeline;
-        Mesh triangleMesh;
-        Mesh monkeyMesh;
-
         VkImageView depthImageView;
         AllocatedImage depthImage;
         VkFormat depthFormat;

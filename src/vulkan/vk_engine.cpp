@@ -30,7 +30,8 @@ namespace dfv {
 
     void VulkanEngine::init(GLFWwindow *pWindow, uint32_t width, uint32_t height) {
         window = pWindow;
-        windowExtent = {width, height};
+        windowExtent.width = width;
+        windowExtent.height = height;
 
         // Load core Vulkan structures
         initVulkan();
@@ -65,10 +66,10 @@ namespace dfv {
 
         // Make the Vulkan instance with basic debug features
         auto instanceResult = builder.set_app_name("drone_flight_visualizer")
-                                .request_validation_layers(true)
-                                .require_api_version(1, 1, 0)
-                                .use_default_debug_messenger()
-                                .build();
+                                      .request_validation_layers(true)
+                                      .require_api_version(1, 1, 0)
+                                      .use_default_debug_messenger()
+                                      .build();
 
         vkb::Instance vkbInstance = instanceResult.value();
 
@@ -139,7 +140,7 @@ namespace dfv {
             vkDestroySwapchainKHR(device, swapchain, nullptr);
         });
 
-        //depth image size will match the window
+        // Depth image size will match the window
         VkExtent3D depthImageExtent = {windowExtent.width, windowExtent.height, 1};
 
         // Set the depth format to 32-bit float
@@ -352,6 +353,7 @@ namespace dfv {
         // Build the pipeline layout that controls the inputs/outputs of the shader
         // We are not using descriptor sets or other systems yet, so no need to use anything other than empty default
         VkPipelineLayoutCreateInfo pipelineLayoutInfo = vkinit::pipeline_layout_create_info();
+        VkPipelineLayout trianglePipelineLayout;
 
         VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &trianglePipelineLayout));
 
@@ -397,13 +399,13 @@ namespace dfv {
         pipelineBuilder.pipelineLayout = trianglePipelineLayout;
 
         // Finally build the pipeline
-        trianglePipeline = pipelineBuilder.buildPipeline(device, renderPass);
+        VkPipeline trianglePipeline = pipelineBuilder.buildPipeline(device, renderPass);
 
         // Now create the red triangle pipeline, only change shaders but keep the rest of the pipeline settings
         pipelineBuilder.shaderStages.clear();
         pipelineBuilder.shaderStages.push_back(vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, redTriangleVertShader));
         pipelineBuilder.shaderStages.push_back(vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, redTriangleFragShader));
-        redTrianglePipeline = pipelineBuilder.buildPipeline(device, renderPass);
+        VkPipeline redTrianglePipeline = pipelineBuilder.buildPipeline(device, renderPass);
 
         VkPipelineLayoutCreateInfo meshPipelineLayoutInfo = vkinit::pipeline_layout_create_info();
 
@@ -419,6 +421,7 @@ namespace dfv {
         meshPipelineLayoutInfo.pPushConstantRanges = &pushConstant;
         meshPipelineLayoutInfo.pushConstantRangeCount = 1;
 
+        VkPipelineLayout meshPipelineLayout;
         VK_CHECK(vkCreatePipelineLayout(device, &meshPipelineLayoutInfo, nullptr, &meshPipelineLayout));
 
         // Build the mesh pipeline
@@ -452,7 +455,7 @@ namespace dfv {
         // Use the push constants layout
         pipelineBuilder.pipelineLayout = meshPipelineLayout;
         // Build the mesh triangle pipeline
-        meshPipeline = pipelineBuilder.buildPipeline(device, renderPass);
+        VkPipeline meshPipeline = pipelineBuilder.buildPipeline(device, renderPass);
 
         createMaterial("defaultmesh", meshPipeline, meshPipelineLayout);
 
@@ -476,6 +479,8 @@ namespace dfv {
 
     void VulkanEngine::loadMeshes() {
         // Make the array 3 vertices long
+        Mesh triangleMesh = {}, monkeyMesh = {};
+
         triangleMesh.vertices.resize(3);
 
         // Vertex positions
@@ -534,19 +539,22 @@ namespace dfv {
     }
 
     void VulkanEngine::initScene() {
-        RenderObject monkey;
+        Material *defaultMeshMaterial = getMaterial("defaultmesh");
+
+        RenderObject monkey = {};
         monkey.mesh = getMesh("monkey");
-        monkey.material = getMaterial("defaultmesh");
+        monkey.material = defaultMeshMaterial;
         monkey.transformMatrix = glm::mat4{1.0f};
 
         renderables.push_back(monkey);
 
+        Mesh *triangleMesh = getMesh("triangle");
         // Add a bunch of extra triangles around the monkey
         for (int x = -20; x <= 20; x++) {
             for (int y = -20; y <= 20; y++) {
-                RenderObject triangle;
-                triangle.mesh = getMesh("triangle");
-                triangle.material = getMaterial("defaultmesh");
+                RenderObject triangle = {};
+                triangle.mesh = triangleMesh;
+                triangle.material = defaultMeshMaterial;
                 glm::mat4 translation = glm::translate(glm::mat4{1.0}, glm::vec3(x, 0, y));
                 glm::mat4 scale = glm::scale(glm::mat4{1.0}, glm::vec3(0.2, 0.2, 0.2));
                 triangle.transformMatrix = translation * scale;
@@ -557,7 +565,7 @@ namespace dfv {
     }
 
     Material *VulkanEngine::createMaterial(const std::string &name, VkPipeline pipeline, VkPipelineLayout layout) {
-        Material material;
+        Material material = {};
         material.pipeline = pipeline;
         material.pipelineLayout = layout;
 
