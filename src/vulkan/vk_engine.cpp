@@ -39,17 +39,17 @@ namespace dfv {
         // Create the swapchain
         initSwapchain();
 
-        // Create the command buffer
+        // Create the command buffers
         initCommands();
+
+        // Creates synchronization structures
+        initSyncStructures();
 
         // Create the default renderpass
         initDefaultRenderpass();
 
         // Create framebuffers
         initFramebuffers();
-
-        // Creates synchronization structures
-        initSyncStructures();
 
         // Create pipelines
         initPipelines();
@@ -169,22 +169,45 @@ namespace dfv {
     }
 
     void VulkanEngine::initCommands() {
-        // Create a command pool for commands submitted to the graphics queue.
-        // We also want the pool to allow for resetting of individual command buffers
+        // Require the pool to allow for resetting of individual command buffers
         VkCommandPoolCreateInfo commandPoolInfo = vkinit::command_pool_create_info(graphicsQueueFamily,
                                                                                    VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
-        VK_CHECK(vkCreateCommandPool(device, &commandPoolInfo, nullptr, &commandPool));
+        // Create a command pool per frame, with one command buffer in it
+        for (auto &frame : frames) {
+            VK_CHECK(vkCreateCommandPool(device, &commandPoolInfo, nullptr, &frame.commandPool));
 
-        // Allocate the default command buffer that we will use for rendering
-        VkCommandBufferAllocateInfo cmdAllocInfo = vkinit::command_buffer_allocate_info(commandPool, 1);
+            // Allocate the default command buffer that we will use for rendering
+            VkCommandBufferAllocateInfo cmdAllocInfo = vkinit::command_buffer_allocate_info(frame.commandPool, 1);
 
-        VK_CHECK(vkAllocateCommandBuffers(device, &cmdAllocInfo, &mainCommandBuffer));
+            VK_CHECK(vkAllocateCommandBuffers(device, &cmdAllocInfo, &frame.mainCommandBuffer));
 
-        // Enqueue the destruction of the pool
-        mainDeletionQueue.pushFunction([=, this]() {
-            vkDestroyCommandPool(device, commandPool, nullptr);
-        });
+            // Enqueue the destruction of the pool
+            mainDeletionQueue.pushFunction([=, this]() {
+                vkDestroyCommandPool(device, frame.commandPool, nullptr);
+            });
+        }
+    }
+
+    void VulkanEngine::initSyncStructures() {
+        // We want to create the fence with the Create Signaled flag, so we can wait on it before using it on a GPU command (for the first frame)
+        VkFenceCreateInfo fenceCreateInfo = vkinit::fence_create_info(VK_FENCE_CREATE_SIGNALED_BIT);
+
+        for (auto &frame : frames) {
+            VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &frame.renderFence));
+
+            VkSemaphoreCreateInfo semaphoreCreateInfo = vkinit::semaphore_create_info();
+
+            VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &frame.presentSemaphore));
+            VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &frame.renderSemaphore));
+
+            // Enqueue the destruction of the fence and semaphores
+            mainDeletionQueue.pushFunction([=, this]() {
+                vkDestroyFence(device, frame.renderFence, nullptr);
+                vkDestroySemaphore(device, frame.presentSemaphore, nullptr);
+                vkDestroySemaphore(device, frame.renderSemaphore, nullptr);
+            });
+        }
     }
 
     void VulkanEngine::initDefaultRenderpass() {
@@ -300,29 +323,6 @@ namespace dfv {
                 vkDestroyImageView(device, swapchainImageViews[i], nullptr);
             });
         }
-    }
-
-    void VulkanEngine::initSyncStructures() {
-        // We want to create the fence with the Create Signaled flag, so we can wait on it before using it on a GPU command (for the first frame)
-        VkFenceCreateInfo fenceCreateInfo = vkinit::fence_create_info(VK_FENCE_CREATE_SIGNALED_BIT);
-
-        VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &renderFence));
-
-        // Enqueue the destruction of the fence
-        mainDeletionQueue.pushFunction([=, this]() {
-            vkDestroyFence(device, renderFence, nullptr);
-        });
-
-        VkSemaphoreCreateInfo semaphoreCreateInfo = vkinit::semaphore_create_info();
-
-        VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &presentSemaphore));
-        VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &renderSemaphore));
-
-        // Enqueue the destruction of semaphores
-        mainDeletionQueue.pushFunction([=, this]() {
-            vkDestroySemaphore(device, presentSemaphore, nullptr);
-            vkDestroySemaphore(device, renderSemaphore, nullptr);
-        });
     }
 
     void VulkanEngine::initPipelines() {
@@ -632,18 +632,20 @@ namespace dfv {
     }
 
     void VulkanEngine::draw() {
+        auto &frame = getCurrentFrame();
+
         // Wait until the GPU has finished rendering the last frame, 1 second timeout
-        VK_CHECK(vkWaitForFences(device, 1, &renderFence, true, 1000000000));
-        VK_CHECK(vkResetFences(device, 1, &renderFence));
+        VK_CHECK(vkWaitForFences(device, 1, &frame.renderFence, true, 1000000000));
+        VK_CHECK(vkResetFences(device, 1, &frame.renderFence));
 
         // Request an image from the swapchain, 1 second timeout
         uint32_t swapchainImageIndex;
-        VK_CHECK(vkAcquireNextImageKHR(device, swapchain, 1000000000, presentSemaphore, nullptr, &swapchainImageIndex));
+        VK_CHECK(vkAcquireNextImageKHR(device, swapchain, 1000000000, frame.presentSemaphore, nullptr, &swapchainImageIndex));
 
-        // Now that we are sure that the commands finished executing, we can safely reset the command buffer to begin recording again.
-        VK_CHECK(vkResetCommandBuffer(mainCommandBuffer, 0));
+        // Now that we are sure that the commands finished executing, we can safely reset the command buffer to begin recording again
+        VK_CHECK(vkResetCommandBuffer(frame.mainCommandBuffer, 0));
 
-        VkCommandBuffer cmd = mainCommandBuffer;
+        VkCommandBuffer cmd = frame.mainCommandBuffer;
 
         // Begin the command buffer recording. We will use this command buffer exactly once, so we want to let Vulkan know that
         VkCommandBufferBeginInfo cmdBeginInfo = {};
@@ -704,17 +706,17 @@ namespace dfv {
         submit.pWaitDstStageMask = &waitStage;
 
         submit.waitSemaphoreCount = 1;
-        submit.pWaitSemaphores = &presentSemaphore;
+        submit.pWaitSemaphores = &frame.presentSemaphore;
 
         submit.signalSemaphoreCount = 1;
-        submit.pSignalSemaphores = &renderSemaphore;
+        submit.pSignalSemaphores = &frame.renderSemaphore;
 
         submit.commandBufferCount = 1;
         submit.pCommandBuffers = &cmd;
 
         // Submit command buffer to the queue and execute it.
         // renderFence will now block until the graphic commands finish execution
-        VK_CHECK(vkQueueSubmit(graphicsQueue, 1, &submit, renderFence));
+        VK_CHECK(vkQueueSubmit(graphicsQueue, 1, &submit, frame.renderFence));
 
         // This will put the image we just rendered into the visible window
         // We want to wait on the renderSemaphore for that,
@@ -726,7 +728,7 @@ namespace dfv {
         presentInfo.pSwapchains = &swapchain;
         presentInfo.swapchainCount = 1;
 
-        presentInfo.pWaitSemaphores = &renderSemaphore;
+        presentInfo.pWaitSemaphores = &frame.renderSemaphore;
         presentInfo.waitSemaphoreCount = 1;
 
         presentInfo.pImageIndices = &swapchainImageIndex;
@@ -739,7 +741,11 @@ namespace dfv {
 
     void VulkanEngine::cleanup() {
         if (isInitialized) {
-            vkWaitForFences(device, 1, &renderFence, true, 1000000000);
+            std::array<VkFence, MaxFramesInFlight> fences = {};
+            std::transform(frames.begin(), frames.end(), fences.begin(), [](auto &frame) {
+                return frame.renderFence;
+            });
+            vkWaitForFences(device, fences.size(), fences.data(), true, 1000000000);
 
             mainDeletionQueue.flush();
 
@@ -780,6 +786,10 @@ namespace dfv {
 
         *outShaderModule = shaderModule;
         return true;
+    }
+
+    FrameData &VulkanEngine::getCurrentFrame() {
+        return frames[frameNumber % MaxFramesInFlight];
     }
 
 } // namespace dfv

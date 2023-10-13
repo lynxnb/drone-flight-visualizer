@@ -1,17 +1,28 @@
 ﻿#pragma once
 
+#include <array>
 #include <filesystem>
-#include <vector>
 #include <span>
+#include <vector>
 
 #include <vk_mem_alloc.h>
 
 #include "deletion_queue.h"
-#include "vk_mesh.h"
 #include "render_object.h"
+#include "vk_mesh.h"
 #include "vk_types.h"
 
 namespace dfv {
+
+    constexpr unsigned int MaxFramesInFlight = 2;
+
+    struct FrameData {
+        VkSemaphore presentSemaphore, renderSemaphore;
+        VkFence renderFence;
+
+        VkCommandPool commandPool;
+        VkCommandBuffer mainCommandBuffer;
+    };
 
     class VulkanEngine {
       public:
@@ -37,14 +48,11 @@ namespace dfv {
 
         VkQueue graphicsQueue; // Queue we will submit to
         uint32_t graphicsQueueFamily; // Family of that queue
-        VkCommandPool commandPool; // The command pool for our commands
-        VkCommandBuffer mainCommandBuffer; // The buffer we will record into
 
         VkRenderPass renderPass;
         std::vector<VkFramebuffer> framebuffers;
 
-        VkSemaphore presentSemaphore, renderSemaphore;
-        VkFence renderFence;
+        std::array<FrameData, MaxFramesInFlight> frames;
 
         VkImageView depthImageView;
         AllocatedImage depthImage;
@@ -125,6 +133,11 @@ namespace dfv {
         void initCommands();
 
         /**
+         * Creates the synchronization structures
+         */
+        void initSyncStructures();
+
+        /**
          * Creates the default renderpass
          */
         void initDefaultRenderpass();
@@ -134,11 +147,6 @@ namespace dfv {
          */
         void initFramebuffers();
 
-        /**
-         * Creates the synchronization structures
-         */
-        void initSyncStructures();
-
         void initPipelines();
 
         void loadMeshes();
@@ -146,6 +154,8 @@ namespace dfv {
         void uploadMesh(Mesh &mesh);
 
         void initScene();
+
+        FrameData &getCurrentFrame();
     };
 
 } // namespace dfv
