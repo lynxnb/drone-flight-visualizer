@@ -10,6 +10,7 @@
 #include <glm/gtx/transform.hpp>
 #include <tiny_obj_loader.h>
 #include <vk_mem_alloc.h>
+#include <vulkan/vk_enum_string_helper.h>
 
 #include "vk_initializers.h"
 #include "vk_pipeline.h"
@@ -17,13 +18,13 @@
 
 #define SOURCE_LOCATION __builtin_FILE() << ":" << __builtin_LINE() << " (" << __builtin_FUNCTION() << ")"
 
-#define VK_CHECK(x)                                                                          \
-    do {                                                                                     \
-        VkResult err = x;                                                                    \
-        if (err) {                                                                           \
-            std::cerr << SOURCE_LOCATION << ": Detected Vulkan error: " << err << std::endl; \
-            std::abort();                                                                    \
-        }                                                                                    \
+#define VK_CHECK(x)                                                                                           \
+    do {                                                                                                      \
+        VkResult err = x;                                                                                     \
+        if (err) {                                                                                            \
+            std::cerr << SOURCE_LOCATION << ": Detected Vulkan error: " << string_VkResult(err) << std::endl; \
+            std::abort();                                                                                     \
+        }                                                                                                     \
     } while (0)
 
 namespace dfv {
