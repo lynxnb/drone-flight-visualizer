@@ -16,12 +16,22 @@ namespace dfv {
 
     constexpr unsigned int MaxFramesInFlight = 2;
 
+    struct CameraData {
+        glm::mat4 view; // View matrix (camera location/transform)
+        glm::mat4 proj; // Projection matrix (perspective)
+        glm::mat4 viewproj; // View * Projection matrix to avoid multiplication in the shader
+    };
+
     struct FrameData {
         VkSemaphore presentSemaphore, renderSemaphore;
         VkFence renderFence;
 
         VkCommandPool commandPool;
         VkCommandBuffer mainCommandBuffer;
+
+        AllocatedBuffer cameraBuffer; //!< Buffer containing a single CameraData object to use for the frame.
+
+        VkDescriptorSet globalDescriptor; //!< Global descriptor set for the frame.
     };
 
     class VulkanEngine {
@@ -57,6 +67,9 @@ namespace dfv {
         AllocatedImage depthImage;
         VkFormat depthFormat;
 
+        VkDescriptorSetLayout globalSetLayout;
+        VkDescriptorPool descriptorPool;
+
         std::vector<RenderObject> renderables;
 
         std::unordered_map<std::string, Mesh> meshes;
@@ -84,6 +97,8 @@ namespace dfv {
         void draw();
 
         bool loadShaderModule(const std::filesystem::path &filePath, VkShaderModule *outShaderModule) const;
+
+        AllocatedBuffer createBuffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage) const;
 
         /**
          * Creates a new render material with the given name.
@@ -146,6 +161,8 @@ namespace dfv {
          * Creates the framebuffers for the swapchain images
          */
         void initFramebuffers();
+
+        void initDescriptors();
 
         void initPipelines();
 
