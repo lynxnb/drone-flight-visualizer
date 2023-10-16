@@ -769,7 +769,9 @@ namespace dfv {
         // Make a clear-color from frame number. This will flash with a 120*pi frame period.
         VkClearValue &colorClear = clearValues[0];
         float flash = abs(sin(static_cast<float>(frameNumber) / 120.f));
-        colorClear.color = {{0.0f, 0.0f, flash, 1.0f}};
+        colorClear.color = {
+                {0.0f, 0.0f, flash, 1.0f}
+        };
 
         // Clear depth
         VkClearValue &depthClear = clearValues[1];

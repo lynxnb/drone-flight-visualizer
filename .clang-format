@@ -2,6 +2,7 @@
 BasedOnStyle: LLVM
 AccessModifierOffset: -2
 AlignAfterOpenBracket: Align
+AlignArrayOfStructures: Right
 AlignConsecutiveAssignments: None
 AlignOperands: Align
 AlignTrailingComments: false
