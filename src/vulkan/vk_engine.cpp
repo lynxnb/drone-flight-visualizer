@@ -15,6 +15,7 @@
 #include "vk_initializers.h"
 #include "vk_pipeline.h"
 #include "vk_types.h"
+#include <config/config.h>
 
 #define SOURCE_LOCATION __builtin_FILE() << ":" << __builtin_LINE() << " (" << __builtin_FUNCTION() << ")"
 
@@ -29,13 +30,12 @@
 
 namespace dfv {
 
-    void VulkanEngine::init(GLFWwindow *pWindow, uint32_t width, uint32_t height) {
-        window = pWindow;
+    void VulkanEngine::init(GLFWwindow *window, uint32_t width, uint32_t height) {
         windowExtent.width = width;
         windowExtent.height = height;
 
         // Load core Vulkan structures
-        initVulkan();
+        initVulkan(window);
 
         // Create the swapchain
         initSwapchain();
@@ -62,11 +62,11 @@ namespace dfv {
         isInitialized = true;
     }
 
-    void VulkanEngine::initVulkan() {
+    void VulkanEngine::initVulkan(GLFWwindow *window) {
         vkb::InstanceBuilder builder;
 
         // Make the Vulkan instance with basic debug features
-        auto instanceResult = builder.set_app_name("drone_flight_visualizer")
+        auto instanceResult = builder.set_app_name(window_config::WindowTitle)
                                       .request_validation_layers(true)
                                       .require_api_version(1, 1, 0)
                                       .use_default_debug_messenger()

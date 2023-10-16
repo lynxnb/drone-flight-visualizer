@@ -1,6 +1,7 @@
 # Build the executable
 add_executable(drone_flight_visualizer
         main.cpp
+        context.cpp
         renderer/renderer.cpp
         utils/data_reader.cpp
         vulkan/vk_engine.cpp
@@ -8,6 +9,7 @@ add_executable(drone_flight_visualizer
         vulkan/vk_pipeline.cpp
         vulkan/deletion_queue.cpp
         vulkan/vk_mesh.cpp
+        input/input_handler.cpp
 )
 target_include_directories(drone_flight_visualizer PRIVATE ".")
 

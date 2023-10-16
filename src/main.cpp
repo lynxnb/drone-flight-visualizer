@@ -1,5 +1,4 @@
 #include <iostream>
-#include <thread>
 
 #include "context.h"
 #include "renderer/renderer.h"
@@ -15,8 +14,16 @@ int main(int argc, char **argv) {
 
     Context context;
 
+    context.inputHandler.addKeyMapping(GLFW_KEY_ESCAPE, [&context](auto action) {
+        if (action == Action::Pressed)
+            context.setExit();
+    });
+
     startRendererThread(context);
 
-    context.waitExit();
+    // Run the GLFW event loop in the main thread
+    while (!context.shouldExit())
+        glfwWaitEvents();
+
     return 0;
 }

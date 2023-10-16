@@ -33,7 +33,6 @@ namespace dfv {
         DeletionQueue mainDeletionQueue;
 
         VkExtent2D windowExtent;
-        GLFWwindow *window{nullptr};
 
         VkInstance instance; // Vulkan library handle
         VkDebugUtilsMessengerEXT debugMessenger; // Vulkan debug output handle
@@ -119,8 +118,9 @@ namespace dfv {
       private:
         /**
          * Loads the core Vulkan structures
+         * @param window The GLFW window to retrieve the surface from.
          */
-        void initVulkan();
+        void initVulkan(GLFWwindow *window);
 
         /**
          * Creates the swapchain
