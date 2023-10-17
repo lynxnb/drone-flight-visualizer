@@ -11,6 +11,7 @@
 #include "render_object.h"
 #include "vk_mesh.h"
 #include "vk_types.h"
+#include "vk_traits.h"
 
 namespace dfv {
 
@@ -38,6 +39,8 @@ namespace dfv {
       public:
         bool isInitialized{false};
         int frameNumber{0};
+
+        VulkanTraits traits;
 
         VmaAllocator allocator;
         DeletionQueue mainDeletionQueue;

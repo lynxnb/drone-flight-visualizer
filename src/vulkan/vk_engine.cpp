@@ -119,6 +119,9 @@ namespace dfv {
         allocatorInfo.pVulkanFunctions = &vkFunctions;
 
         vmaCreateAllocator(&allocatorInfo, &allocator);
+
+        std::construct_at(&traits, vkbDevice.physical_device.properties);
+        std::cout << traits.summary() << std::endl;
     }
 
     void VulkanEngine::initSwapchain() {
