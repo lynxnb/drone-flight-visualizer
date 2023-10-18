@@ -344,28 +344,29 @@ namespace dfv {
 
         vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool);
 
-        VkDescriptorSetLayoutBinding camBufferBinding = {};
-        camBufferBinding.binding = 0;
-        camBufferBinding.descriptorCount = 1;
-        // Specify it's a uniform buffer binding
-        camBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        // We use it from the vertex shader
-        camBufferBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        std::array<VkDescriptorSetLayoutBinding, 2> bindings = {};
+        // Binding for camera data at 0
+        bindings[0] = vkinit::descriptorset_layout_binding(
+                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0);
 
-        VkDescriptorSetLayoutCreateInfo descriptorSetLayoutInfo = {};
-        descriptorSetLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        descriptorSetLayoutInfo.pNext = nullptr;
+        // Binding for scene data at 1
+        bindings[1] = vkinit::descriptorset_layout_binding(
+                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 1);
 
-        //we are going to have 1 binding
-        descriptorSetLayoutInfo.bindingCount = 1;
-        //no flags
-        descriptorSetLayoutInfo.flags = 0;
-        //point to the camera buffer binding
-        descriptorSetLayoutInfo.pBindings = &camBufferBinding;
+        VkDescriptorSetLayoutCreateInfo setInfo = {};
+        setInfo.bindingCount = bindings.size();
+        setInfo.flags = 0;
+        setInfo.pNext = nullptr;
+        setInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        setInfo.pBindings = bindings.data();
 
-        vkCreateDescriptorSetLayout(device, &descriptorSetLayoutInfo, nullptr, &globalSetLayout);
+        vkCreateDescriptorSetLayout(device, &setInfo, nullptr, &globalSetLayout);
 
-        for (auto &frame : frames) {
+        const size_t sceneParamBufferSize = MaxFramesInFlight * uniformBufferSizeAlignUp(sizeof(SceneData));
+        sceneParametersBuffer = createBuffer(sceneParamBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+        for (int i = 0; i < frames.size(); i++) {
+            FrameData &frame = frames[i];
             // Allocate the camera buffer
             frame.cameraBuffer = createBuffer(sizeof(CameraData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
@@ -386,31 +387,28 @@ namespace dfv {
 
             vkAllocateDescriptorSets(device, &allocInfo, &frame.globalDescriptor);
 
-            // Information about the buffer we want to point at in the descriptor
-            VkDescriptorBufferInfo bufferInfo;
-            // It will be the camera buffer
-            bufferInfo.buffer = frame.cameraBuffer.buffer;
-            bufferInfo.offset = 0;
-            // of size of a camera data struct
-            bufferInfo.range = sizeof(CameraData);
+            VkDescriptorBufferInfo cameraInfo;
+            cameraInfo.buffer = frame.cameraBuffer.buffer;
+            cameraInfo.offset = 0;
+            cameraInfo.range = sizeof(CameraData);
 
-            VkWriteDescriptorSet setWrite = {};
-            setWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            setWrite.pNext = nullptr;
+            VkDescriptorBufferInfo sceneInfo;
+            sceneInfo.buffer = sceneParametersBuffer.buffer;
+            sceneInfo.offset = uniformBufferSizeAlignUp(sizeof(SceneData)) * i;
+            sceneInfo.range = sizeof(SceneData);
 
-            // We are going to write into binding number 0
-            setWrite.dstBinding = 0;
-            // of the global descriptor
-            setWrite.dstSet = frame.globalDescriptor;
-            setWrite.descriptorCount = 1;
-            // and the type is uniform buffer
-            setWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            setWrite.pBufferInfo = &bufferInfo;
+            std::array<VkWriteDescriptorSet, 2> setWrites = {};
+            // Camera write
+            setWrites[0] = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frame.globalDescriptor, &cameraInfo, 0);
+            // Scene write
+            setWrites[1] = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frame.globalDescriptor, &sceneInfo, 1);
 
-            vkUpdateDescriptorSets(device, 1, &setWrite, 0, nullptr);
+            vkUpdateDescriptorSets(device, setWrites.size(), setWrites.data(), 0, nullptr);
         }
 
         mainDeletionQueue.pushFunction([=, this]() {
+            vmaDestroyBuffer(allocator, sceneParametersBuffer.buffer, sceneParametersBuffer.allocation);
+
             vkDestroyDescriptorSetLayout(device, globalSetLayout, nullptr);
             vkDestroyDescriptorPool(device, descriptorPool, nullptr);
         });
@@ -538,13 +536,19 @@ namespace dfv {
         else
             std::cout << "Mesh Triangle vertex shader successfully loaded" << std::endl;
 
+        VkShaderModule colorMeshShader;
+        if (!loadShaderModule("shaders/default_lit.frag.spv", &colorMeshShader))
+            std::cout << "Error when building the colored mesh shader" << std::endl;
+        else
+            std::cout << "Colored mesh shader successfully loaded" << std::endl;
+
         // Add the other shaders
         pipelineBuilder.shaderStages.push_back(
                 vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, meshVertShader));
 
-        // Use colored_triangle.frag
+        // Use default_lit shader
         pipelineBuilder.shaderStages.push_back(
-                vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, triangleFragShader));
+                vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, colorMeshShader));
 
         // Use the push constants layout
         pipelineBuilder.pipelineLayout = meshPipelineLayout;
@@ -559,6 +563,7 @@ namespace dfv {
         vkDestroyShaderModule(device, redTriangleFragShader, nullptr);
         vkDestroyShaderModule(device, triangleFragShader, nullptr);
         vkDestroyShaderModule(device, triangleVertexShader, nullptr);
+        vkDestroyShaderModule(device, colorMeshShader, nullptr);
 
         // Add the pipelines to the deletion queue
         mainDeletionQueue.pushFunction([=, this]() {
@@ -627,7 +632,7 @@ namespace dfv {
         void *data;
         vmaMapMemory(allocator, mesh.vertexBuffer.allocation, &data);
 
-        memcpy(data, mesh.vertices.data(), mesh.vertices.size() * sizeof(Vertex));
+        std::memcpy(data, mesh.vertices.data(), mesh.vertices.size() * sizeof(Vertex));
 
         vmaUnmapMemory(allocator, mesh.vertexBuffer.allocation);
     }
@@ -706,8 +711,20 @@ namespace dfv {
         // Copy the camera data into the buffer
         void *data;
         vmaMapMemory(allocator, frame.cameraBuffer.allocation, &data);
-        memcpy(data, &camData, sizeof(CameraData));
+        std::memcpy(data, &camData, sizeof(CameraData));
         vmaUnmapMemory(allocator, frame.cameraBuffer.allocation);
+
+        float framed = static_cast<float>(frameNumber) / 120.f;
+        sceneParameters.ambientColor = {sin(framed), 0, cos(framed), 1};
+
+        std::byte *sceneBuffer;
+        vmaMapMemory(allocator, sceneParametersBuffer.allocation, reinterpret_cast<void **>(&sceneBuffer));
+
+        unsigned int frameIndex = frameNumber % MaxFramesInFlight;
+        sceneBuffer += uniformBufferSizeAlignUp(sizeof(SceneData)) * frameIndex;
+        std::memcpy(sceneBuffer, &sceneParameters, sizeof(SceneData));
+
+        vmaUnmapMemory(allocator, sceneParametersBuffer.allocation);
 
         // Keep track of the last used mesh and material to avoid unnecessary binding
         Mesh *lastMesh = nullptr;
@@ -921,6 +938,15 @@ namespace dfv {
 
     FrameData &VulkanEngine::getCurrentFrame() {
         return frames[frameNumber % MaxFramesInFlight];
+    }
+
+    size_t VulkanEngine::uniformBufferSizeAlignUp(size_t size) const {
+        // Calculate required alignment based on minimum device offset alignment
+        size_t minUboAlignment = traits.minUniformBufferOffsetAlignment;
+        if (minUboAlignment > 0)
+            size = (size + minUboAlignment - 1) & ~(minUboAlignment - 1);
+
+        return size;
     }
 
 } // namespace dfv

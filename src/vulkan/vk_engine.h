@@ -23,6 +23,14 @@ namespace dfv {
         glm::mat4 viewproj; // View * Projection matrix to avoid multiplication in the shader
     };
 
+    struct SceneData {
+        glm::vec4 fogColor; // w is for exponent
+        glm::vec4 fogDistances; //x for min, y for max, zw unused.
+        glm::vec4 ambientColor;
+        glm::vec4 sunlightDirection; //w for sun power
+        glm::vec4 sunlightColor;
+    };
+
     struct FrameData {
         VkSemaphore presentSemaphore, renderSemaphore;
         VkFence renderFence;
@@ -77,6 +85,9 @@ namespace dfv {
 
         std::unordered_map<std::string, Mesh> meshes;
         std::unordered_map<std::string, Material> materials;
+
+        SceneData sceneParameters;
+        AllocatedBuffer sceneParametersBuffer;
 
         int selectedShader{0};
 
@@ -176,6 +187,8 @@ namespace dfv {
         void initScene();
 
         FrameData &getCurrentFrame();
+
+        size_t uniformBufferSizeAlignUp(size_t size) const;
     };
 
 } // namespace dfv
