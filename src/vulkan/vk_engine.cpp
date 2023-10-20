@@ -332,15 +332,17 @@ namespace dfv {
     }
 
     void VulkanEngine::initDescriptors() {
-        // Create a descriptor pool that will hold 10 uniform buffers
-        VkDescriptorPoolSize poolSizes = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10};
+        std::array<VkDescriptorPoolSize, 2> poolSizes = {
+                VkDescriptorPoolSize{        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10},
+                VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10}
+        };
 
         VkDescriptorPoolCreateInfo poolInfo = {};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         poolInfo.flags = 0;
         poolInfo.maxSets = 10;
-        poolInfo.poolSizeCount = 1;
-        poolInfo.pPoolSizes = &poolSizes;
+        poolInfo.poolSizeCount = poolSizes.size();
+        poolInfo.pPoolSizes = poolSizes.data();
 
         vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool);
 
@@ -351,7 +353,7 @@ namespace dfv {
 
         // Binding for scene data at 1
         bindings[1] = vkinit::descriptorset_layout_binding(
-                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 1);
+                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 1);
 
         VkDescriptorSetLayoutCreateInfo setInfo = {};
         setInfo.bindingCount = bindings.size();
@@ -394,14 +396,14 @@ namespace dfv {
 
             VkDescriptorBufferInfo sceneInfo;
             sceneInfo.buffer = sceneParametersBuffer.buffer;
-            sceneInfo.offset = uniformBufferSizeAlignUp(sizeof(SceneData)) * i;
+            sceneInfo.offset = 0;
             sceneInfo.range = sizeof(SceneData);
 
             std::array<VkWriteDescriptorSet, 2> setWrites = {};
             // Camera write
             setWrites[0] = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frame.globalDescriptor, &cameraInfo, 0);
             // Scene write
-            setWrites[1] = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frame.globalDescriptor, &sceneInfo, 1);
+            setWrites[1] = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, frame.globalDescriptor, &sceneInfo, 1);
 
             vkUpdateDescriptorSets(device, setWrites.size(), setWrites.data(), 0, nullptr);
         }
@@ -734,8 +736,10 @@ namespace dfv {
             if (object.material != lastMaterial) {
                 vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipeline);
                 lastMaterial = object.material;
+
+                uint32_t uniformOffset = uniformBufferSizeAlignUp(sizeof(SceneData)) * frameIndex;
                 vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipelineLayout, 0, 1,
-                                        &frame.globalDescriptor, 0, nullptr);
+                                        &frame.globalDescriptor, 1, &uniformOffset);
             }
 
             MeshPushConstants constants = {};
