@@ -92,10 +92,18 @@ namespace dfv {
                                                      .select()
                                                      .value();
 
+        // Request the 'shader draw parameters' feature
+        VkPhysicalDeviceShaderDrawParametersFeatures shaderDrawParametersFeatures = {};
+        shaderDrawParametersFeatures.pNext = nullptr;
+        shaderDrawParametersFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
+        shaderDrawParametersFeatures.shaderDrawParameters = VK_TRUE;
+
         // Create the final Vulkan device
         vkb::DeviceBuilder deviceBuilder{physicalDevice};
-
-        vkb::Device vkbDevice = deviceBuilder.build().value();
+        vkb::Device vkbDevice = deviceBuilder
+                                        .add_pNext(&shaderDrawParametersFeatures)
+                                        .build()
+                                        .value();
 
         // Get the VkDevice handle used in the rest of a Vulkan application
         device = vkbDevice.device;
@@ -332,9 +340,10 @@ namespace dfv {
     }
 
     void VulkanEngine::initDescriptors() {
-        std::array<VkDescriptorPoolSize, 2> poolSizes = {
+        std::array<VkDescriptorPoolSize, 3> poolSizes = {
                 VkDescriptorPoolSize{        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10},
-                VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10}
+                VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10},
+                VkDescriptorPoolSize{        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10}
         };
 
         VkDescriptorPoolCreateInfo poolInfo = {};
@@ -356,25 +365,42 @@ namespace dfv {
                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 1);
 
         VkDescriptorSetLayoutCreateInfo setInfo = {};
-        setInfo.bindingCount = bindings.size();
-        setInfo.flags = 0;
         setInfo.pNext = nullptr;
         setInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        setInfo.bindingCount = bindings.size();
+        setInfo.flags = 0;
         setInfo.pBindings = bindings.data();
 
+        // Binding for object data at 0 of second set
+        VkDescriptorSetLayoutBinding objectBind = vkinit::descriptorset_layout_binding(
+                VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0);
+
+        VkDescriptorSetLayoutCreateInfo set2info = {};
+        set2info.pNext = nullptr;
+        set2info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        set2info.bindingCount = 1;
+        set2info.flags = 0;
+        set2info.pBindings = &objectBind;
+
         vkCreateDescriptorSetLayout(device, &setInfo, nullptr, &globalSetLayout);
+        vkCreateDescriptorSetLayout(device, &set2info, nullptr, &objectSetLayout);
 
         const size_t sceneParamBufferSize = MaxFramesInFlight * uniformBufferSizeAlignUp(sizeof(SceneData));
         sceneParametersBuffer = createBuffer(sceneParamBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-        for (int i = 0; i < frames.size(); i++) {
-            FrameData &frame = frames[i];
+        for (auto &frame : frames) {
             // Allocate the camera buffer
             frame.cameraBuffer = createBuffer(sizeof(CameraData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+            // Allocate the object buffer
+            constexpr int MAX_OBJECTS = 10000;
+            frame.objectBuffer = createBuffer(sizeof(ObjectData) * MAX_OBJECTS,
+                                              VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
             // Add to the deletion queue
             mainDeletionQueue.pushFunction([&]() {
                 vmaDestroyBuffer(allocator, frame.cameraBuffer.buffer, frame.cameraBuffer.allocation);
+                vmaDestroyBuffer(allocator, frame.objectBuffer.buffer, frame.objectBuffer.allocation);
             });
 
             // Allocate one descriptor set for each frame
@@ -389,6 +415,17 @@ namespace dfv {
 
             vkAllocateDescriptorSets(device, &allocInfo, &frame.globalDescriptor);
 
+            // Allocate the descriptor set that will point to object buffer
+            VkDescriptorSetAllocateInfo objectSetAlloc = {};
+            objectSetAlloc.pNext = nullptr;
+            objectSetAlloc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+            objectSetAlloc.descriptorPool = descriptorPool;
+            objectSetAlloc.descriptorSetCount = 1;
+            objectSetAlloc.pSetLayouts = &objectSetLayout;
+
+            vkAllocateDescriptorSets(device, &objectSetAlloc, &frame.objectDescriptor);
+
+            // Update the global descriptor with our camera data
             VkDescriptorBufferInfo cameraInfo;
             cameraInfo.buffer = frame.cameraBuffer.buffer;
             cameraInfo.offset = 0;
@@ -399,12 +436,16 @@ namespace dfv {
             sceneInfo.offset = 0;
             sceneInfo.range = sizeof(SceneData);
 
-            std::array<VkWriteDescriptorSet, 2> setWrites = {};
-            // Camera write
-            setWrites[0] = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frame.globalDescriptor, &cameraInfo, 0);
-            // Scene write
-            setWrites[1] = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, frame.globalDescriptor, &sceneInfo, 1);
+            VkDescriptorBufferInfo objectInfo;
+            objectInfo.buffer = frame.objectBuffer.buffer;
+            objectInfo.offset = 0;
+            objectInfo.range = sizeof(ObjectData) * MAX_OBJECTS;
 
+            auto cameraWrite = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frame.globalDescriptor, &cameraInfo, 0);
+            auto sceneWrite = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, frame.globalDescriptor, &sceneInfo, 1);
+            auto objectWrite = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, frame.objectDescriptor, &objectInfo, 0);
+
+            std::array<VkWriteDescriptorSet, 3> setWrites = {cameraWrite, sceneWrite, objectWrite};
             vkUpdateDescriptorSets(device, setWrites.size(), setWrites.data(), 0, nullptr);
         }
 
@@ -412,6 +453,7 @@ namespace dfv {
             vmaDestroyBuffer(allocator, sceneParametersBuffer.buffer, sceneParametersBuffer.allocation);
 
             vkDestroyDescriptorSetLayout(device, globalSetLayout, nullptr);
+            vkDestroyDescriptorSetLayout(device, objectSetLayout, nullptr);
             vkDestroyDescriptorPool(device, descriptorPool, nullptr);
         });
     }
@@ -512,8 +554,9 @@ namespace dfv {
         meshPipelineLayoutInfo.pPushConstantRanges = &pushConstant;
         meshPipelineLayoutInfo.pushConstantRangeCount = 1;
 
-        meshPipelineLayoutInfo.pSetLayouts = &globalSetLayout;
-        meshPipelineLayoutInfo.setLayoutCount = 1;
+        std::array<VkDescriptorSetLayout, 2> setLayouts = {globalSetLayout, objectSetLayout};
+        meshPipelineLayoutInfo.pSetLayouts = setLayouts.data();
+        meshPipelineLayoutInfo.setLayoutCount = setLayouts.size();
 
         VkPipelineLayout meshPipelineLayout;
         VK_CHECK(vkCreatePipelineLayout(device, &meshPipelineLayoutInfo, nullptr, &meshPipelineLayout));
@@ -716,6 +759,7 @@ namespace dfv {
         std::memcpy(data, &camData, sizeof(CameraData));
         vmaUnmapMemory(allocator, frame.cameraBuffer.allocation);
 
+        // Update scene parameters
         float framed = static_cast<float>(frameNumber) / 120.f;
         sceneParameters.ambientColor = {sin(framed), 0, cos(framed), 1};
 
@@ -728,18 +772,32 @@ namespace dfv {
 
         vmaUnmapMemory(allocator, sceneParametersBuffer.allocation);
 
+        // Update object data
+        ObjectData *objectBuffer;
+        vmaMapMemory(allocator, frame.objectBuffer.allocation, reinterpret_cast<void **>(&objectBuffer));
+        for (auto &object : objects)
+            objectBuffer++->modelMatrix = object.transformMatrix;
+        vmaUnmapMemory(allocator, frame.objectBuffer.allocation);
+
         // Keep track of the last used mesh and material to avoid unnecessary binding
         Mesh *lastMesh = nullptr;
         Material *lastMaterial = nullptr;
         for (auto &object : objects) {
+            uint32_t objectIndex{static_cast<uint32_t>(std::distance(objects.data(), &object))};
+
             // Bind the pipeline if it doesn't match with the already bound one
             if (object.material != lastMaterial) {
                 vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipeline);
                 lastMaterial = object.material;
 
+                // Bind descriptor set 0 (global data, camera and scene)
                 uint32_t uniformOffset = uniformBufferSizeAlignUp(sizeof(SceneData)) * frameIndex;
                 vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipelineLayout, 0, 1,
                                         &frame.globalDescriptor, 1, &uniformOffset);
+
+                // Bind descriptor set 1 (object data)
+                vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipelineLayout, 1, 1,
+                                        &frame.objectDescriptor, 0, nullptr);
             }
 
             MeshPushConstants constants = {};
@@ -757,7 +815,7 @@ namespace dfv {
                 lastMesh = object.mesh;
             }
 
-            vkCmdDraw(cmdBuf, object.mesh->vertices.size(), 1, 0, 0);
+            vkCmdDraw(cmdBuf, object.mesh->vertices.size(), 1, 0, objectIndex);
         }
     }
 

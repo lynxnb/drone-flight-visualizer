@@ -31,6 +31,10 @@ namespace dfv {
         glm::vec4 sunlightColor;
     };
 
+    struct ObjectData {
+        glm::mat4 modelMatrix;
+    };
+
     struct FrameData {
         VkSemaphore presentSemaphore, renderSemaphore;
         VkFence renderFence;
@@ -41,6 +45,9 @@ namespace dfv {
         AllocatedBuffer cameraBuffer; //!< Buffer containing a single CameraData object to use for the frame.
 
         VkDescriptorSet globalDescriptor; //!< Global descriptor set for the frame.
+
+        AllocatedBuffer objectBuffer;
+        VkDescriptorSet objectDescriptor;
     };
 
     class VulkanEngine {
@@ -79,6 +86,7 @@ namespace dfv {
         VkFormat depthFormat;
 
         VkDescriptorSetLayout globalSetLayout;
+        VkDescriptorSetLayout objectSetLayout;
         VkDescriptorPool descriptorPool;
 
         std::vector<RenderObject> renderables;
