@@ -10,8 +10,8 @@
 #include "deletion_queue.h"
 #include "render_object.h"
 #include "vk_mesh.h"
-#include "vk_types.h"
 #include "vk_traits.h"
+#include "vk_types.h"
 
 namespace dfv {
 
@@ -35,6 +35,9 @@ namespace dfv {
         glm::mat4 modelMatrix;
     };
 
+    /**
+     * A structure containing per-frame data used by the engine.
+     */
     struct FrameData {
         VkSemaphore presentSemaphore, renderSemaphore;
         VkFence renderFence;
@@ -55,49 +58,47 @@ namespace dfv {
         bool isInitialized{false};
         int frameNumber{0};
 
-        VulkanTraits traits;
+        VulkanTraits traits; //!< Vulkan traits of the current device
 
-        VmaAllocator allocator;
-        DeletionQueue mainDeletionQueue;
+        VmaAllocator allocator; //!< Vulkan Memory Allocator library handle
+        DeletionQueue mainDeletionQueue; //!< A queue containing Vulkan objects to be deleted when the engine is shut down
 
-        VkExtent2D windowExtent;
+        VkExtent2D windowExtent; //!< The size of the window
 
-        VkInstance instance; // Vulkan library handle
-        VkDebugUtilsMessengerEXT debugMessenger; // Vulkan debug output handle
-        VkPhysicalDevice chosenGPU; // GPU chosen as the default device
-        VkDevice device; // Vulkan device for commands
-        VkSurfaceKHR surface; // Vulkan window surface
+        VkInstance instance; //!< Vulkan library handle
+        VkDebugUtilsMessengerEXT debugMessenger; //!< Vulkan debug output handle
+        VkPhysicalDevice chosenGPU; //!< GPU chosen as the default device
+        VkDevice device; //!< Vulkan device for commands
+        VkSurfaceKHR surface; //!< Vulkan window surface
 
         VkSwapchainKHR swapchain; // Swapchain to present images to the screen
         VkFormat swapchainImageFormat; // Image format expected by the windowing system
         std::vector<VkImage> swapchainImages; // Array of images from the swapchain
         std::vector<VkImageView> swapchainImageViews; // Array of image-views from the swapchain
 
-        VkQueue graphicsQueue; // Queue we will submit to
-        uint32_t graphicsQueueFamily; // Family of that queue
+        VkQueue graphicsQueue; //!< The queue command buffers will be submitted to
+        uint32_t graphicsQueueFamily; //!< The family of the queue
 
-        VkRenderPass renderPass;
+        VkRenderPass renderPass; //!< Default renderpass for the engine
         std::vector<VkFramebuffer> framebuffers;
 
-        std::array<FrameData, MaxFramesInFlight> frames;
+        std::array<FrameData, MaxFramesInFlight> frames; //!< Per-frame data
 
         VkImageView depthImageView;
         AllocatedImage depthImage;
         VkFormat depthFormat;
 
-        VkDescriptorSetLayout globalSetLayout;
-        VkDescriptorSetLayout objectSetLayout;
-        VkDescriptorPool descriptorPool;
+        VkDescriptorSetLayout globalSetLayout; //!< The layout for the global descriptor set
+        VkDescriptorSetLayout objectSetLayout; //!< The layout for the object descriptor set
+        VkDescriptorPool descriptorPool; //!< Global descriptor pool
 
-        std::vector<RenderObject> renderables;
+        std::vector<RenderObject> renderObjects; //!< The objects to render
 
-        std::unordered_map<std::string, Mesh> meshes;
-        std::unordered_map<std::string, Material> materials;
+        std::unordered_map<std::string, Mesh> meshes; //!< Meshes loaded by the engine
+        std::unordered_map<std::string, Material> materials; //!< Materials loaded by the engine
 
-        SceneData sceneParameters;
-        AllocatedBuffer sceneParametersBuffer;
-
-        int selectedShader{0};
+        SceneData sceneParameters; //!< Scene parameters to use during rendering
+        AllocatedBuffer sceneParametersBuffer; //!< Buffer containing the scene parameters
 
         /**
          * Initializes the engine.
@@ -114,13 +115,10 @@ namespace dfv {
         void cleanup();
 
         /**
-         * Draws loop
+         * Draws and displays the next frame.
          */
         void draw();
 
-        bool loadShaderModule(const std::filesystem::path &filePath, VkShaderModule *outShaderModule) const;
-
-        AllocatedBuffer createBuffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage) const;
 
         /**
          * Creates a new render material with the given name.
@@ -139,64 +137,75 @@ namespace dfv {
         Material *getMaterial(const std::string &name);
 
         /**
+         * Creates a new mesh with the given name.
+         * @param name The name of the mesh, used to identify it later.
+         * @param filename The path to the mesh file to load.
+         * @return A pointer to the created mesh.
+         */
+        Mesh *createMesh(const std::string &name, const std::filesystem::path &filename);
+
+        /**
          * Gets the mesh with the given name.
          * @param name The name of the mesh to get.
          * @return The mesh with the given name, or nullptr if no mesh with that name exists.
          */
         Mesh *getMesh(const std::string &name);
 
-        /**
-         * Draws the given objects using the given command buffer.
-         * @param cmdBuf The command buffer to use for drawing.
-         * @param objects
-         */
-        void drawObjects(VkCommandBuffer cmdBuf, std::span<RenderObject> objects);
-
       private:
+        /**
+         * Draws all objects using the given command buffer.
+         * @param cmdBuf The command buffer to use for drawing.
+         */
+        void drawObjects(VkCommandBuffer cmdBuf);
+
+        /**
+         * Gets the frame data to use for the current frame.
+         */
+        FrameData &getCurrentFrame();
+
+        /**
+         * Load a shader module from the given file path.
+         * @param filePath The path to the shader module.
+         * @param outShaderModule A pointer to the shader module to write to.
+         * @return True if the shader module was loaded successfully, false otherwise.
+         */
+        bool loadShaderModule(const std::filesystem::path &filePath, VkShaderModule *outShaderModule) const;
+
+        /**
+         * Creates a new buffer with the given parameters.
+         * @param allocSize The size of the buffer to allocate.
+         * @param usage The usage flags for the buffer.
+         * @param memoryUsage The memory usage flags for the buffer.
+         * @return The created buffer.
+         */
+        AllocatedBuffer createBuffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage) const;
+
+        /**
+         * Uploads the given mesh to the GPU.
+         * @param mesh The mesh to upload.
+         */
+        void uploadMesh(Mesh &mesh);
+
+        /**
+         * Aligns the given size to the minimum uniform buffer offset alignment requirements.
+         */
+        size_t uniformBufferSizeAlignUp(size_t size) const;
+
         /**
          * Loads the core Vulkan structures
          * @param window The GLFW window to retrieve the surface from.
          */
         void initVulkan(GLFWwindow *window);
-
-        /**
-         * Creates the swapchain
-         */
         void initSwapchain();
-
-        /**
-         * Creates the command pool and the default command buffer
-         */
         void initCommands();
-
-        /**
-         * Creates the synchronization structures
-         */
         void initSyncStructures();
-
-        /**
-         * Creates the default renderpass
-         */
         void initDefaultRenderpass();
-
-        /**
-         * Creates the framebuffers for the swapchain images
-         */
         void initFramebuffers();
-
         void initDescriptors();
-
         void initPipelines();
 
         void loadMeshes();
-
-        void uploadMesh(Mesh &mesh);
-
         void initScene();
-
-        FrameData &getCurrentFrame();
-
-        size_t uniformBufferSizeAlignUp(size_t size) const;
     };
 
 } // namespace dfv

@@ -44,7 +44,7 @@ namespace dfv {
         return description;
     }
 
-    bool Mesh::loadFromObj(const std::filesystem::path &filename) {
+    std::optional<Mesh> Mesh::loadFromObj(const std::filesystem::path &filename) {
         // Attrib will contain the vertex arrays of the file
         tinyobj::attrib_t attrib;
         // Shapes contains the info for each separate object in the file
@@ -66,8 +66,9 @@ namespace dfv {
             std::cerr << err << std::endl;
 
         if (!loaded)
-            return false;
+            return std::nullopt;
 
+        std::vector<Vertex> vertices(attrib.vertices.size() / 3);
         // Loop over shapes
         for (auto &shape : shapes) {
             // Loop over faces
@@ -104,7 +105,7 @@ namespace dfv {
             }
         }
 
-        return true;
+        return Mesh{.vertices = std::move(vertices)};
     }
 
 } // namespace dfv

@@ -9,6 +9,8 @@ add_executable(drone_flight_visualizer
         vulkan/vk_pipeline.cpp
         vulkan/deletion_queue.cpp
         vulkan/vk_mesh.cpp
+        vulkan/vk_engine_utils.cpp
+        vulkan/vk_engine_init.cpp
         input/input_handler.cpp
 )
 target_include_directories(drone_flight_visualizer PRIVATE ".")

@@ -29,7 +29,7 @@ namespace dfv {
 
         AllocatedBuffer vertexBuffer;
 
-        bool loadFromObj(const std::filesystem::path &filename);
+        static std::optional<Mesh> loadFromObj(const std::filesystem::path &filename);
     };
 
     struct MeshPushConstants {
