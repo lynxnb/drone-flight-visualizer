@@ -62,6 +62,9 @@ namespace dfv {
         assert(monkey.mesh != nullptr);
         monkey.material = defaultMeshMaterial;
         monkey.transformMatrix = glm::mat4{1.0f};
+        monkey.updateFunc = [](RenderObject &object, nanoseconds deltaTime) {
+            object.transformMatrix = glm::rotate(object.transformMatrix, 0.000000001f * deltaTime.count(), glm::vec3{0, 1, 0});
+        };
 
         renderObjects.push_back(monkey);
 
@@ -76,6 +79,9 @@ namespace dfv {
                 glm::mat4 translation = glm::translate(glm::mat4{1.0}, glm::vec3(x, 0, y));
                 glm::mat4 scale = glm::scale(glm::mat4{1.0}, glm::vec3(0.2, 0.2, 0.2));
                 triangle.transformMatrix = translation * scale;
+                triangle.updateFunc = [](RenderObject &object, nanoseconds deltaTime) {
+                    object.transformMatrix = glm::rotate(object.transformMatrix, -0.000000001f * deltaTime.count(), glm::vec3{0, 1, 0});
+                };
 
                 renderObjects.push_back(triangle);
             }
@@ -273,6 +279,13 @@ namespace dfv {
 
         // Increase the number of frames drawn
         frameNumber++;
+    }
+
+    void VulkanEngine::update(nanoseconds deltaTime) {
+        for (auto &object : renderObjects) {
+            if (object.updateFunc)
+                object.updateFunc(object, deltaTime);
+        }
     }
 
     void VulkanEngine::cleanup() {

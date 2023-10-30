@@ -8,24 +8,31 @@ namespace dfv {
 
     using namespace window_config;
 
-    void rendererThread(Context &context) {
+    void renderThread(Context &context) {
         VulkanEngine &engine = context.engine;
         try {
             engine.init(context.glfwWindow, WindowWidth, WindowHeight);
 
-            while (!context.shouldExit())
+            auto lastFrameStart = clock::now();
+
+            while (!context.shouldExit()) {
+                auto frameStart = clock::now();
+                auto deltaTime = duration_cast<nanoseconds>(frameStart - lastFrameStart);
+                lastFrameStart = frameStart;
+
+                engine.update(deltaTime);
                 engine.draw();
+            }
         } catch (const std::exception &e) {
-            std::cerr << "The renderer thread ran into an exception: " << e.what() << std::endl;
+            std::cerr << "The render thread ran into an exception: " << e.what() << std::endl;
         }
 
         engine.cleanup();
     }
 
-    void startRendererThread(Context &context) {
+    std::thread startRenderThread(Context &context) {
         std::cout << "Starting render thread" << std::endl;
-        std::thread t{rendererThread, std::ref(context)};
-        t.detach();
+        return std::thread{renderThread, std::ref(context)};
     }
 
 } // namespace dfv

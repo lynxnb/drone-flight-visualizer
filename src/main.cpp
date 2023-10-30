@@ -19,11 +19,12 @@ int main(int argc, char **argv) {
             context.setExit();
     });
 
-    startRendererThread(context);
+    auto renderThread = startRenderThread(context);
 
     // Run the GLFW event loop in the main thread
     while (!context.shouldExit())
         glfwWaitEvents();
 
+    renderThread.join();
     return 0;
 }

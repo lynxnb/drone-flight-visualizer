@@ -119,6 +119,11 @@ namespace dfv {
          */
         void draw();
 
+        /**
+         * Updates render objects by calling their update functions.
+         * @param deltaTime The time since the last frame, in nanoseconds.
+         */
+        void update(nanoseconds deltaTime);
 
         /**
          * Creates a new render material with the given name.

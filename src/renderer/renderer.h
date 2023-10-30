@@ -4,6 +4,6 @@
 
 namespace dfv {
 
-    void startRendererThread(Context &context);
+    std::thread startRenderThread(Context &context);
 
 }
