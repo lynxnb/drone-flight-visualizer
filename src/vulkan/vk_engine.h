@@ -102,7 +102,7 @@ namespace dfv {
 
         struct {
             glm::vec3 position; //!< The position of the camera
-            glm::vec3 direction; //!< The direction the camera is facing
+            glm::vec3 orientation; //!< The orientation of the camera (x = pitch, y = yaw, z = roll)
 
             float fov; //!< Field of view in radians
             float nearPlane; //!< Near plane distance
@@ -114,7 +114,10 @@ namespace dfv {
 
             std::atomic<float> surgeDirection = 0; //!< Whether the camera is moving forward or backwards (1 for forward, -1 for backwards)
             std::atomic<float> swayDirection = 0; //!< Whether the camera is moving left or right (1 for right, -1 for left)
-            std::atomic<float> heaveDirection = 0; //!< Whether the camera is moving up or down (1 for up, -1 for down)
+            std::atomic<float> heaveDirection = 0; //!< Whether the camera is moving up or down (-1 for up, 1 for down)
+
+            std::atomic<float> yawDirection = 0; //!< Whether the camera is rotating left or right (1 for right, -1 for left)
+            std::atomic<float> pitchDirection = 0; //!< Whether the camera is rotating up or down (1 for up, -1 for down)
 
             /**
              * @brief Gets the adjusted movement speed, taking into account the speed multiplier.

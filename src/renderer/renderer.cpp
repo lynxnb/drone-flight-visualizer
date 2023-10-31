@@ -54,6 +54,36 @@ namespace dfv {
                 engine.cameraParameters.heaveDirection.fetch_add(1.0f, std::memory_order_relaxed);
         });
 
+        // Camera look left
+        context.inputHandler.addKeyMapping(GLFW_KEY_LEFT, [&engine = context.engine](auto action) {
+            if (action == Action::Pressed)
+                engine.cameraParameters.yawDirection.fetch_sub(1.0f, std::memory_order_relaxed);
+            else if (action == Action::Released)
+                engine.cameraParameters.yawDirection.fetch_add(1.0f, std::memory_order_relaxed);
+        });
+        // Camera look right
+        context.inputHandler.addKeyMapping(GLFW_KEY_RIGHT, [&engine = context.engine](auto action) {
+            if (action == Action::Pressed)
+                engine.cameraParameters.yawDirection.fetch_add(1.0f, std::memory_order_relaxed);
+            else if (action == Action::Released)
+                engine.cameraParameters.yawDirection.fetch_sub(1.0f, std::memory_order_relaxed);
+        });
+
+        // Camera look up
+        context.inputHandler.addKeyMapping(GLFW_KEY_UP, [&engine = context.engine](auto action) {
+            if (action == Action::Pressed)
+                engine.cameraParameters.pitchDirection.fetch_add(1.0f, std::memory_order_relaxed);
+            else if (action == Action::Released)
+                engine.cameraParameters.pitchDirection.fetch_sub(1.0f, std::memory_order_relaxed);
+        });
+        // Camera look down
+        context.inputHandler.addKeyMapping(GLFW_KEY_DOWN, [&engine = context.engine](auto action) {
+            if (action == Action::Pressed)
+                engine.cameraParameters.pitchDirection.fetch_sub(1.0f, std::memory_order_relaxed);
+            else if (action == Action::Released)
+                engine.cameraParameters.pitchDirection.fetch_add(1.0f, std::memory_order_relaxed);
+        });
+
         // Speed up
         context.inputHandler.addKeyMapping(GLFW_KEY_LEFT_SHIFT, [&engine = context.engine](auto action) {
             if (action == Action::Pressed)

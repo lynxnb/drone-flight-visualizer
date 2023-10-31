@@ -89,22 +89,24 @@ namespace dfv {
 
         // Initialize camera parameters
         cameraParameters.position = {0.f, -6.f, -10.f};
-        cameraParameters.direction = {0.f, 0.f, 1.f};
+        cameraParameters.orientation = {0.f, 0.f, 0.f};
         cameraParameters.fov = glm::radians(70.f);
         cameraParameters.nearPlane = 0.1f;
         cameraParameters.farPlane = 200.f;
         cameraParameters.movementSpeed = 5.f;
-        cameraParameters.rotationSpeed = glm::radians(5.f);
+        cameraParameters.rotationSpeed = glm::radians(30.f);
     }
 
     void VulkanEngine::drawObjects(VkCommandBuffer cmdBuf) {
         auto &frame = getCurrentFrame();
 
-        // Camera position and direction
+        // Apply camera position
         glm::mat4 view = glm::translate(glm::mat4(1.f), cameraParameters.position);
-        glm::mat4 rot = glm::rotate(glm::mat4(1.f), cameraParameters.direction.x, glm::vec3(1.f, 0.f, 0.f));
-        rot = glm::rotate(rot, cameraParameters.direction.y, glm::vec3(0.f, 1.f, 0.f));
-        view = view * rot;
+        // Apply pitch rotation
+        glm::mat4 rot = glm::rotate(glm::mat4(1.f), cameraParameters.orientation.x, glm::vec3(-1.f, 0.f, 0.f));
+        // Apply yaw rotation
+        rot = glm::rotate(rot, cameraParameters.orientation.y, glm::vec3(0.f, 1.f, 0.f));
+        view = rot * view;
 
         // Camera projection
         glm::mat4 projection = glm::perspective(cameraParameters.fov,
@@ -300,18 +302,22 @@ namespace dfv {
     }
 
     void VulkanEngine::updateCamera(seconds_f deltaTime) {
-        // Update camera position
-        glm::vec3 cameraMovement = {};
-        // Move the camera in the facing direction for forward/backward
-        cameraMovement += cameraParameters.surgeDirection.load(std::memory_order_relaxed) * cameraParameters.adjustedMovementSpeed() * cameraParameters.direction;
-        // Move the camera perpendicular to the facing direction for left/right movement
-        cameraMovement += cameraParameters.swayDirection.load(std::memory_order_relaxed) * cameraParameters.adjustedMovementSpeed() *
-                          glm::cross(cameraParameters.direction, glm::vec3{0.f, 1.f, 0.f});
-        // Move the camera up/down independently of the facing direction
-        cameraMovement += cameraParameters.heaveDirection.load(std::memory_order_relaxed) * cameraParameters.adjustedMovementSpeed() * glm::vec3{0.f, -1.f, 0.f};
+        glm::vec3 cameraOrientation = {cameraParameters.pitchDirection.load(std::memory_order_relaxed),
+                                       cameraParameters.yawDirection.load(std::memory_order_relaxed),
+                                       0.f};
 
         // Multiply by delta time for framerate-independent movement
-        cameraParameters.position += cameraMovement * deltaTime.count();
+        cameraParameters.orientation += cameraOrientation * cameraParameters.rotationSpeed * deltaTime.count();
+
+        glm::vec3 directions = {cameraParameters.surgeDirection.load(std::memory_order_relaxed), // Forward/backward
+                                cameraParameters.heaveDirection.load(std::memory_order_relaxed), // Up/down
+                                cameraParameters.swayDirection.load(std::memory_order_relaxed)}; // Left/right
+        float yaw = cameraParameters.orientation.y;
+        glm::vec3 cameraMovement = {directions.x * sin(yaw) + directions.z * cos(yaw),
+                                    directions.y,
+                                    directions.z * sin(yaw) - directions.x * cos(yaw)};
+
+        cameraParameters.position -= cameraMovement * cameraParameters.adjustedMovementSpeed() * deltaTime.count();
     }
 
     void VulkanEngine::cleanup() {
