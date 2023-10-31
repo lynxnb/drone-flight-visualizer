@@ -100,6 +100,31 @@ namespace dfv {
         SceneData sceneParameters; //!< Scene parameters to use during rendering
         AllocatedBuffer sceneParametersBuffer; //!< Buffer containing the scene parameters
 
+        struct {
+            glm::vec3 position; //!< The position of the camera
+            glm::vec3 direction; //!< The direction the camera is facing
+
+            float fov; //!< Field of view in radians
+            float nearPlane; //!< Near plane distance
+            float farPlane; //!< Far plane distance
+
+            float movementSpeed; //!< Movement speed in units per second
+            std::atomic<float> speedMultiplier = 1.0f; //!< Speed multiplier (used for sprinting)
+            float rotationSpeed; //!< Rotation speed in radians per second
+
+            std::atomic<float> surgeDirection = 0; //!< Whether the camera is moving forward or backwards (1 for forward, -1 for backwards)
+            std::atomic<float> swayDirection = 0; //!< Whether the camera is moving left or right (1 for right, -1 for left)
+            std::atomic<float> heaveDirection = 0; //!< Whether the camera is moving up or down (1 for up, -1 for down)
+
+            /**
+             * @brief Gets the adjusted movement speed, taking into account the speed multiplier.
+             * @return The adjusted movement speed.
+             */
+            float adjustedMovementSpeed() {
+                return movementSpeed * speedMultiplier.load(std::memory_order_relaxed);
+            }
+        } cameraParameters; //!< Camera parameters to use during rendering
+
         /**
          * Initializes the engine.
          * @param window The GLFWwindow object to retrieve the surface from.
@@ -121,9 +146,9 @@ namespace dfv {
 
         /**
          * Updates render objects by calling their update functions.
-         * @param deltaTime The time since the last frame, in nanoseconds.
+         * @param deltaTime The time since the last frame in seconds.
          */
-        void update(nanoseconds deltaTime);
+        void update(seconds_f deltaTime);
 
         /**
          * Creates a new render material with the given name.
@@ -162,6 +187,12 @@ namespace dfv {
          * @param cmdBuf The command buffer to use for drawing.
          */
         void drawObjects(VkCommandBuffer cmdBuf);
+
+        /**
+         * Updates the camera data for the current frame.
+         * @param deltaTime The time since the last frame in seconds.
+         */
+        void updateCamera(seconds_f deltaTime);
 
         /**
          * Gets the frame data to use for the current frame.

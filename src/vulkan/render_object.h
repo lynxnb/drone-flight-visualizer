@@ -16,9 +16,9 @@ namespace dfv {
         /**
          * @brief Signature of the function that is called every frame to update the object before rendering.
          * @param object The object the function was called on.
-         * @param deltaTime The time since the last frame in nanoseconds
+         * @param deltaTime The time since the last frame in seconds
          */
-        using UpdateFunc = std::function<void(RenderObject &object, nanoseconds deltaTime)>;
+        using UpdateFunc = std::function<void(RenderObject &object, seconds_f deltaTime)>;
 
         Mesh *mesh;
         Material *material;

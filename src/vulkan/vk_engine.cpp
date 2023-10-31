@@ -62,8 +62,8 @@ namespace dfv {
         assert(monkey.mesh != nullptr);
         monkey.material = defaultMeshMaterial;
         monkey.transformMatrix = glm::mat4{1.0f};
-        monkey.updateFunc = [](RenderObject &object, nanoseconds deltaTime) {
-            object.transformMatrix = glm::rotate(object.transformMatrix, 0.000000001f * deltaTime.count(), glm::vec3{0, 1, 0});
+        monkey.updateFunc = [](RenderObject &object, seconds_f deltaTime) {
+            object.transformMatrix = glm::rotate(object.transformMatrix, 1.f * deltaTime.count(), glm::vec3{0, 1, 0});
         };
 
         renderObjects.push_back(monkey);
@@ -79,36 +79,45 @@ namespace dfv {
                 glm::mat4 translation = glm::translate(glm::mat4{1.0}, glm::vec3(x, 0, y));
                 glm::mat4 scale = glm::scale(glm::mat4{1.0}, glm::vec3(0.2, 0.2, 0.2));
                 triangle.transformMatrix = translation * scale;
-                triangle.updateFunc = [](RenderObject &object, nanoseconds deltaTime) {
-                    object.transformMatrix = glm::rotate(object.transformMatrix, -0.000000001f * deltaTime.count(), glm::vec3{0, 1, 0});
+                triangle.updateFunc = [](RenderObject &object, seconds_f deltaTime) {
+                    object.transformMatrix = glm::rotate(object.transformMatrix, -1.f * deltaTime.count(), glm::vec3{0, 1, 0});
                 };
 
                 renderObjects.push_back(triangle);
             }
         }
+
+        // Initialize camera parameters
+        cameraParameters.position = {0.f, -6.f, -10.f};
+        cameraParameters.direction = {0.f, 0.f, 1.f};
+        cameraParameters.fov = glm::radians(70.f);
+        cameraParameters.nearPlane = 0.1f;
+        cameraParameters.farPlane = 200.f;
+        cameraParameters.movementSpeed = 5.f;
+        cameraParameters.rotationSpeed = glm::radians(5.f);
     }
 
     void VulkanEngine::drawObjects(VkCommandBuffer cmdBuf) {
         auto &frame = getCurrentFrame();
 
-        // Make a model view matrix for rendering the object camera view
-        glm::vec3 camPos = {0.f, -6.f, -10.f};
+        // Camera position and direction
+        glm::mat4 view = glm::translate(glm::mat4(1.f), cameraParameters.position);
+        glm::mat4 rot = glm::rotate(glm::mat4(1.f), cameraParameters.direction.x, glm::vec3(1.f, 0.f, 0.f));
+        rot = glm::rotate(rot, cameraParameters.direction.y, glm::vec3(0.f, 1.f, 0.f));
+        view = view * rot;
 
-        glm::mat4 view = glm::translate(glm::mat4(1.f), camPos);
         // Camera projection
-        glm::mat4 projection = glm::perspective(glm::radians(70.f), (float) windowExtent.width / (float) windowExtent.height, 0.1f, 200.0f);
+        glm::mat4 projection = glm::perspective(cameraParameters.fov,
+                                                (float) windowExtent.width / (float) windowExtent.height,
+                                                cameraParameters.nearPlane, cameraParameters.farPlane);
         projection[1][1] *= -1;
 
-        // Fill the camera data struct
-        CameraData camData = {};
-        camData.proj = projection;
-        camData.view = view;
-        camData.viewproj = projection * view;
-
         // Copy the camera data into the buffer
-        void *data;
-        vmaMapMemory(allocator, frame.cameraBuffer.allocation, &data);
-        std::memcpy(data, &camData, sizeof(CameraData));
+        CameraData *cameraData;
+        vmaMapMemory(allocator, frame.cameraBuffer.allocation, reinterpret_cast<void **>(&cameraData));
+        *cameraData = {.view = view,
+                       .proj = projection,
+                       .viewproj = projection * view};
         vmaUnmapMemory(allocator, frame.cameraBuffer.allocation);
 
         // Update scene parameters
@@ -281,11 +290,28 @@ namespace dfv {
         frameNumber++;
     }
 
-    void VulkanEngine::update(nanoseconds deltaTime) {
+    void VulkanEngine::update(seconds_f deltaTime) {
         for (auto &object : renderObjects) {
             if (object.updateFunc)
                 object.updateFunc(object, deltaTime);
         }
+
+        updateCamera(deltaTime);
+    }
+
+    void VulkanEngine::updateCamera(seconds_f deltaTime) {
+        // Update camera position
+        glm::vec3 cameraMovement = {};
+        // Move the camera in the facing direction for forward/backward
+        cameraMovement += cameraParameters.surgeDirection.load(std::memory_order_relaxed) * cameraParameters.adjustedMovementSpeed() * cameraParameters.direction;
+        // Move the camera perpendicular to the facing direction for left/right movement
+        cameraMovement += cameraParameters.swayDirection.load(std::memory_order_relaxed) * cameraParameters.adjustedMovementSpeed() *
+                          glm::cross(cameraParameters.direction, glm::vec3{0.f, 1.f, 0.f});
+        // Move the camera up/down independently of the facing direction
+        cameraMovement += cameraParameters.heaveDirection.load(std::memory_order_relaxed) * cameraParameters.adjustedMovementSpeed() * glm::vec3{0.f, -1.f, 0.f};
+
+        // Multiply by delta time for framerate-independent movement
+        cameraParameters.position += cameraMovement * deltaTime.count();
     }
 
     void VulkanEngine::cleanup() {
