@@ -53,6 +53,15 @@ namespace dfv {
         VkDescriptorSet objectDescriptor;
     };
 
+    /**
+     * A structure containing data used for GPU upload commands.
+     */
+    struct UploadContext {
+        VkFence uploadFence;
+        VkCommandPool commandPool;
+        VkCommandBuffer commandBuffer;
+    };
+
     class VulkanEngine {
       public:
         bool isInitialized{false};
@@ -83,6 +92,8 @@ namespace dfv {
         std::vector<VkFramebuffer> framebuffers;
 
         std::array<FrameData, MaxFramesInFlight> frames; //!< Per-frame data
+
+        UploadContext uploadContext; //!< Data for GPU upload commands
 
         VkImageView depthImageView;
         AllocatedImage depthImage;
@@ -203,6 +214,12 @@ namespace dfv {
         FrameData &getCurrentFrame();
 
         /**
+         * Immediately submits a command buffer to the graphics queue and waits for completion.
+         * @param submitFunc The function to call to fill the command buffer.
+         */
+        void immediateSubmit(std::function<void(VkCommandBuffer cmd)> &&submitFunc);
+
+        /**
          * Load a shader module from the given file path.
          * @param filePath The path to the shader module.
          * @param outShaderModule A pointer to the shader module to write to.
@@ -211,13 +228,12 @@ namespace dfv {
         bool loadShaderModule(const std::filesystem::path &filePath, VkShaderModule *outShaderModule) const;
 
         /**
-         * Creates a new buffer with the given parameters.
+         * Creates a new uniform buffer with the given parameters.
          * @param allocSize The size of the buffer to allocate.
          * @param usage The usage flags for the buffer.
-         * @param memoryUsage The memory usage flags for the buffer.
-         * @return The created buffer.
+         * @return The created uniform buffer.
          */
-        AllocatedBuffer createBuffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage) const;
+        AllocatedBuffer createUniformBuffer(size_t allocSize, VkBufferUsageFlags usage) const;
 
         /**
          * Uploads the given mesh to the GPU.

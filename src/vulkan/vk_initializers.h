@@ -36,4 +36,8 @@ namespace dfv::vkinit {
 
     VkWriteDescriptorSet write_descriptor_buffer(VkDescriptorType type, VkDescriptorSet dstSet, VkDescriptorBufferInfo *bufferInfo, uint32_t binding);
 
+    VkCommandBufferBeginInfo command_buffer_begin_info(VkCommandBufferUsageFlags flags = 0);
+
+    VkSubmitInfo submit_info(VkCommandBuffer *commandBuffers);
+
 } // namespace dfv::vkinit

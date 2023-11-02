@@ -159,6 +159,18 @@ namespace dfv {
                 vkDestroyCommandPool(device, frame.commandPool, nullptr);
             });
         }
+
+        // Create the command pool for the upload context
+        VkCommandPoolCreateInfo uploadCommandPoolInfo = vkinit::command_pool_create_info(graphicsQueueFamily);
+        VK_CHECK(vkCreateCommandPool(device, &uploadCommandPoolInfo, nullptr, &uploadContext.commandPool));
+
+        mainDeletionQueue.pushFunction([=, this]() {
+            vkDestroyCommandPool(device, uploadContext.commandPool, nullptr);
+        });
+
+        // Allocate the default command buffer that we will use for the instant commands
+        VkCommandBufferAllocateInfo cmdAllocInfo = vkinit::command_buffer_allocate_info(uploadContext.commandPool, 1);
+        VK_CHECK(vkAllocateCommandBuffers(device, &cmdAllocInfo, &uploadContext.commandBuffer));
     }
 
     void VulkanEngine::initSyncStructures() {
@@ -180,6 +192,12 @@ namespace dfv {
                 vkDestroySemaphore(device, frame.renderSemaphore, nullptr);
             });
         }
+
+        VkFenceCreateInfo uploadFenceCreateInfo = vkinit::fence_create_info();
+        VK_CHECK(vkCreateFence(device, &uploadFenceCreateInfo, nullptr, &uploadContext.uploadFence));
+        mainDeletionQueue.pushFunction([=, this]() {
+            vkDestroyFence(device, uploadContext.uploadFence, nullptr);
+        });
     }
 
     void VulkanEngine::initDefaultRenderpass() {
@@ -344,16 +362,15 @@ namespace dfv {
         vkCreateDescriptorSetLayout(device, &set2info, nullptr, &objectSetLayout);
 
         const size_t sceneParamBufferSize = MaxFramesInFlight * uniformBufferSizeAlignUp(sizeof(SceneData));
-        sceneParametersBuffer = createBuffer(sceneParamBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+        sceneParametersBuffer = createUniformBuffer(sceneParamBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
         for (auto &frame : frames) {
             // Allocate the camera buffer
-            frame.cameraBuffer = createBuffer(sizeof(CameraData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+            frame.cameraBuffer = createUniformBuffer(sizeof(CameraData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
             // Allocate the object buffer
             constexpr int MAX_OBJECTS = 10000;
-            frame.objectBuffer = createBuffer(sizeof(ObjectData) * MAX_OBJECTS,
-                                              VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+            frame.objectBuffer = createUniformBuffer(sizeof(ObjectData) * MAX_OBJECTS, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
             // Add to the deletion queue
             mainDeletionQueue.pushFunction([&]() {

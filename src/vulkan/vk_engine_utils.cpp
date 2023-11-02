@@ -6,6 +6,8 @@
 #include <tiny_obj_loader.h>
 #include <vulkan/vk_enum_string_helper.h>
 
+#include "vk_initializers.h"
+
 #define SOURCE_LOCATION __builtin_FILE() << ":" << __builtin_LINE() << " (" << __builtin_FUNCTION() << ")"
 
 #define VK_CHECK(x)                                                                                           \
@@ -18,6 +20,28 @@
     } while (0)
 
 namespace dfv {
+
+    void VulkanEngine::immediateSubmit(std::function<void(VkCommandBuffer cmd)> &&submitFunc) {
+        VkCommandBuffer cmd = uploadContext.commandBuffer;
+
+        VkCommandBufferBeginInfo cmdBeginInfo = vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+        VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
+
+        // Populate the command buffer with the user supplied function
+        submitFunc(cmd);
+
+        VK_CHECK(vkEndCommandBuffer(cmd));
+
+        VkSubmitInfo submitInfo = vkinit::submit_info(&cmd);
+        VK_CHECK(vkQueueSubmit(graphicsQueue, 1, &submitInfo, uploadContext.uploadFence));
+
+        // Wait for command buffer to finish execution, timeout 10 seconds
+        vkWaitForFences(device, 1, &uploadContext.uploadFence, true, 10000000000);
+        vkResetFences(device, 1, &uploadContext.uploadFence);
+
+        // Reset the command pool for future reuse
+        vkResetCommandPool(device, uploadContext.commandPool, 0);
+    }
 
     bool VulkanEngine::loadShaderModule(const std::filesystem::path &filePath, VkShaderModule *outShaderModule) const {
         std::ifstream file(filePath, std::ios::ate | std::ios::binary);
@@ -50,13 +74,15 @@ namespace dfv {
         return true;
     }
 
-    AllocatedBuffer VulkanEngine::createBuffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage) const {
+    AllocatedBuffer VulkanEngine::createUniformBuffer(size_t allocSize, VkBufferUsageFlags usage) const {
         VkBufferCreateInfo bufferInfo = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
                                          .pNext = nullptr,
                                          .size = allocSize,
                                          .usage = usage};
 
-        VmaAllocationCreateInfo vmaAllocInfo = {.usage = memoryUsage};
+        // Allocate UBOs on the GPU while allowing CPU writes (but no reads)
+        VmaAllocationCreateInfo vmaAllocInfo = {.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+                                                .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE};
 
         AllocatedBuffer newBuffer = {};
         VK_CHECK(vmaCreateBuffer(allocator, &bufferInfo, &vmaAllocInfo, &newBuffer.buffer, &newBuffer.allocation,
@@ -66,20 +92,48 @@ namespace dfv {
     }
 
     void VulkanEngine::uploadMesh(Mesh &mesh) {
-        // Allocate vertex buffer
-        mesh.vertexBuffer = createBuffer(mesh.vertices.size() * sizeof(Vertex), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                                         VMA_MEMORY_USAGE_CPU_TO_GPU);
+        const size_t bufferSize = mesh.vertices.size() * sizeof(Vertex);
+        // Allocate a staging (temporary) buffer
+        VkBufferCreateInfo stagingBufferInfo = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                                                .pNext = nullptr,
+                                                .size = bufferSize,
+                                                .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT};
 
-        // Add the destruction of this buffer to the deletion queue
+        // Allocate the buffer as writable sequentially from the CPU
+        VmaAllocationCreateInfo stagingAllocInfo = {.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+                                                    .usage = VMA_MEMORY_USAGE_AUTO};
+        AllocatedBuffer stagingBuffer = {};
+        VK_CHECK(vmaCreateBuffer(allocator, &stagingBufferInfo, &stagingAllocInfo,
+                                 &stagingBuffer.buffer, &stagingBuffer.allocation, nullptr));
+
+        // Copy vertex data into the staging buffer
+        Vertex *stagingVertexData;
+        vmaMapMemory(allocator, stagingBuffer.allocation, (void **) &stagingVertexData);
+        std::ranges::copy(mesh.vertices, stagingVertexData);
+        vmaUnmapMemory(allocator, stagingBuffer.allocation);
+
+        // Allocate the vertex buffer on the GPU
+        VkBufferCreateInfo vertexBufferInfo = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                                               .pNext = nullptr,
+                                               .size = bufferSize,
+                                               .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT};
+
+        VmaAllocationCreateInfo vertexAllocInfo = {.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE};
+        VK_CHECK(vmaCreateBuffer(allocator, &vertexBufferInfo, &vertexAllocInfo,
+                                 &mesh.vertexBuffer.buffer, &mesh.vertexBuffer.allocation, nullptr));
+
+        // Submit a GPU command to copy the staging buffer to the vertex buffer
+        immediateSubmit([&, stagingBuffer](VkCommandBuffer cmd) {
+            VkBufferCopy bufferCopy = {.size = bufferSize};
+            vkCmdCopyBuffer(cmd, stagingBuffer.buffer, mesh.vertexBuffer.buffer, 1, &bufferCopy);
+        });
+
         mainDeletionQueue.pushFunction([=, this]() {
             vmaDestroyBuffer(allocator, mesh.vertexBuffer.buffer, mesh.vertexBuffer.allocation);
         });
 
-        // Copy vertex data
-        Vertex *vertexData;
-        vmaMapMemory(allocator, mesh.vertexBuffer.allocation, (void **) &vertexData);
-        std::ranges::copy(mesh.vertices, vertexData);
-        vmaUnmapMemory(allocator, mesh.vertexBuffer.allocation);
+        // Immediately destroy the staging buffer
+        vmaDestroyBuffer(allocator, stagingBuffer.buffer, stagingBuffer.allocation);
     }
 
     Material *VulkanEngine::createMaterial(const std::string &name, VkPipeline pipeline, VkPipelineLayout layout) {
