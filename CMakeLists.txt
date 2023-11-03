@@ -52,8 +52,8 @@ find_package(Vulkan REQUIRED)
 include_directories(SYSTEM ${Vulkan_INCLUDE_DIRS})
 
 # Vulkan Memory Allocator
-CPMAddPackage("gh:GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator@3.0.1")
-include_directories(SYSTEM ${VulkanMemoryAllocator_SOURCE_DIR}/include)
+CPMAddPackage("gh:GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator@2.3.0")
+include_directories(SYSTEM ${VulkanMemoryAllocator_SOURCE_DIR}/src)
 
 # tinyobjloader: OBJ file loading
 CPMAddPackage("gh:tinyobjloader/tinyobjloader@1.0.6")

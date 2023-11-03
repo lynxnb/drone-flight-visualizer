@@ -81,8 +81,7 @@ namespace dfv {
                                          .usage = usage};
 
         // Allocate UBOs on the GPU while allowing CPU writes (but no reads)
-        VmaAllocationCreateInfo vmaAllocInfo = {.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-                                                .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE};
+        VmaAllocationCreateInfo vmaAllocInfo = {.usage = VMA_MEMORY_USAGE_CPU_TO_GPU};
 
         AllocatedBuffer newBuffer = {};
         VK_CHECK(vmaCreateBuffer(allocator, &bufferInfo, &vmaAllocInfo, &newBuffer.buffer, &newBuffer.allocation,
@@ -100,8 +99,7 @@ namespace dfv {
                                                 .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT};
 
         // Allocate the buffer as writable sequentially from the CPU
-        VmaAllocationCreateInfo stagingAllocInfo = {.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-                                                    .usage = VMA_MEMORY_USAGE_AUTO};
+        VmaAllocationCreateInfo stagingAllocInfo = {.usage = VMA_MEMORY_USAGE_CPU_ONLY};
         AllocatedBuffer stagingBuffer = {};
         VK_CHECK(vmaCreateBuffer(allocator, &stagingBufferInfo, &stagingAllocInfo,
                                  &stagingBuffer.buffer, &stagingBuffer.allocation, nullptr));
@@ -118,7 +116,7 @@ namespace dfv {
                                                .size = bufferSize,
                                                .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT};
 
-        VmaAllocationCreateInfo vertexAllocInfo = {.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE};
+        VmaAllocationCreateInfo vertexAllocInfo = {.usage = VMA_MEMORY_USAGE_GPU_ONLY};
         VK_CHECK(vmaCreateBuffer(allocator, &vertexBufferInfo, &vertexAllocInfo,
                                  &mesh.vertexBuffer.buffer, &mesh.vertexBuffer.allocation, nullptr));
 

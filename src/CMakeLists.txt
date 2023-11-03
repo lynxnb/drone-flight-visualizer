@@ -23,7 +23,6 @@ target_link_libraries(drone_flight_visualizer PRIVATE
         vk-bootstrap::vk-bootstrap
         glfw
         glm
-        VulkanMemoryAllocator
         tinyobjloader
 )
 

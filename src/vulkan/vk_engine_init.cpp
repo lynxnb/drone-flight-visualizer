@@ -4,6 +4,8 @@
 
 #include <VkBootstrap.h>
 #include <vulkan/vk_enum_string_helper.h>
+#define VMA_IMPLEMENTATION
+#include <vk_mem_alloc.h>
 
 #include "vk_initializers.h"
 #include "vk_pipeline.h"
@@ -71,18 +73,12 @@ namespace dfv {
         graphicsQueue = vkbDevice.get_queue(vkb::QueueType::graphics).value();
         graphicsQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::graphics).value();
 
-        // Use vulkan functions already retrieved by vkbootstrap for VMA
-        auto vkFunctions = VmaVulkanFunctions{
-                .vkGetInstanceProcAddr = vkbInstance.fp_vkGetInstanceProcAddr,
-                .vkGetDeviceProcAddr = vkbInstance.fp_vkGetDeviceProcAddr,
-        };
-
         // Initialize the memory allocator
         VmaAllocatorCreateInfo allocatorInfo = {};
+        allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_1;
         allocatorInfo.physicalDevice = chosenGPU;
         allocatorInfo.device = device;
         allocatorInfo.instance = instance;
-        allocatorInfo.pVulkanFunctions = &vkFunctions;
 
         vmaCreateAllocator(&allocatorInfo, &allocator);
 
