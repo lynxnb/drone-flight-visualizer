@@ -61,9 +61,16 @@ namespace dfv {
         monkey.mesh = getMesh("monkey");
         assert(monkey.mesh != nullptr);
         monkey.material = defaultMeshMaterial;
-        monkey.transformMatrix = glm::mat4{1.0f};
-        monkey.updateFunc = [](RenderObject &object, seconds_f deltaTime) {
-            object.transformMatrix = glm::rotate(object.transformMatrix, 1.f * deltaTime.count(), glm::vec3{0, 1, 0});
+        monkey.position = {0, 0, 0};
+        monkey.orientation = {0, 0, 0};
+        monkey.scale = {1, 1, 1};
+
+        monkey.updateFunc = [this](RenderObject &object, seconds_f deltaTime) {
+            object.position = glm::vec3{2 * sin(frameNumber / 120.f),
+                                        0,
+                                        2 * cos(frameNumber / 120.f)};
+            object.orientation += glm::vec3{0, 1, 0} * deltaTime.count();
+            object.computeTransform();
         };
 
         renderObjects.push_back(monkey);
@@ -76,11 +83,13 @@ namespace dfv {
                 RenderObject triangle = {};
                 triangle.mesh = triangleMesh;
                 triangle.material = defaultMeshMaterial;
-                glm::mat4 translation = glm::translate(glm::mat4{1.0}, glm::vec3(x, 0, y));
-                glm::mat4 scale = glm::scale(glm::mat4{1.0}, glm::vec3(0.2, 0.2, 0.2));
-                triangle.transformMatrix = translation * scale;
-                triangle.updateFunc = [](RenderObject &object, seconds_f deltaTime) {
-                    object.transformMatrix = glm::rotate(object.transformMatrix, -1.f * deltaTime.count(), glm::vec3{0, 1, 0});
+                triangle.position = {x, 0, y};
+                triangle.orientation = {0, 0, 0};
+                triangle.scale = {0.2, 0.2, 0.2};
+
+                triangle.updateFunc = [&](RenderObject &object, seconds_f deltaTime) {
+                    object.orientation += glm::vec3{0, -1, 0} * deltaTime.count();
+                    object.computeTransform();
                 };
 
                 renderObjects.push_back(triangle);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+
 #include <glm/mat4x4.hpp>
 
 #include "vk_mesh.h"
@@ -19,12 +21,17 @@ namespace dfv {
          * @param deltaTime The time since the last frame in seconds
          */
         using UpdateFunc = std::function<void(RenderObject &object, seconds_f deltaTime)>;
+        UpdateFunc updateFunc; //!< The function to call every frame to update the object before rendering.
 
         Mesh *mesh;
         Material *material;
 
+        glm::vec3 position;
+        glm::vec3 orientation;
+        glm::vec3 scale;
         glm::mat4 transformMatrix;
-        UpdateFunc updateFunc; //!< The function to call every frame to update the object before rendering.
+
+        void computeTransform();
     };
 
 } // namespace dfv

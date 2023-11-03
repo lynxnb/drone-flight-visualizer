@@ -11,6 +11,7 @@ add_executable(drone_flight_visualizer
         vulkan/vk_mesh.cpp
         vulkan/vk_engine_utils.cpp
         vulkan/vk_engine_init.cpp
+        vulkan/render_object.cpp
         input/input_handler.cpp
 )
 target_include_directories(drone_flight_visualizer PRIVATE ".")
