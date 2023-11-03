@@ -5,7 +5,6 @@
 
 #include <VkBootstrap.h>
 #include <glm/gtx/transform.hpp>
-#include <vk_mem_alloc.h>
 #include <vulkan/vk_enum_string_helper.h>
 
 #define SOURCE_LOCATION __builtin_FILE() << ":" << __builtin_LINE() << " (" << __builtin_FUNCTION() << ")"

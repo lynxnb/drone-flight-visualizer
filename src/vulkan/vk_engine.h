@@ -5,8 +5,6 @@
 #include <span>
 #include <vector>
 
-#include <vk_mem_alloc.h>
-
 #include "deletion_queue.h"
 #include "render_object.h"
 #include "vk_mesh.h"
