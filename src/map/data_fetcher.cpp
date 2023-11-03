@@ -158,6 +158,18 @@ namespace dfv::map {
         }
         return osmData;
     }
-    
+    std::vector<Vertex> map::vertexesFromNodes(const std::vector<structs::Node> &nodes) {
+        std::vector<Vertex> vertexes;
+        constexpr int WorldRadius = 6371;
+        for (const auto& node : nodes) {
+            // convert lat/lon to cartesian coordinates
+            double x = cos(node.lat) * cos(node.lon) * WorldRadius;
+            double z = cos(node.lat) * sin(node.lon) * WorldRadius;
+            //TODO: rivisitare la conversione dell'elevazione
+            double y = node.elev;
+            vertexes.emplace_back(glm::vec3(x, y, z), glm::vec3(0.0f, 1.0f, 0.0f));
+        }
+        return vertexes;
+    }
 }
 
