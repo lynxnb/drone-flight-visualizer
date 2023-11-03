@@ -27,3 +27,4 @@ target_link_libraries(drone_flight_visualizer PRIVATE
 )
 
 add_dependencies(drone_flight_visualizer Shaders)
+add_dependencies(drone_flight_visualizer Assets)

@@ -62,3 +62,10 @@ include_directories(SYSTEM ${tinyobjloader_SOURCE_DIR})
 add_subdirectory(src)
 
 add_subdirectory(shaders)
+
+add_custom_target(Assets ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/assets
+        ${OUTPUT_BINARY_DIR}/assets
+)
+message(STATUS "Registering assets copy to ${OUTPUT_BINARY_DIR}/assets")
