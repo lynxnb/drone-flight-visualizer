@@ -3,7 +3,7 @@ add_executable(drone_flight_visualizer
         main.cpp
         context.cpp
         renderer/renderer.cpp
-        utils/data_reader.cpp
+        map/data_reader.cpp
         vulkan/vk_engine.cpp
         vulkan/vk_initializers.cpp
         vulkan/vk_pipeline.cpp
@@ -13,6 +13,7 @@ add_executable(drone_flight_visualizer
         vulkan/vk_engine_init.cpp
         vulkan/render_object.cpp
         input/input_handler.cpp
+        map/data_fetcher.cpp
 )
 target_include_directories(drone_flight_visualizer PRIVATE ".")
 
