@@ -52,11 +52,10 @@ namespace dfv {
                                                      .select()
                                                      .value();
 
-        // Request the 'shader draw parameters' feature
-        VkPhysicalDeviceShaderDrawParametersFeatures shaderDrawParametersFeatures = {};
-        shaderDrawParametersFeatures.pNext = nullptr;
-        shaderDrawParametersFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
-        shaderDrawParametersFeatures.shaderDrawParameters = VK_TRUE;
+        // Request the 'shader draw parameters' feature for gl_BaseInstance used in the vertex shader
+        VkPhysicalDeviceShaderDrawParametersFeatures shaderDrawParametersFeatures =
+                {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES,
+                 .shaderDrawParameters = VK_TRUE};
 
         // Create the final Vulkan device
         vkb::DeviceBuilder deviceBuilder{physicalDevice};
@@ -74,11 +73,10 @@ namespace dfv {
         graphicsQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::graphics).value();
 
         // Initialize the memory allocator
-        VmaAllocatorCreateInfo allocatorInfo = {};
-        allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_1;
-        allocatorInfo.physicalDevice = chosenGPU;
-        allocatorInfo.device = device;
-        allocatorInfo.instance = instance;
+        VmaAllocatorCreateInfo allocatorInfo = {.physicalDevice = chosenGPU,
+                                                .device = device,
+                                                .instance = instance,
+                                                .vulkanApiVersion = VK_API_VERSION_1_1};
 
         vmaCreateAllocator(&allocatorInfo, &allocator);
 
@@ -103,7 +101,7 @@ namespace dfv {
 
         swapchainImageFormat = vkbSwapchain.image_format;
 
-        // Enqueue the destruction of the swapchain
+        // Enqueue the destruction of the swapchain, this will destruct images too
         mainDeletionQueue.pushFunction([=, this]() {
             vkDestroySwapchainKHR(device, swapchain, nullptr);
         });
@@ -115,18 +113,20 @@ namespace dfv {
         depthFormat = VK_FORMAT_D32_SFLOAT;
 
         // The depth image will be an image with the format we selected and depth attachment usage flag
-        VkImageCreateInfo depthImageInfo = vkinit::image_create_info(depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthImageExtent);
+        VkImageCreateInfo depthImageInfo = vkinit::image_create_info(
+                depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthImageExtent);
 
         // For the depth image, we want to allocate it from GPU local memory
-        VmaAllocationCreateInfo depthImageAllocInfo = {};
-        depthImageAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-        depthImageAllocInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        VmaAllocationCreateInfo depthImageAllocInfo = {.usage = VMA_MEMORY_USAGE_GPU_ONLY,
+                                                       .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT};
 
         // Allocate and create the image
-        VK_CHECK(vmaCreateImage(allocator, &depthImageInfo, &depthImageAllocInfo, &depthImage.image, &depthImage.allocation, nullptr));
+        VK_CHECK(vmaCreateImage(allocator, &depthImageInfo, &depthImageAllocInfo,
+                                &depthImage.image, &depthImage.allocation, nullptr));
 
         //build an image-view for the depth image to use for rendering
-        VkImageViewCreateInfo depthImageViewInfo = vkinit::imageview_create_info(depthFormat, depthImage.image, VK_IMAGE_ASPECT_DEPTH_BIT);
+        VkImageViewCreateInfo depthImageViewInfo = vkinit::imageview_create_info(depthFormat, depthImage.image,
+                                                                                 VK_IMAGE_ASPECT_DEPTH_BIT);
 
         VK_CHECK(vkCreateImageView(device, &depthImageViewInfo, nullptr, &depthImageView));
 
@@ -138,8 +138,8 @@ namespace dfv {
 
     void VulkanEngine::initCommands() {
         // Require the pool to allow for resetting of individual command buffers
-        VkCommandPoolCreateInfo commandPoolInfo = vkinit::command_pool_create_info(graphicsQueueFamily,
-                                                                                   VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+        VkCommandPoolCreateInfo commandPoolInfo = vkinit::command_pool_create_info(
+                graphicsQueueFamily, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
         // Create a command pool per frame, with one command buffer in it
         for (auto &frame : frames) {
@@ -172,12 +172,10 @@ namespace dfv {
     void VulkanEngine::initSyncStructures() {
         // We want to create the fence with the Create Signaled flag, so we can wait on it before using it on a GPU command (for the first frame)
         VkFenceCreateInfo fenceCreateInfo = vkinit::fence_create_info(VK_FENCE_CREATE_SIGNALED_BIT);
+        VkSemaphoreCreateInfo semaphoreCreateInfo = vkinit::semaphore_create_info();
 
         for (auto &frame : frames) {
             VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &frame.renderFence));
-
-            VkSemaphoreCreateInfo semaphoreCreateInfo = vkinit::semaphore_create_info();
-
             VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &frame.presentSemaphore));
             VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &frame.renderSemaphore));
 
@@ -191,85 +189,74 @@ namespace dfv {
 
         VkFenceCreateInfo uploadFenceCreateInfo = vkinit::fence_create_info();
         VK_CHECK(vkCreateFence(device, &uploadFenceCreateInfo, nullptr, &uploadContext.uploadFence));
+
         mainDeletionQueue.pushFunction([=, this]() {
             vkDestroyFence(device, uploadContext.uploadFence, nullptr);
         });
     }
 
     void VulkanEngine::initDefaultRenderpass() {
-        // Allocate memory for the attachments
-        std::array<VkAttachmentDescription, 2> attachments = {};
+        // The default renderpass will draw to the framebuffer image and use the depth image for depth testing
 
-        VkAttachmentDescription &colorAttachment = attachments[0]; // The renderpass will use this color attachment.
-        colorAttachment.format = swapchainImageFormat; // The attachment will have the format needed by the swapchain
-        colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT; // 1 sample, we won't be doing MSAA
-        colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; // We Clear when this attachment is loaded
-        colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE; // We keep the attachment stored when the renderpass ends
-        colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; // We don't care about stencil
-        colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; // We don't know or care about the starting layout of the attachment
-        colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; // After the renderpass ends, the image has to be on a layout ready for display
+        // The color attachment that describes the output image used by the render pass
+        VkAttachmentDescription colorAttachment = {.format = swapchainImageFormat, // The attachment will have the format needed by the swapchain
+                                                   .samples = VK_SAMPLE_COUNT_1_BIT, // 1 sample, we won't be doing MSAA
+                                                   .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR, // Clear the attachment when it is loaded
+                                                   .storeOp = VK_ATTACHMENT_STORE_OP_STORE, // Store to the attachment when the renderpass ends
+                                                   .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE, // Ignore stencil, this is a color attachment only
+                                                   .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                   .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED, // Don't care about the starting layout of the attachment
+                                                   .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR}; // Request a layout ready for display at the end of the renderpass
 
-        VkAttachmentReference colorAttachmentRef = {};
-        colorAttachmentRef.attachment = 0; // Attachment number will index into the pAttachments array in the parent renderpass itself
-        colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        // The depth buffer will be a simple depth image
+        VkAttachmentDescription depthAttachment = {.format = depthFormat,
+                                                   .samples = VK_SAMPLE_COUNT_1_BIT,
+                                                   .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                                   .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+                                                   .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                                   .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                   .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                                                   .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
 
-        // Depth attachment
-        VkAttachmentDescription &depthAttachment = attachments[1];
-        depthAttachment.flags = 0;
-        depthAttachment.format = depthFormat;
-        depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-        depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        // Attachment number will index into the pAttachments array in the parent renderpass
+        VkAttachmentReference colorAttachmentRef = {.attachment = 0,
+                                                    .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
 
-        VkAttachmentReference depthAttachmentRef = {};
-        depthAttachmentRef.attachment = 1;
-        depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        VkAttachmentReference depthAttachmentRef = {.attachment = 1,
+                                                    .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
 
-        // Create 1 subpass, which is the minimum you can do
-        VkSubpassDescription subpass = {};
-        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        subpass.colorAttachmentCount = 1;
-        subpass.pColorAttachments = &colorAttachmentRef;
-        subpass.pDepthStencilAttachment = &depthAttachmentRef;
+        // Create a subpass that uses the above attachments
+        VkSubpassDescription subpass = {.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                        .colorAttachmentCount = 1,
+                                        .pColorAttachments = &colorAttachmentRef,
+                                        .pDepthStencilAttachment = &depthAttachmentRef};
 
-        // Allocate memory for the subpass dependencies
-        std::array<VkSubpassDependency, 2> dependencies = {};
+        // Color dependency between color writes of the previous frame and writes of the current frame
+        VkSubpassDependency colorDependency = {.srcSubpass = VK_SUBPASS_EXTERNAL,
+                                               .dstSubpass = 0,
+                                               .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                               .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                               .srcAccessMask = 0,
+                                               .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT};
 
-        // Color dependency
-        VkSubpassDependency &colorDependency = dependencies[0];
-        colorDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-        colorDependency.dstSubpass = 0;
-        colorDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        colorDependency.srcAccessMask = 0;
-        colorDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        colorDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        // Depth dependency between depth writes of the previous frame and writes of the current frame
+        VkSubpassDependency depthDependency = {.srcSubpass = VK_SUBPASS_EXTERNAL,
+                                               .dstSubpass = 0,
+                                               .srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                                               .dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                                               .srcAccessMask = 0,
+                                               .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT};
 
-        // Depth dependency
-        VkSubpassDependency &depthDependency = dependencies[1];
-        depthDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-        depthDependency.dstSubpass = 0;
-        depthDependency.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-        depthDependency.srcAccessMask = 0;
-        depthDependency.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-        depthDependency.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        std::array attachments = {colorAttachment, depthAttachment};
+        std::array dependencies = {colorDependency, depthDependency};
 
-        VkRenderPassCreateInfo renderPassInfo = {};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-
-        // Set the color/depth attachments
-        renderPassInfo.attachmentCount = attachments.size();
-        renderPassInfo.pAttachments = attachments.data();
-        // Set the subpass
-        renderPassInfo.subpassCount = 1;
-        renderPassInfo.pSubpasses = &subpass;
-        // Set the subpass dependencies
-        renderPassInfo.dependencyCount = dependencies.size();
-        renderPassInfo.pDependencies = dependencies.data();
+        VkRenderPassCreateInfo renderPassInfo = {.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+                                                 .attachmentCount = attachments.size(),
+                                                 .pAttachments = attachments.data(),
+                                                 .subpassCount = 1,
+                                                 .pSubpasses = &subpass,
+                                                 .dependencyCount = dependencies.size(),
+                                                 .pDependencies = dependencies.data()};
 
         VK_CHECK(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass));
 
@@ -277,31 +264,27 @@ namespace dfv {
         mainDeletionQueue.pushFunction([=, this]() {
             vkDestroyRenderPass(device, renderPass, nullptr);
         });
-    }
+    } // namespace dfv
 
     void VulkanEngine::initFramebuffers() {
         // Create the framebuffers for the swapchain images. This will connect the renderpass to the images for rendering
-        VkFramebufferCreateInfo fbInfo = {};
-        fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fbInfo.pNext = nullptr;
+        VkFramebufferCreateInfo framebufferInfo = {.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+                                                   .renderPass = renderPass,
+                                                   .width = windowExtent.width,
+                                                   .height = windowExtent.height,
+                                                   .layers = 1};
 
-        fbInfo.renderPass = renderPass;
-        fbInfo.width = windowExtent.width;
-        fbInfo.height = windowExtent.height;
-        fbInfo.layers = 1;
-
-        // Grab how many images we have in the swapchain
         const uint32_t swapchainImageCount = swapchainImages.size();
         framebuffers = std::vector<VkFramebuffer>(swapchainImageCount);
 
         // Create framebuffers for each of the swapchain image views
         for (int i = 0; i < swapchainImageCount; i++) {
             // Allocate memory for the attachments
-            std::array<VkImageView, 2> attachments = {swapchainImageViews[i], depthImageView};
-            fbInfo.attachmentCount = attachments.size();
-            fbInfo.pAttachments = attachments.data();
+            std::array attachments = {swapchainImageViews[i], depthImageView};
+            framebufferInfo.attachmentCount = attachments.size();
+            framebufferInfo.pAttachments = attachments.data();
 
-            VK_CHECK(vkCreateFramebuffer(device, &fbInfo, nullptr, &framebuffers[i]));
+            VK_CHECK(vkCreateFramebuffer(device, &framebufferInfo, nullptr, &framebuffers[i]));
 
             // Enqueue the destruction of the framebuffers
             mainDeletionQueue.pushFunction([=, this]() {
@@ -318,12 +301,11 @@ namespace dfv {
                 VkDescriptorPoolSize{        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10}
         };
 
-        VkDescriptorPoolCreateInfo poolInfo = {};
-        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        poolInfo.flags = 0;
-        poolInfo.maxSets = 10;
-        poolInfo.poolSizeCount = poolSizes.size();
-        poolInfo.pPoolSizes = poolSizes.data();
+        VkDescriptorPoolCreateInfo poolInfo = {.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+                                               .flags = 0,
+                                               .maxSets = 10,
+                                               .poolSizeCount = poolSizes.size(),
+                                               .pPoolSizes = poolSizes.data()};
 
         vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool);
 
@@ -336,26 +318,22 @@ namespace dfv {
         bindings[1] = vkinit::descriptorset_layout_binding(
                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 1);
 
-        VkDescriptorSetLayoutCreateInfo setInfo = {};
-        setInfo.pNext = nullptr;
-        setInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        setInfo.bindingCount = bindings.size();
-        setInfo.flags = 0;
-        setInfo.pBindings = bindings.data();
+        VkDescriptorSetLayoutCreateInfo globalSetInfo = {.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+                                                         .flags = 0,
+                                                         .bindingCount = bindings.size(),
+                                                         .pBindings = bindings.data()};
 
         // Binding for object data at 0 of second set
-        VkDescriptorSetLayoutBinding objectBind = vkinit::descriptorset_layout_binding(
+        VkDescriptorSetLayoutBinding objectBinding = vkinit::descriptorset_layout_binding(
                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0);
 
-        VkDescriptorSetLayoutCreateInfo set2info = {};
-        set2info.pNext = nullptr;
-        set2info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        set2info.bindingCount = 1;
-        set2info.flags = 0;
-        set2info.pBindings = &objectBind;
+        VkDescriptorSetLayoutCreateInfo objectSetInfo = {.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+                                                         .flags = 0,
+                                                         .bindingCount = 1,
+                                                         .pBindings = &objectBinding};
 
-        vkCreateDescriptorSetLayout(device, &setInfo, nullptr, &globalSetLayout);
-        vkCreateDescriptorSetLayout(device, &set2info, nullptr, &objectSetLayout);
+        vkCreateDescriptorSetLayout(device, &globalSetInfo, nullptr, &globalSetLayout);
+        vkCreateDescriptorSetLayout(device, &objectSetInfo, nullptr, &objectSetLayout);
 
         const size_t sceneParamBufferSize = MaxFramesInFlight * uniformBufferSizeAlignUp(sizeof(SceneData));
         sceneParametersBuffer = createUniformBuffer(sceneParamBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
@@ -374,43 +352,34 @@ namespace dfv {
                 vmaDestroyBuffer(allocator, frame.objectBuffer.buffer, frame.objectBuffer.allocation);
             });
 
-            // Allocate one descriptor set for each frame
-            VkDescriptorSetAllocateInfo allocInfo = {};
-            allocInfo.pNext = nullptr;
-            allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-            // using the pool we just created
-            allocInfo.descriptorPool = descriptorPool;
-            allocInfo.descriptorSetCount = 1;
-            // using the global data layout
-            allocInfo.pSetLayouts = &globalSetLayout;
+            // Allocate a global descriptor set per frame
+            VkDescriptorSetAllocateInfo globalSetAlloc = {.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+                                                          .descriptorPool = descriptorPool,
+                                                          .descriptorSetCount = 1,
+                                                          .pSetLayouts = &globalSetLayout};
 
-            vkAllocateDescriptorSets(device, &allocInfo, &frame.globalDescriptor);
+            vkAllocateDescriptorSets(device, &globalSetAlloc, &frame.globalDescriptor);
 
-            // Allocate the descriptor set that will point to object buffer
-            VkDescriptorSetAllocateInfo objectSetAlloc = {};
-            objectSetAlloc.pNext = nullptr;
-            objectSetAlloc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-            objectSetAlloc.descriptorPool = descriptorPool;
-            objectSetAlloc.descriptorSetCount = 1;
-            objectSetAlloc.pSetLayouts = &objectSetLayout;
+            // Allocate an object descriptor set per frame
+            VkDescriptorSetAllocateInfo objectSetAlloc = {.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+                                                          .descriptorPool = descriptorPool,
+                                                          .descriptorSetCount = 1,
+                                                          .pSetLayouts = &objectSetLayout};
 
             vkAllocateDescriptorSets(device, &objectSetAlloc, &frame.objectDescriptor);
 
             // Update the global descriptor with our camera data
-            VkDescriptorBufferInfo cameraInfo;
-            cameraInfo.buffer = frame.cameraBuffer.buffer;
-            cameraInfo.offset = 0;
-            cameraInfo.range = sizeof(CameraData);
+            VkDescriptorBufferInfo cameraInfo = {.buffer = frame.cameraBuffer.buffer,
+                                                 .offset = 0,
+                                                 .range = sizeof(CameraData)};
 
-            VkDescriptorBufferInfo sceneInfo;
-            sceneInfo.buffer = sceneParametersBuffer.buffer;
-            sceneInfo.offset = 0;
-            sceneInfo.range = sizeof(SceneData);
+            VkDescriptorBufferInfo sceneInfo = {.buffer = sceneParametersBuffer.buffer,
+                                                .offset = 0,
+                                                .range = sizeof(SceneData)};
 
-            VkDescriptorBufferInfo objectInfo;
-            objectInfo.buffer = frame.objectBuffer.buffer;
-            objectInfo.offset = 0;
-            objectInfo.range = sizeof(ObjectData) * MAX_OBJECTS;
+            VkDescriptorBufferInfo objectInfo = {.buffer = frame.objectBuffer.buffer,
+                                                 .offset = 0,
+                                                 .range = sizeof(ObjectData) * MAX_OBJECTS};
 
             auto cameraWrite = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frame.globalDescriptor, &cameraInfo, 0);
             auto sceneWrite = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, frame.globalDescriptor, &sceneInfo, 1);

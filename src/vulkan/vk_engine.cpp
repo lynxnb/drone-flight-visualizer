@@ -207,12 +207,8 @@ namespace dfv {
         VkCommandBuffer cmd = frame.mainCommandBuffer;
 
         // Begin the command buffer recording. We will use this command buffer exactly once, so we want to let Vulkan know that
-        VkCommandBufferBeginInfo cmdBeginInfo = {};
-        cmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        cmdBeginInfo.pNext = nullptr;
-
-        cmdBeginInfo.pInheritanceInfo = nullptr;
-        cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        VkCommandBufferBeginInfo cmdBeginInfo = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                                                 .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
 
         VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
@@ -232,19 +228,12 @@ namespace dfv {
 
         // Start the main renderpass
         // We will use the clear color from above, and the framebuffer of the index the swapchain gave us
-        VkRenderPassBeginInfo rpInfo = {};
-        rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        rpInfo.pNext = nullptr;
-
-        rpInfo.renderPass = renderPass;
-        rpInfo.renderArea.offset.x = 0;
-        rpInfo.renderArea.offset.y = 0;
-        rpInfo.renderArea.extent = windowExtent;
-        rpInfo.framebuffer = framebuffers[swapchainImageIndex];
-
-        // Set clear values
-        rpInfo.clearValueCount = clearValues.size();
-        rpInfo.pClearValues = clearValues.data();
+        VkRenderPassBeginInfo rpInfo = {.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+                                        .renderPass = renderPass,
+                                        .framebuffer = framebuffers[swapchainImageIndex],
+                                        .renderArea = {.extent = windowExtent},
+                                        .clearValueCount = clearValues.size(),
+                                        .pClearValues = clearValues.data()};
 
         vkCmdBeginRenderPass(cmd, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -255,44 +244,33 @@ namespace dfv {
         // Finalize the command buffer (we can no longer add commands, but it can now be executed)
         VK_CHECK(vkEndCommandBuffer(cmd));
 
-        // Prepare the submission to the queue.
-        // We want to wait on the presentSemaphore, as that semaphore is signaled when the swapchain is ready
-        // We will signal the renderSemaphore, to signal that rendering has finished
-        VkSubmitInfo submit = {};
-        submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submit.pNext = nullptr;
-
         VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
-        submit.pWaitDstStageMask = &waitStage;
+        // Prepare the submission to the queue
+        // We want to wait on the presentSemaphore, as that semaphore is signaled when the swapchain is ready
+        // We will signal the renderSemaphore, to signal that rendering has finished
+        VkSubmitInfo submit = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                               .waitSemaphoreCount = 1,
+                               .pWaitSemaphores = &frame.presentSemaphore,
+                               .pWaitDstStageMask = &waitStage,
+                               .commandBufferCount = 1,
+                               .pCommandBuffers = &cmd,
+                               .signalSemaphoreCount = 1,
+                               .pSignalSemaphores = &frame.renderSemaphore};
 
-        submit.waitSemaphoreCount = 1;
-        submit.pWaitSemaphores = &frame.presentSemaphore;
-
-        submit.signalSemaphoreCount = 1;
-        submit.pSignalSemaphores = &frame.renderSemaphore;
-
-        submit.commandBufferCount = 1;
-        submit.pCommandBuffers = &cmd;
-
-        // Submit command buffer to the queue and execute it.
+        // Submit command buffer to the queue and execute it
         // renderFence will now block until the graphic commands finish execution
         VK_CHECK(vkQueueSubmit(graphicsQueue, 1, &submit, frame.renderFence));
 
         // This will put the image we just rendered into the visible window
         // We want to wait on the renderSemaphore for that,
         // as it's necessary that drawing commands have finished before the image is displayed to the user
-        VkPresentInfoKHR presentInfo = {};
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        presentInfo.pNext = nullptr;
-
-        presentInfo.pSwapchains = &swapchain;
-        presentInfo.swapchainCount = 1;
-
-        presentInfo.pWaitSemaphores = &frame.renderSemaphore;
-        presentInfo.waitSemaphoreCount = 1;
-
-        presentInfo.pImageIndices = &swapchainImageIndex;
+        VkPresentInfoKHR presentInfo = {.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+                                        .waitSemaphoreCount = 1,
+                                        .pWaitSemaphores = &frame.renderSemaphore,
+                                        .swapchainCount = 1,
+                                        .pSwapchains = &swapchain,
+                                        .pImageIndices = &swapchainImageIndex};
 
         VK_CHECK(vkQueuePresentKHR(graphicsQueue, &presentInfo));
 

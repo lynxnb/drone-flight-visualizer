@@ -1,5 +1,7 @@
 #include "deletion_queue.h"
 
+#include <ranges>
+
 namespace dfv {
 
     void DeletionQueue::pushFunction(std::function<void()> &&function) {
@@ -7,9 +9,9 @@ namespace dfv {
     }
 
     void DeletionQueue::flush() {
-        // reverse iterate the deletion queue to execute all the functions
-        for (auto it = deletors.rbegin(); it != deletors.rend(); it++)
-            (*it)(); // call functors
+        // Reverse iterate the deletion queue to execute all the functions
+        for (auto &deletor : std::ranges::reverse_view(deletors))
+            deletor();
         deletors.clear();
     }
 

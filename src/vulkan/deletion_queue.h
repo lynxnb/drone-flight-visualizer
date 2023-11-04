@@ -26,6 +26,16 @@ namespace dfv {
          * Flushes the deletion queue
          */
         void flush();
+
+        DeletionQueue() = default;
+
+        // Dissallow copying but allow moving
+        DeletionQueue(const DeletionQueue &) = delete;
+        DeletionQueue(DeletionQueue &&) noexcept = default;
+
+        // Disallow reassignment
+        void operator=(const DeletionQueue &) = delete;
+        void operator=(DeletionQueue &&) = delete;
     };
 
 } // namespace dfv
