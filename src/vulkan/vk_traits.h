@@ -13,6 +13,7 @@ namespace dfv {
         std::string apiVersion;
         std::string driverVersion;
         size_t minUniformBufferOffsetAlignment{};
+        size_t maxPushConstantsSize{};
 
         VulkanTraits() = default;
 
@@ -28,6 +29,7 @@ namespace dfv {
                                         VK_VERSION_PATCH(props.driverVersion));
 
             minUniformBufferOffsetAlignment = props.limits.minUniformBufferOffsetAlignment;
+            maxPushConstantsSize = props.limits.maxPushConstantsSize;
         }
 
         /**
@@ -39,11 +41,13 @@ namespace dfv {
                                " Vulkan version: {}\n"
                                " Driver version: {}\n"
                                "Traits:\n"
-                               "* Min uniform buffer offset alignment: {}",
+                               "* Min uniform buffer offset alignment: {}\n"
+                               "* Max push constants size: {}",
                                deviceName,
                                apiVersion,
                                driverVersion,
-                               minUniformBufferOffsetAlignment);
+                               minUniformBufferOffsetAlignment,
+                               maxPushConstantsSize);
         }
     };
 
