@@ -105,6 +105,121 @@ namespace dfv {
         cameraParameters.rotationSpeed = glm::radians(30.f);
     }
 
+    void VulkanEngine::update(seconds_f deltaTime) {
+        for (auto &object : renderObjects) {
+            if (object.updateFunc)
+                object.updateFunc(object, deltaTime);
+        }
+
+        updateCamera(deltaTime);
+    }
+
+    void VulkanEngine::updateCamera(seconds_f deltaTime) {
+        glm::vec3 cameraOrientation = {cameraParameters.pitchDirection.load(std::memory_order_relaxed),
+                                       cameraParameters.yawDirection.load(std::memory_order_relaxed),
+                                       0.f};
+
+        // Multiply by delta time for framerate-independent movement
+        cameraParameters.orientation += cameraOrientation * cameraParameters.rotationSpeed * deltaTime.count();
+
+        glm::vec3 directions = {cameraParameters.surgeDirection.load(std::memory_order_relaxed), // Forward/backward
+                                cameraParameters.heaveDirection.load(std::memory_order_relaxed), // Up/down
+                                cameraParameters.swayDirection.load(std::memory_order_relaxed)}; // Left/right
+        float yaw = cameraParameters.orientation.y;
+        glm::vec3 cameraMovement = {directions.x * sin(yaw) + directions.z * cos(yaw),
+                                    directions.y,
+                                    directions.z * sin(yaw) - directions.x * cos(yaw)};
+
+        cameraParameters.position -= cameraMovement * cameraParameters.adjustedMovementSpeed() * deltaTime.count();
+    }
+
+    void VulkanEngine::draw() {
+        auto &frame = getCurrentFrame();
+        VkCommandBuffer cmd = frame.mainCommandBuffer;
+
+        // Wait until the GPU has finished rendering the last frame, 1 second timeout
+        VK_CHECK(vkWaitForFences(device, 1, &frame.renderFence, true, 1000000000));
+        VK_CHECK(vkResetFences(device, 1, &frame.renderFence));
+
+        // Request an image from the swapchain, 1 second timeout
+        uint32_t swapchainImageIndex;
+        VK_CHECK(vkAcquireNextImageKHR(device, swapchain, 1000000000, frame.presentSemaphore, nullptr, &swapchainImageIndex));
+
+        // Now that we are sure that the commands finished executing, we can safely reset the command buffer to begin recording again
+        VK_CHECK(vkResetCommandBuffer(frame.mainCommandBuffer, 0));
+
+        // Begin the command buffer recording. We will use this command buffer exactly once, so we want to let Vulkan know that
+        VkCommandBufferBeginInfo cmdBeginInfo = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                                                 .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
+
+        VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
+
+        // Allocate memory for the clear values
+        std::array<VkClearValue, 2> clearValues = {};
+
+        // Make a clear-color from frame number. This will flash with a 120*pi frame period.
+        VkClearValue &colorClear = clearValues[0];
+        float flash = abs(sin(static_cast<float>(frameNumber) / 120.f));
+        colorClear.color = {
+                {0.0f, 0.0f, flash, 1.0f}
+        };
+
+        // Clear depth
+        VkClearValue &depthClear = clearValues[1];
+        depthClear.depthStencil.depth = 1.0f;
+
+        // Start the main renderpass
+        // We will use the clear color from above, and the framebuffer of the index the swapchain gave us
+        VkRenderPassBeginInfo rpInfo = {.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+                                        .renderPass = renderPass,
+                                        .framebuffer = framebuffers[swapchainImageIndex],
+                                        .renderArea = {.extent = windowExtent},
+                                        .clearValueCount = clearValues.size(),
+                                        .pClearValues = clearValues.data()};
+
+        vkCmdBeginRenderPass(cmd, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+        drawObjects(cmd);
+
+        // Finalize the render pass
+        vkCmdEndRenderPass(cmd);
+        // Finalize the command buffer (we can no longer add commands, but it can now be executed)
+        VK_CHECK(vkEndCommandBuffer(cmd));
+
+        VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+        // Prepare the submission to the queue
+        // We want to wait on the presentSemaphore, as that semaphore is signaled when the swapchain is ready
+        // We will signal the renderSemaphore, to signal that rendering has finished
+        VkSubmitInfo submit = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                               .waitSemaphoreCount = 1,
+                               .pWaitSemaphores = &frame.presentSemaphore,
+                               .pWaitDstStageMask = &waitStage,
+                               .commandBufferCount = 1,
+                               .pCommandBuffers = &cmd,
+                               .signalSemaphoreCount = 1,
+                               .pSignalSemaphores = &frame.renderSemaphore};
+
+        // Submit command buffer to the queue and execute it
+        // renderFence will now block until the graphic commands finish execution
+        VK_CHECK(vkQueueSubmit(graphicsQueue, 1, &submit, frame.renderFence));
+
+        // This will put the image we just rendered into the visible window
+        // We want to wait on the renderSemaphore for that,
+        // as it's necessary that drawing commands have finished before the image is displayed to the user
+        VkPresentInfoKHR presentInfo = {.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+                                        .waitSemaphoreCount = 1,
+                                        .pWaitSemaphores = &frame.renderSemaphore,
+                                        .swapchainCount = 1,
+                                        .pSwapchains = &swapchain,
+                                        .pImageIndices = &swapchainImageIndex};
+
+        VK_CHECK(vkQueuePresentKHR(graphicsQueue, &presentInfo));
+
+        // Increase the number of frames drawn
+        frameNumber++;
+    }
+
     void VulkanEngine::drawObjects(VkCommandBuffer cmdBuf) {
         auto &frame = getCurrentFrame();
 
@@ -188,122 +303,6 @@ namespace dfv {
 
             vkCmdDraw(cmdBuf, object.mesh->vertices.size(), 1, 0, objectIndex);
         }
-    }
-
-    void VulkanEngine::draw() {
-        auto &frame = getCurrentFrame();
-
-        // Wait until the GPU has finished rendering the last frame, 1 second timeout
-        VK_CHECK(vkWaitForFences(device, 1, &frame.renderFence, true, 1000000000));
-        VK_CHECK(vkResetFences(device, 1, &frame.renderFence));
-
-        // Request an image from the swapchain, 1 second timeout
-        uint32_t swapchainImageIndex;
-        VK_CHECK(vkAcquireNextImageKHR(device, swapchain, 1000000000, frame.presentSemaphore, nullptr, &swapchainImageIndex));
-
-        // Now that we are sure that the commands finished executing, we can safely reset the command buffer to begin recording again
-        VK_CHECK(vkResetCommandBuffer(frame.mainCommandBuffer, 0));
-
-        VkCommandBuffer cmd = frame.mainCommandBuffer;
-
-        // Begin the command buffer recording. We will use this command buffer exactly once, so we want to let Vulkan know that
-        VkCommandBufferBeginInfo cmdBeginInfo = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-                                                 .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
-
-        VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
-
-        // Allocate memory for the clear values
-        std::array<VkClearValue, 2> clearValues = {};
-
-        // Make a clear-color from frame number. This will flash with a 120*pi frame period.
-        VkClearValue &colorClear = clearValues[0];
-        float flash = abs(sin(static_cast<float>(frameNumber) / 120.f));
-        colorClear.color = {
-                {0.0f, 0.0f, flash, 1.0f}
-        };
-
-        // Clear depth
-        VkClearValue &depthClear = clearValues[1];
-        depthClear.depthStencil.depth = 1.0f;
-
-        // Start the main renderpass
-        // We will use the clear color from above, and the framebuffer of the index the swapchain gave us
-        VkRenderPassBeginInfo rpInfo = {.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-                                        .renderPass = renderPass,
-                                        .framebuffer = framebuffers[swapchainImageIndex],
-                                        .renderArea = {.extent = windowExtent},
-                                        .clearValueCount = clearValues.size(),
-                                        .pClearValues = clearValues.data()};
-
-        vkCmdBeginRenderPass(cmd, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-        drawObjects(cmd);
-
-        // Finalize the render pass
-        vkCmdEndRenderPass(cmd);
-        // Finalize the command buffer (we can no longer add commands, but it can now be executed)
-        VK_CHECK(vkEndCommandBuffer(cmd));
-
-        VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-
-        // Prepare the submission to the queue
-        // We want to wait on the presentSemaphore, as that semaphore is signaled when the swapchain is ready
-        // We will signal the renderSemaphore, to signal that rendering has finished
-        VkSubmitInfo submit = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                               .waitSemaphoreCount = 1,
-                               .pWaitSemaphores = &frame.presentSemaphore,
-                               .pWaitDstStageMask = &waitStage,
-                               .commandBufferCount = 1,
-                               .pCommandBuffers = &cmd,
-                               .signalSemaphoreCount = 1,
-                               .pSignalSemaphores = &frame.renderSemaphore};
-
-        // Submit command buffer to the queue and execute it
-        // renderFence will now block until the graphic commands finish execution
-        VK_CHECK(vkQueueSubmit(graphicsQueue, 1, &submit, frame.renderFence));
-
-        // This will put the image we just rendered into the visible window
-        // We want to wait on the renderSemaphore for that,
-        // as it's necessary that drawing commands have finished before the image is displayed to the user
-        VkPresentInfoKHR presentInfo = {.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-                                        .waitSemaphoreCount = 1,
-                                        .pWaitSemaphores = &frame.renderSemaphore,
-                                        .swapchainCount = 1,
-                                        .pSwapchains = &swapchain,
-                                        .pImageIndices = &swapchainImageIndex};
-
-        VK_CHECK(vkQueuePresentKHR(graphicsQueue, &presentInfo));
-
-        // Increase the number of frames drawn
-        frameNumber++;
-    }
-
-    void VulkanEngine::update(seconds_f deltaTime) {
-        for (auto &object : renderObjects) {
-            if (object.updateFunc)
-                object.updateFunc(object, deltaTime);
-        }
-
-        updateCamera(deltaTime);
-    }
-
-    void VulkanEngine::updateCamera(seconds_f deltaTime) {
-        glm::vec3 cameraOrientation = {cameraParameters.pitchDirection.load(std::memory_order_relaxed),
-                                       cameraParameters.yawDirection.load(std::memory_order_relaxed),
-                                       0.f};
-
-        // Multiply by delta time for framerate-independent movement
-        cameraParameters.orientation += cameraOrientation * cameraParameters.rotationSpeed * deltaTime.count();
-
-        glm::vec3 directions = {cameraParameters.surgeDirection.load(std::memory_order_relaxed), // Forward/backward
-                                cameraParameters.heaveDirection.load(std::memory_order_relaxed), // Up/down
-                                cameraParameters.swayDirection.load(std::memory_order_relaxed)}; // Left/right
-        float yaw = cameraParameters.orientation.y;
-        glm::vec3 cameraMovement = {directions.x * sin(yaw) + directions.z * cos(yaw),
-                                    directions.y,
-                                    directions.z * sin(yaw) - directions.x * cos(yaw)};
-
-        cameraParameters.position -= cameraMovement * cameraParameters.adjustedMovementSpeed() * deltaTime.count();
     }
 
     void VulkanEngine::cleanup() {
