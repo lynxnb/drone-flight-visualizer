@@ -223,7 +223,7 @@ namespace dfv {
          * @param outShaderModule A pointer to the shader module to write to.
          * @return True if the shader module was loaded successfully, false otherwise.
          */
-        bool loadShaderModule(const std::filesystem::path &filePath, VkShaderModule *outShaderModule) const;
+        std::optional<VkShaderModule> loadShaderModule(const std::filesystem::path &filePath) const;
 
         /**
          * Creates a new uniform buffer with the given parameters.

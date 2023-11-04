@@ -435,23 +435,22 @@ namespace dfv {
         VkPipelineLayoutCreateInfo meshPipelineLayoutInfo = vkinit::pipeline_layout_create_info();
 
         // Setup push constants
-        VkPushConstantRange pushConstant;
-        // This push constant range starts at the beginning
-        pushConstant.offset = 0;
-        // This push constant range takes up the size of a MeshPushConstants struct
-        pushConstant.size = sizeof(MeshPushConstants);
-        // This push constant range is accessible only in the vertex shader
-        pushConstant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        VkPushConstantRange pushConstant = {.stageFlags = VK_SHADER_STAGE_VERTEX_BIT, // This push constant range is accessible only in the vertex shader
+                                            .offset = 0,
+                                            .size = sizeof(MeshPushConstants)}; // This push constant range takes up the size of a MeshPushConstants struct
 
         meshPipelineLayoutInfo.pPushConstantRanges = &pushConstant;
         meshPipelineLayoutInfo.pushConstantRangeCount = 1;
 
-        std::array<VkDescriptorSetLayout, 2> setLayouts = {globalSetLayout, objectSetLayout};
+        std::array setLayouts = {globalSetLayout, objectSetLayout};
         meshPipelineLayoutInfo.pSetLayouts = setLayouts.data();
         meshPipelineLayoutInfo.setLayoutCount = setLayouts.size();
 
         VkPipelineLayout meshPipelineLayout;
         VK_CHECK(vkCreatePipelineLayout(device, &meshPipelineLayoutInfo, nullptr, &meshPipelineLayout));
+
+        // Use the push constants layout
+        pipelineBuilder.pipelineLayout = meshPipelineLayout;
 
         // Build the mesh pipeline
         VertexInputDescription vertexDescription = Vertex::getVertexDescription();
@@ -464,36 +463,34 @@ namespace dfv {
         pipelineBuilder.vertexInputInfo.vertexBindingDescriptionCount = vertexDescription.bindings.size();
 
         // Compile mesh vertex shader
-        VkShaderModule meshVertShader;
-        if (!loadShaderModule("shaders/tri_mesh.vert.spv", &meshVertShader))
+        auto meshVertShader = loadShaderModule("shaders/tri_mesh.vert.spv");
+        if (!meshVertShader)
             std::cout << "Error when building the triangle vertex shader module" << std::endl;
         else
             std::cout << "Mesh Triangle vertex shader successfully loaded" << std::endl;
 
-        VkShaderModule colorMeshShader;
-        if (!loadShaderModule("shaders/default_lit.frag.spv", &colorMeshShader))
+        auto colorMeshShader = loadShaderModule("shaders/default_lit.frag.spv");
+        if (!colorMeshShader)
             std::cout << "Error when building the colored mesh shader" << std::endl;
         else
             std::cout << "Colored mesh shader successfully loaded" << std::endl;
 
         // Add the other shaders
         pipelineBuilder.shaderStages.push_back(
-                vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, meshVertShader));
+                vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, *meshVertShader));
 
         // Use default_lit shader
         pipelineBuilder.shaderStages.push_back(
-                vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, colorMeshShader));
+                vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, *colorMeshShader));
 
-        // Use the push constants layout
-        pipelineBuilder.pipelineLayout = meshPipelineLayout;
         // Build the mesh triangle pipeline
         VkPipeline meshPipeline = pipelineBuilder.buildPipeline(device, renderPass);
 
         createMaterial("defaultmesh", meshPipeline, meshPipelineLayout);
 
         // Delete all the vulkan shaders
-        vkDestroyShaderModule(device, meshVertShader, nullptr);
-        vkDestroyShaderModule(device, colorMeshShader, nullptr);
+        vkDestroyShaderModule(device, *meshVertShader, nullptr);
+        vkDestroyShaderModule(device, *colorMeshShader, nullptr);
 
         // Add the pipelines to the deletion queue
         mainDeletionQueue.pushFunction([=, this]() {

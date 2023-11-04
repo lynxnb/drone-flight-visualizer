@@ -1,5 +1,6 @@
 #include <fstream>
 #include <iostream>
+#include <optional>
 
 #include "vk_engine.h"
 
@@ -43,35 +44,30 @@ namespace dfv {
         vkResetCommandPool(device, uploadContext.commandPool, 0);
     }
 
-    bool VulkanEngine::loadShaderModule(const std::filesystem::path &filePath, VkShaderModule *outShaderModule) const {
+    std::optional<VkShaderModule> VulkanEngine::loadShaderModule(const std::filesystem::path &filePath) const {
         std::ifstream file(filePath, std::ios::ate | std::ios::binary);
 
         if (!file.is_open())
-            return false;
+            return std::nullopt;
 
         std::streamoff fileSize{file.tellg()};
-        // Spirv expects the buffer to be on uint32, reserve an int vector big enough for the entire file
+        // SpirV expects the buffer to be on uint32, reserve an int vector big enough for the entire file
         std::vector<uint32_t> buffer(fileSize / sizeof(uint32_t));
 
         file.seekg(0);
         file.read(reinterpret_cast<char *>(buffer.data()), fileSize);
-
         file.close();
 
         // Create a new shader module, using the buffer we loaded
-        VkShaderModuleCreateInfo createInfo = {};
-        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        createInfo.pNext = nullptr;
-        // codeSize has to be in bytes
-        createInfo.codeSize = buffer.size() * sizeof(uint32_t);
-        createInfo.pCode = buffer.data();
+        VkShaderModuleCreateInfo createInfo = {.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+                                               .codeSize = buffer.size() * sizeof(uint32_t), // codeSize has to be in bytes
+                                               .pCode = buffer.data()};
 
         VkShaderModule shaderModule;
         if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
-            return false;
+            return std::nullopt;
 
-        *outShaderModule = shaderModule;
-        return true;
+        return {shaderModule};
     }
 
     AllocatedBuffer VulkanEngine::createUniformBuffer(size_t allocSize, VkBufferUsageFlags usage) const {
