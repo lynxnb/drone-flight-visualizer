@@ -6,6 +6,8 @@
 
 namespace dfv::map{
     void populateElevation(std::vector<structs::Node> &nodes);
-    std::vector<structs::Node> createGrid(double llLat, double llLon, double urLat, double urLon, double spacing = 0.0001);
+    std::vector<std::vector<structs::Node>> createGrid(std::vector<structs::DiscreteBox> boxes);
     structs::OsmData fetchOsmData(const std::string &bbox);
+    std::vector<std::vector<structs::Node>> createGridSlave(double llLat, double llLon, double urLat, double urLon, double spacingMeters);
+    std::vector<std::vector<structs::Node>> createGridSlaveMock(double llLat, double llLon, double urLat, double urLon, double spacingMeters);
 }

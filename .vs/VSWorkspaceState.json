@@ -1,0 +1,15 @@
+{
+  "OutputFoldersPerTargetSystem": {
+    "Computer locale": [
+      "out\\build\\x64-Debug",
+      "out\\install\\x64-Debug"
+    ]
+  },
+  "ExpandedNodes": [
+    "",
+    "\\src",
+    "\\src\\map"
+  ],
+  "SelectedNode": "\\src\\map\\data_fetcher.cpp",
+  "PreviewInSolutionExplorer": false
+}

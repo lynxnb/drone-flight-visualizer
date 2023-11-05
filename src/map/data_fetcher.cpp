@@ -1,11 +1,13 @@
-#include <iostream>
-#include <chrono>
-#include <rapidjson/document.h>
-#include <cpr/cpr.h>
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/writer.h>
+#define _USE_MATH_DEFINES
 #include "data_fetcher.h"
 #include "data_reader.h"
+#include <chrono>
+#include <cpr/cpr.h>
+#include <iostream>
+#include <rapidjson/document.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
+#include <math.h>
 
 namespace dfv::map {
     namespace {
@@ -16,7 +18,7 @@ namespace dfv::map {
     using namespace rapidjson;
 
 
-    void PopulateBatch(std::vector<Node> &nodes) {
+    void PopulateBatchWithElevation(std::vector<std::reference_wrapper<structs::Node>> &nodes) {
         // write locations to json
         StringBuffer s;
         Writer<StringBuffer> writer(s);
@@ -24,9 +26,9 @@ namespace dfv::map {
         for (const auto &node: nodes) {
             writer.StartObject();
             writer.Key("latitude");
-            writer.Double(node.lat);
+            writer.Double(node.get().lat);
             writer.Key("longitude");
-            writer.Double(node.lon);
+            writer.Double(node.get().lon);
             writer.EndObject();
         }
         writer.EndArray();
@@ -40,6 +42,8 @@ namespace dfv::map {
             throw std::runtime_error(
                     "Error in response while fetching elevation data with code " + std::to_string(r.status_code));
         std::string text = r.text;
+        std::cout << r.text;
+
         auto endTime = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
         std::cout << "Elevation batch fetched in " << duration.count() << "ms" << std::endl;
@@ -62,11 +66,15 @@ namespace dfv::map {
         for (rapidjson::SizeType i = 0; i < results.Size(); ++i) {
             const rapidjson::Value &result = results[i];
             if (!result.HasMember("elevation") || !result.HasMember("latitude") || !result.HasMember("longitude")) {
-                nodes[i].elev = 0;
+                std::cerr << "Missing data in result #" << i << std::endl;
+                nodes[i].get().elev = 0;
                 continue;
             }
-            nodes[i].elev = result["elevation"].GetDouble();
+            nodes[i].get().elev = result["elevation"].GetDouble();
+            // Add logging here to see what's being set
+            std::cout << "Node #" << i << " elevation set to: " << nodes[i].get().elev << std::endl;
         }
+
     }
 
     void populateElevation(std::vector<structs::Node> &nodes) {
@@ -74,21 +82,142 @@ namespace dfv::map {
         for (int i = 0; i < nodes.size(); i += BATCH_SIZE) {
             auto startIter = nodes.begin() + i;
             auto endIter = nodes.begin() + (nodes.size() > i + BATCH_SIZE ? i + BATCH_SIZE : nodes.size());
-            std::vector<Node> batch(startIter, endIter);
-            PopulateBatch(batch);
+
+            std::vector<std::reference_wrapper<structs::Node>> batch(startIter, endIter);
+            PopulateBatchWithElevation(batch); // Ensure PopulateBatchWithElevation is compatible with this change.
         }
         auto endTime = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
         std::cout << "Elevation data fetched in " << duration.count() << "ms" << std::endl;
     }
 
-    std::vector<structs::Node> createGrid(double llLat, double llLon, double urLat, double urLon, double spacing) {
-        std::vector<structs::Node> nodes;
-        for (double lat = llLat; lat < urLat; lat += spacing) {
-            for (double lon = llLon; lon < urLon; lon += spacing) {
-                nodes.emplace_back("node", -1, lat, lon, std::map<std::string, std::string>());
+    std::vector<std::vector<structs::Node>> createGrid(std::vector<structs::DiscreteBox> boxes) {
+        std::vector<std::vector<std::vector<structs::Node>>> allNodes;
+        int i = 0;
+        allNodes.reserve(boxes.size());
+        for (structs::DiscreteBox box : boxes) {
+            allNodes.push_back(createGridSlaveMock(box.llLat, box.llLon, box.urLat, box.urLon, box.spacingMeters));
+        }
+        std::vector<std::vector<structs::Node>> nodesBox;
+        double northernmostcurrent = -100;
+        double lastnorthernmostcurrent = -100;
+        double northernmostupper = +100;
+        while (true){
+
+            // find nodes with the highest latitude not yet discovered
+            for (auto &nodesMatrix : allNodes) {
+                for(auto &nodesRows: nodesMatrix){
+                    if(nodesRows[0].lat > northernmostcurrent && nodesRows[0].lat < northernmostupper) {
+                        northernmostcurrent = nodesRows[0].lat;
+                    }
+                }
+            }
+
+            // exit condition on monotonicity
+            if(lastnorthernmostcurrent == northernmostcurrent) break;
+
+            northernmostupper = northernmostcurrent;
+            northernmostcurrent = -100;
+
+            // collect the rows with the nodes with the highest latitude
+            std::vector<std::vector<structs::Node>> sameLatitudeNodes;
+            for (auto &nodesMatrix : allNodes) {
+                for(auto &nodesRows: nodesMatrix){
+                    if(nodesRows[0].lat == northernmostupper) {
+                        sameLatitudeNodes.push_back(nodesRows);
+                    }
+                }
+            }
+            auto size = sameLatitudeNodes.size();
+            std::cout << "size: " << size << "\n";
+
+            // merge the rows with the same latitude
+            std::vector<int> sameLatitudeNodesIndexes(sameLatitudeNodes.size(), 0);
+            double lower = -400;
+            std::vector<structs::Node> row;
+            while(true){
+                double iteration_lower = 400;
+                int lowerEl = -1;
+                for (int j = 0; j < sameLatitudeNodesIndexes.size(); ++j) {
+                    if(sameLatitudeNodes[j].size() > sameLatitudeNodesIndexes[j])
+                        if(sameLatitudeNodes[j][sameLatitudeNodesIndexes[j]].lon < iteration_lower && sameLatitudeNodes[j][sameLatitudeNodesIndexes[j]].lon > lower){
+                            iteration_lower = sameLatitudeNodes[j][sameLatitudeNodesIndexes[j]].lon;
+                            lowerEl = j;
+                        }
+                }
+                if(iteration_lower == 400) break;
+                row.push_back(sameLatitudeNodes[lowerEl][sameLatitudeNodesIndexes[lowerEl]]);
+                lower = iteration_lower;
+                sameLatitudeNodesIndexes[lowerEl] ++;
+            }
+            nodesBox.push_back(row);
+            lastnorthernmostcurrent = northernmostcurrent;
+        }
+        return nodesBox;
+    }
+
+    std::vector<std::vector<structs::Node>> createGridSlave(double llLat, double llLon, double urLat, double urLon, double spacingMeters) {
+        std::vector<std::vector<structs::Node>> nodes;
+
+        const double EarthRadius = 6371e3; // Radius of the Earth in meters
+        const double meterToLat = 1 / (111320 * std::cos(llLat * M_PI / 180));
+
+        for (double lat = llLat; lat <= urLat; ) {
+            std::vector<structs::Node> row; // Create a new row for nodes
+            for (double lon = llLon; lon <= urLon; ) {
+                row.emplace_back("node", -1, lat, lon, std::map<std::string, std::string>());
+
+                // Calculate the new longitude, adjusting for latitude
+                double deltaLon = (spacingMeters / EarthRadius) * (180 / M_PI) / std::cos(lat * M_PI / 180);
+                lon += deltaLon; // Increment longitude
+            }
+            nodes.push_back(row); // Add the new row to the nodes
+
+            // Calculate the new latitude
+            double deltaLat = spacingMeters * meterToLat;
+            lat += deltaLat; // Increment latitude
+        }
+
+        return nodes;
+    }
+
+    std::vector<std::vector<structs::Node>> createGridSlaveMock(double llLat, double llLon, double urLat, double urLon, double spacingMeters) {
+        std::vector<std::vector<structs::Node>> nodes;
+
+        // Calculate the middle latitude and longitude
+        double midLat = (llLat + urLat) / 2.0;
+        double midLon = (llLon + urLon) / 2.0;
+
+        // Create the corners and middle points directly
+        // Lower-left corner
+        structs::Node llNode("node", -1, llLat, llLon, std::map<std::string, std::string>());
+        // Lower-right corner
+        structs::Node lrNode("node", -1, llLat, urLon, std::map<std::string, std::string>());
+        // Upper-left corner
+        structs::Node ulNode("node", -1, urLat, llLon, std::map<std::string, std::string>());
+        // Upper-right corner
+        structs::Node urNode("node", -1, urLat, urLon, std::map<std::string, std::string>());
+        // Center
+        structs::Node centerNode("node", -1, midLat, midLon, std::map<std::string, std::string>());
+        // Middle points between corners and center
+        structs::Node midLower("node", -1, llLat, midLon, std::map<std::string, std::string>());
+        structs::Node midLeft("node", -1, midLat, llLon, std::map<std::string, std::string>());
+        structs::Node midUpper("node", -1, urLat, midLon, std::map<std::string, std::string>());
+        structs::Node midRight("node", -1, midLat, urLon, std::map<std::string, std::string>());
+
+        // Add the points to the nodes vector
+        nodes.push_back({ulNode, midUpper, urNode}); // Top row
+        nodes.push_back({midLeft, centerNode, midRight}); // Middle row
+        nodes.push_back({llNode, midLower, lrNode}); // Bottom row
+
+        std::cout << "Box: \n";
+        for (const auto& row : nodes) {
+            for (const auto& node : row) {
+                node.display();
             }
         }
+        std::cout << "\n\n";
+
         return nodes;
     }
 
