@@ -1,19 +1,14 @@
 #include <iostream>
 #include <chrono>
-#include <rapidjson/document.h>
-#include <cpr/cpr.h>
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/writer.h>
 #include <csv.hpp>
 #include "data_reader.h"
 
 
 namespace dfv::map {
     using namespace dfv::structs;
-    using namespace rapidjson;
 
     std::vector<structs::FlightDataPoint> readFlightData(const std::string &csvPath) {
-
+        const auto feetToMeter = 0.3048;
         using namespace csv;
         try {
             auto startTime = std::chrono::high_resolution_clock::now();
@@ -27,7 +22,7 @@ namespace dfv::map {
                             row["OSD.flyTime [s]"].get<double>(),
                             row["OSD.latitude"].get<double>(),
                             row["OSD.longitude"].get<double>(),
-                            row["OSD.altitude [ft]"].get<double>(),
+                            row["OSD.altitude [ft]"].get<double>() * feetToMeter,
                             heading,
                             row["OSD.pitch"].get<double>(),
                             row["OSD.roll"].get<double>(),
@@ -59,6 +54,14 @@ namespace dfv::map {
         file.close();
 
         return buffer;
+    }
+
+    glm::vec2 map::calculateRelativePosition(glm::dvec2 latLon, glm::dvec2 lowerBounds) {
+        const auto scale = 100000; //  0.00001 = 1.11 meter
+
+        auto x = (latLon.x - lowerBounds.x) * scale;
+        auto y = (latLon.y - lowerBounds.y) * scale;
+        return {x, y};
     }
 }
 

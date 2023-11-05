@@ -1,13 +1,13 @@
 #define _USE_MATH_DEFINES
+#define NOMINMAX // Disable min and max macros from windows.h
 #include "data_fetcher.h"
-#include "data_reader.h"
 #include <chrono>
 #include <cpr/cpr.h>
 #include <iostream>
+#include <math.h>
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
-#include <math.h>
 
 namespace dfv::map {
     namespace {
@@ -23,7 +23,7 @@ namespace dfv::map {
         StringBuffer s;
         Writer<StringBuffer> writer(s);
         writer.StartArray();
-        for (const auto &node: nodes) {
+        for (const auto &node : nodes) {
             writer.StartObject();
             writer.Key("latitude");
             writer.Double(node.get().lat);
@@ -34,10 +34,10 @@ namespace dfv::map {
         writer.EndArray();
         // send request to open-elevation api
         auto startTime = std::chrono::high_resolution_clock::now();
-        cpr::Response r = cpr::Post(cpr::Url{"https://api.open-elevation.com/api/v1/lookup"},
-                                    cpr::Body{"{\"locations\":" + std::string(s.GetString()) + "}"},
-                                    cpr::Header{{"Content-Type", "application/json"},
-                                                {"Accept",       "application/json"}});
+        cpr::Response r = cpr::Post(cpr::Url{
+                                            "https://api.open-elevation.com/api/v1/lookup"
+        },
+                                    cpr::Body{"{\"locations\":" + std::string(s.GetString()) + "}"}, cpr::Header{{"Content-Type", "application/json"}, {"Accept", "application/json"}});
         if (r.status_code != 200)
             throw std::runtime_error(
                     "Error in response while fetching elevation data with code " + std::to_string(r.status_code));
@@ -224,7 +224,9 @@ namespace dfv::map {
     OsmData fetchOsmData(const std::string &bbox) {
         auto startTime = std::chrono::high_resolution_clock::now();
         std::string overpassQuery = R"([out:json];(node()" + bbox + R"();way()" + bbox + R"(););out body;)";
-        cpr::Response r = cpr::Get(cpr::Url{"http://overpass-api.de/api/interpreter"},
+        cpr::Response r = cpr::Get(cpr::Url{
+                                           "http://overpass-api.de/api/interpreter"
+        },
                                    cpr::Parameters{{"data", overpassQuery}});
         auto endTime = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
@@ -283,22 +285,8 @@ namespace dfv::map {
                 osmData.ways.emplace_back(element["type"].GetString(), element["id"].GetInt64(), std::vector<int64_t>(),
                                           tagMap);
             }
-
         }
         return osmData;
     }
-    std::vector<Vertex> map::vertexesFromNodes(const std::vector<structs::Node> &nodes) {
-        std::vector<Vertex> vertexes;
-        constexpr int WorldRadius = 6371;
-        for (const auto& node : nodes) {
-            // convert lat/lon to cartesian coordinates
-            double x = cos(node.lat) * cos(node.lon) * WorldRadius;
-            double z = cos(node.lat) * sin(node.lon) * WorldRadius;
-            //TODO: rivisitare la conversione dell'elevazione
-            double y = node.elev;
-            vertexes.emplace_back(glm::vec3(x, y, z), glm::vec3(0.0f, 1.0f, 0.0f));
-        }
-        return vertexes;
-    }
-}
 
+}

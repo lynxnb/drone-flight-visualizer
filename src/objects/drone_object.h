@@ -10,8 +10,7 @@ namespace dfv::objects {
 
     class DroneObject : public WorldObject {
         std::vector<structs::FlightDataPoint> flightData;
-
-        glm::dvec3 currentPosition;
+        RenderObject renderObject;
 
     public:
         DroneObject(std::vector<structs::FlightDataPoint> flightData) {

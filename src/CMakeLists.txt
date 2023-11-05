@@ -14,6 +14,8 @@ add_executable(drone_flight_visualizer
         vulkan/render_object.cpp
         input/input_handler.cpp
         map/data_fetcher.cpp
+        objects/drone.cpp
+        objects/drone.h
 )
 target_include_directories(drone_flight_visualizer PRIVATE ".")
 

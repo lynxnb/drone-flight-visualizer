@@ -1,4 +1,5 @@
 ﻿#include "vk_engine.h"
+#include "objects/drone.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -50,50 +51,56 @@ namespace dfv {
 
     void VulkanEngine::loadMeshes() {
         createMesh("monkey", "assets/monkey_smooth.obj");
+        createMesh("model", "assets/model.obj");
     }
 
     void VulkanEngine::initScene() {
         Material *defaultMeshMaterial = getMaterial("defaultmesh");
         assert(defaultMeshMaterial != nullptr);
 
-        RenderObject monkey = {};
-        monkey.mesh = getMesh("monkey");
-        assert(monkey.mesh != nullptr);
-        monkey.material = defaultMeshMaterial;
-        monkey.position = {0, 0, 0};
-        monkey.orientation = {0, 0, 0};
-        monkey.scale = {1, 1, 1};
+        //        RenderObject monkey = {};
+        //        monkey.mesh = getMesh("monkey");
+        //        assert(monkey.mesh != nullptr);
+        //        monkey.material = defaultMeshMaterial;
+        //        monkey.position = {0, 0, 0};
+        //        monkey.orientation = {0, 0, 0};
+        //        monkey.scale = {1, 1, 1};
+        //
+        //        monkey.updateFunc = [this](RenderObject &object, seconds_f deltaTime) {
+        //            object.position = glm::vec3{2 * sin(frameNumber / 120.f),
+        //                                        0,
+        //                                        2 * cos(frameNumber / 120.f)};
+        //            object.orientation += glm::vec3{0, 1, 0} * deltaTime.count();
+        //            object.computeTransform();
+        //        };
+        //
+        //        renderObjects.push_back(monkey);
 
-        monkey.updateFunc = [this](RenderObject &object, seconds_f deltaTime) {
-            object.position = glm::vec3{2 * sin(frameNumber / 120.f),
-                                        0,
-                                        2 * cos(frameNumber / 120.f)};
-            object.orientation += glm::vec3{0, 1, 0} * deltaTime.count();
-            object.computeTransform();
-        };
+//        std::vector<structs::FlightDataPoint> flightData;
+//        objects::Drone drone(flightData, getMesh("model"),defaultMeshMaterial);
+//
+//        renderObjects.push_back(drone.renderObject);
 
-        renderObjects.push_back(monkey);
-
-        Mesh *triangleMesh = getMesh("monkey");
-        assert(triangleMesh != nullptr);
-        // Add a bunch of extra triangles around the monkey
-        for (int x = -20; x <= 20; x++) {
-            for (int y = -20; y <= 20; y++) {
-                RenderObject triangle = {};
-                triangle.mesh = triangleMesh;
-                triangle.material = defaultMeshMaterial;
-                triangle.position = {x, 0, y};
-                triangle.orientation = {0, 0, 0};
-                triangle.scale = {0.2, 0.2, 0.2};
-
-                triangle.updateFunc = [&](RenderObject &object, seconds_f deltaTime) {
-                    object.orientation += glm::vec3{0, -1, 0} * deltaTime.count();
-                    object.computeTransform();
-                };
-
-                renderObjects.push_back(triangle);
-            }
-        }
+        //        Mesh *triangleMesh = getMesh("monkey");
+        //        assert(triangleMesh != nullptr);
+        //        // Add a bunch of extra triangles around the monkey
+        //        for (int x = -20; x <= 20; x++) {
+        //            for (int y = -20; y <= 20; y++) {
+        //                RenderObject triangle = {};
+        //                triangle.mesh = triangleMesh;
+        //                triangle.material = defaultMeshMaterial;
+        //                triangle.position = {x, 0, y};
+        //                triangle.orientation = {0, 0, 0};
+        //                triangle.scale = {0.2, 0.2, 0.2};
+        //
+        //                triangle.updateFunc = [&](RenderObject &object, seconds_f deltaTime) {
+        //                    object.orientation += glm::vec3{0, -1, 0} * deltaTime.count();
+        //                    object.computeTransform();
+        //                };
+        //
+        //                renderObjects.push_back(triangle);
+        //            }
+        //        }
 
         // Initialize camera parameters
         cameraParameters.position = {0.f, -6.f, -10.f};
