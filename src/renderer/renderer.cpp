@@ -101,7 +101,7 @@ namespace dfv {
         VulkanEngine &engine = context.engine;
         try {
             GlfwSurface surface{context.glfwWindow};
-            engine.init(surface, WindowWidth, WindowHeight);
+            engine.init(surface);
             setCameraInputControls(context);
 
             auto lastFrameStart = clock::now();

@@ -11,6 +11,8 @@ namespace dfv {
 
         std::pair<VkResult, VkSurfaceKHR> getSurface(VkInstance instance) override;
 
+        VkExtent2D getExtent() override;
+
       private:
         GLFWwindow *window;
     };

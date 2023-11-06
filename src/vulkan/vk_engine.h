@@ -141,11 +141,9 @@ namespace dfv {
         /**
          * Initializes the engine.
          * @param surfaceWrap The surface wrapper to use for retrieve the surface.
-         * @param width The width of the window.
-         * @param height The height of the window.
          * @note This function will throw exceptions if initialization fails.
          */
-        void init(SurfaceWrapper &surfaceWrap, uint32_t width, uint32_t height);
+        void init(SurfaceWrapper &surfaceWrap);
 
         /**
          * Shuts down the engine

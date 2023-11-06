@@ -20,9 +20,8 @@
 
 namespace dfv {
 
-    void VulkanEngine::init(SurfaceWrapper &surfaceWrap, uint32_t width, uint32_t height) {
-        windowExtent.width = width;
-        windowExtent.height = height;
+    void VulkanEngine::init(SurfaceWrapper &surfaceWrap) {
+        windowExtent = surfaceWrap.getExtent();
 
         // Load core Vulkan structures
         initVulkan(surfaceWrap);

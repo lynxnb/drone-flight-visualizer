@@ -14,4 +14,11 @@ namespace dfv {
         VkResult result = glfwCreateWindowSurface(instance, window, nullptr, &surface);
         return {result, surface};
     }
+
+    VkExtent2D GlfwSurface::getExtent() {
+        int width, height;
+        glfwGetFramebufferSize(window, &width, &height);
+        return {.width = static_cast<uint32_t>(width),
+                .height = static_cast<uint32_t>(height)};
+    }
 } // namespace dfv
