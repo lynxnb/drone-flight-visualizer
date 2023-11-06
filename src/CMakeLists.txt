@@ -1,6 +1,4 @@
-# Build the executable
-add_executable(drone_flight_visualizer
-        main.cpp
+set(DFV_SOURCE_COMMON
         context.cpp
         renderer/renderer.cpp
         map/data_reader.cpp
@@ -17,10 +15,37 @@ add_executable(drone_flight_visualizer
         objects/drone.cpp
         objects/drone.h
 )
+
+# Build the executable
+add_executable(drone_flight_visualizer
+        ${DFV_SOURCE_COMMON}
+        main.cpp
+)
+
 target_include_directories(drone_flight_visualizer PRIVATE ".")
 
 # Link the executable to the libraries
 target_link_libraries(drone_flight_visualizer PRIVATE
+        cpr::cpr
+        Vulkan::Vulkan
+        vk-bootstrap::vk-bootstrap
+        glfw
+        glm
+        tinyobjloader
+)
+
+add_dependencies(drone_flight_visualizer Shaders)
+add_dependencies(drone_flight_visualizer Assets)
+
+
+add_executable(engine_test
+        ${DFV_SOURCE_COMMON}
+        engine_test.cpp
+)
+
+target_include_directories(engine_test PRIVATE ".")
+
+target_link_libraries(engine_test PRIVATE
         cpr::cpr
         Vulkan::Vulkan
         vk-bootstrap::vk-bootstrap
