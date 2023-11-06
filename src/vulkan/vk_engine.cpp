@@ -1,5 +1,4 @@
 ﻿#include "vk_engine.h"
-#include "objects/drone.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -21,12 +20,12 @@
 
 namespace dfv {
 
-    void VulkanEngine::init(GLFWwindow *window, uint32_t width, uint32_t height) {
+    void VulkanEngine::init(SurfaceWrapper &surfaceWrap, uint32_t width, uint32_t height) {
         windowExtent.width = width;
         windowExtent.height = height;
 
         // Load core Vulkan structures
-        initVulkan(window);
+        initVulkan(surfaceWrap);
         // Create the swapchain
         initSwapchain();
         // Create the command buffers

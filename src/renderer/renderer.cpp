@@ -3,6 +3,7 @@
 
 #include "config/config.h"
 #include "renderer.h"
+#include "glfw/glfw_surface.h"
 
 namespace dfv {
 
@@ -99,7 +100,8 @@ namespace dfv {
 
         VulkanEngine &engine = context.engine;
         try {
-            engine.init(context.glfwWindow, WindowWidth, WindowHeight);
+            GlfwSurface surface{context.glfwWindow};
+            engine.init(surface, WindowWidth, WindowHeight);
             setCameraInputControls(context);
 
             auto lastFrameStart = clock::now();

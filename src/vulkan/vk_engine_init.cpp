@@ -24,7 +24,7 @@
 
 namespace dfv {
 
-    void VulkanEngine::initVulkan(GLFWwindow *window) {
+    void VulkanEngine::initVulkan(SurfaceWrapper &surfaceWrap) {
         vkb::InstanceBuilder builder;
 
         // Make the Vulkan instance with basic debug features
@@ -40,7 +40,9 @@ namespace dfv {
         debugMessenger = vkbInstance.debug_messenger;
 
         // Get the surface of the window we opened with GLFW
-        VK_CHECK(glfwCreateWindowSurface(instance, window, nullptr, &surface));
+        auto surfaceResult = surfaceWrap.getSurface(instance);
+        VK_CHECK(surfaceResult.first);
+        surface = surfaceResult.second;
 
         // Use vkbootstrap to select a GPU.
         // We want a GPU that can write to the GLFW surface and supports Vulkan 1.1

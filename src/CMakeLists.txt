@@ -20,6 +20,7 @@ set(DFV_SOURCE_COMMON
 add_executable(drone_flight_visualizer
         ${DFV_SOURCE_COMMON}
         main.cpp
+        glfw/glfw_surface.cpp
 )
 
 target_include_directories(drone_flight_visualizer PRIVATE ".")
@@ -40,6 +41,7 @@ add_dependencies(drone_flight_visualizer Assets)
 
 add_executable(engine_test
         ${DFV_SOURCE_COMMON}
+        glfw/glfw_surface.cpp
         engine_test.cpp
 )
 

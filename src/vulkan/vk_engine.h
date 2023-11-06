@@ -10,6 +10,7 @@
 #include "vk_mesh.h"
 #include "vk_traits.h"
 #include "vk_types.h"
+#include "surface_wrapper.h"
 
 namespace dfv {
 
@@ -139,12 +140,12 @@ namespace dfv {
 
         /**
          * Initializes the engine.
-         * @param window The GLFWwindow object to retrieve the surface from.
+         * @param surfaceWrap The surface wrapper to use for retrieve the surface.
          * @param width The width of the window.
          * @param height The height of the window.
          * @note This function will throw exceptions if initialization fails.
          */
-        void init(GLFWwindow *window, uint32_t width, uint32_t height);
+        void init(SurfaceWrapper &surfaceWrap, uint32_t width, uint32_t height);
 
         /**
          * Shuts down the engine
@@ -246,9 +247,9 @@ namespace dfv {
 
         /**
          * Loads the core Vulkan structures
-         * @param window The GLFW window to retrieve the surface from.
+         * @param surfaceWrap The surface wrapper to use for retrieve the surface.
          */
-        void initVulkan(GLFWwindow *window);
+        void initVulkan(SurfaceWrapper &surfaceWrap);
         void initSwapchain();
         void initCommands();
         void initSyncStructures();
