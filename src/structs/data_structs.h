@@ -51,18 +51,4 @@ namespace dfv::structs {
         std::vector<Node> nodes;
         std::vector<Way> ways;
     };
-
-    struct FlightDataPoint {
-        double flyTime;
-        double lat;
-        double lon;
-        double alt;
-        double heading;
-        double pitch;
-        double roll;
-        double yaw;
-
-        FlightDataPoint(double flyTime, double lat, double lon, double alt, double heading, double pitch, double roll, double yaw) :
-                flyTime(flyTime), lat(lat), lon(lon), alt(alt), heading(heading), pitch(pitch), roll(roll), yaw(yaw) {}
-    };
 }
