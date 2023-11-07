@@ -12,11 +12,11 @@ namespace dfv {
         bool load() override;
 
         Coordinate getInitialPosition() override;
-        FlightDataPoint getPoint(uint64_t timestamp) override;
+        FlightDataPoint getPoint(seconds_f timestamp) override;
 
-        uint64_t getDuration() override;
-        uint64_t getStartTime() override;
-        uint64_t getEndTime() override;
+        seconds_f getDuration() override;
+        seconds_f getStartTime() override;
+        seconds_f getEndTime() override;
 
         FlightBoundingBox getBoundingBox() override;
 

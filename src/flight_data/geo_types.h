@@ -7,6 +7,6 @@ namespace dfv {
     struct Coordinate {
         float lat;
         float lon;
-        float alt;
+        float alt; //!< Altitude in meters
     };
 } // namespace dfv

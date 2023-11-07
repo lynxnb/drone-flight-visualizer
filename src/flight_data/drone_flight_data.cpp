@@ -14,20 +14,20 @@ namespace dfv {
         return {};
     }
 
-    FlightDataPoint DroneFlightData::getPoint(uint64_t timestamp) {
+    FlightDataPoint DroneFlightData::getPoint(seconds_f timestamp) {
         return {};
     }
 
-    uint64_t DroneFlightData::getDuration() {
-        return 0;
+    seconds_f DroneFlightData::getDuration() {
+        return seconds_f{0};
     }
 
-    uint64_t DroneFlightData::getStartTime() {
-        return 0;
+    seconds_f DroneFlightData::getStartTime() {
+        return seconds_f{0};
     }
 
-    uint64_t DroneFlightData::getEndTime() {
-        return 0;
+    seconds_f DroneFlightData::getEndTime() {
+        return seconds_f{0};
     }
 
     FlightBoundingBox DroneFlightData::getBoundingBox() {
