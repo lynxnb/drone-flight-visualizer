@@ -7,10 +7,10 @@
 
 #include "deletion_queue.h"
 #include "render_object.h"
+#include "surface_wrapper.h"
 #include "vk_mesh.h"
 #include "vk_traits.h"
 #include "vk_types.h"
-#include "surface_wrapper.h"
 
 namespace dfv {
 
@@ -63,8 +63,140 @@ namespace dfv {
 
     class VulkanEngine {
       public:
+        /**
+         * Initializes the engine.
+         * @param surfaceWrap The surface wrapper to use for retrieve the surface.
+         * @note This function will throw exceptions if initialization fails.
+         */
+        void init(SurfaceWrapper &surfaceWrap);
+
+        /**
+         * Shuts down the engine
+         */
+        void cleanup();
+
+        /**
+         * Draws and displays the next frame.
+         */
+        void draw();
+
+        /**
+         * Creates a new render material with the given name.
+         * @param name The name of the material, used to identify it later.
+         * @param pipeline The pipeline to use for this material.
+         * @param layout The pipeline layout to use for this material.
+         * @return A pointer to the created material.
+         */
+        Material *createMaterial(const std::string &name, VkPipeline pipeline, VkPipelineLayout layout);
+
+        /**
+         * Gets the material with the given name.
+         * @param name The name of the material to get.
+         * @return The material with the given name, or nullptr if no material with that name exists.
+         */
+        Material *getMaterial(const std::string &name);
+
+        /**
+         * Creates a new mesh with the given name.
+         * @param name The name of the mesh, used to identify it later.
+         * @param filename The path to the mesh file to load.
+         * @return A pointer to the created mesh.
+         */
+        Mesh *createMesh(const std::string &name, const std::filesystem::path &filename);
+
+        /**
+         * Gets the mesh with the given name.
+         * @param name The name of the mesh to get.
+         * @return The mesh with the given name, or nullptr if no mesh with that name exists.
+         */
+        Mesh *getMesh(const std::string &name);
+
+        /**
+         * Allocates a new render object in the engine.
+         * @return A structure holding a pointer to the allocated render object and its handle for later retrieval.
+         */
+        RenderObjectDescriptor allocateRenderObject();
+
+        /**
+         * Gets the render object with the given handle.
+         * @param handle The handle of the render object to get.
+         * @return The render object, or nullptr if no render object with that handle exists.
+         */
+        RenderObject *getRenderObject(RenderHandle handle);
+
+        uint32_t getFrameNumber() const {
+            return frameNumber;
+        }
+
+      private:
+        /**
+         * Draws all objects using the given command buffer.
+         * @param cmdBuf The command buffer to use for drawing.
+         */
+        void drawObjects(VkCommandBuffer cmdBuf);
+
+        /**
+         * Updates the camera data for the current frame.
+         * @param deltaTime The time since the last frame in seconds.
+         */
+        void updateCamera(seconds_f deltaTime);
+
+        /**
+         * Gets the frame data to use for the current frame.
+         */
+        FrameData &getCurrentFrame();
+
+        /**
+         * Immediately submits a command buffer to the graphics queue and waits for completion.
+         * @param submitFunc The function to call to fill the command buffer.
+         */
+        void immediateSubmit(std::function<void(VkCommandBuffer cmd)> &&submitFunc);
+
+        /**
+         * Load a shader module from the given file path.
+         * @param filePath The path to the shader module.
+         * @param outShaderModule A pointer to the shader module to write to.
+         * @return True if the shader module was loaded successfully, false otherwise.
+         */
+        std::optional<VkShaderModule> loadShaderModule(const std::filesystem::path &filePath) const;
+
+        /**
+         * Creates a new uniform buffer with the given parameters.
+         * @param allocSize The size of the buffer to allocate.
+         * @param usage The usage flags for the buffer.
+         * @return The created uniform buffer.
+         */
+        AllocatedBuffer createUniformBuffer(size_t allocSize, VkBufferUsageFlags usage) const;
+
+        /**
+         * Uploads the given mesh to the GPU.
+         * @param mesh The mesh to upload.
+         */
+        void uploadMesh(Mesh &mesh);
+
+        /**
+         * Aligns the given size to the minimum uniform buffer offset alignment requirements.
+         */
+        size_t uniformBufferSizeAlignUp(size_t size) const;
+
+        /**
+         * Loads the core Vulkan structures
+         * @param surfaceWrap The surface wrapper to use for retrieve the surface.
+         */
+        void initVulkan(SurfaceWrapper &surfaceWrap);
+        void initSwapchain();
+        void initCommands();
+        void initSyncStructures();
+        void initDefaultRenderpass();
+        void initFramebuffers();
+        void initDescriptors();
+        void initPipelines();
+
+        void initCameraParams();
+
+      private:
         bool isInitialized{false};
-        int frameNumber{0};
+        uint32_t frameNumber{0};
 
         VulkanTraits traits; //!< Vulkan traits of the current device
 
@@ -137,140 +269,6 @@ namespace dfv {
                 return movementSpeed * speedMultiplier.load(std::memory_order_relaxed);
             }
         } cameraParameters; //!< Camera parameters to use during rendering
-
-        /**
-         * Initializes the engine.
-         * @param surfaceWrap The surface wrapper to use for retrieve the surface.
-         * @note This function will throw exceptions if initialization fails.
-         */
-        void init(SurfaceWrapper &surfaceWrap);
-
-        /**
-         * Shuts down the engine
-         */
-        void cleanup();
-
-        /**
-         * Draws and displays the next frame.
-         */
-        void draw();
-
-        /**
-         * Updates render objects by calling their update functions.
-         * @param deltaTime The time since the last frame in seconds.
-         */
-        void update(seconds_f deltaTime);
-
-        /**
-         * Creates a new render material with the given name.
-         * @param name The name of the material, used to identify it later.
-         * @param pipeline The pipeline to use for this material.
-         * @param layout The pipeline layout to use for this material.
-         * @return A pointer to the created material.
-         */
-        Material *createMaterial(const std::string &name, VkPipeline pipeline, VkPipelineLayout layout);
-
-        /**
-         * Gets the material with the given name.
-         * @param name The name of the material to get.
-         * @return The material with the given name, or nullptr if no material with that name exists.
-         */
-        Material *getMaterial(const std::string &name);
-
-        /**
-         * Creates a new mesh with the given name.
-         * @param name The name of the mesh, used to identify it later.
-         * @param filename The path to the mesh file to load.
-         * @return A pointer to the created mesh.
-         */
-        Mesh *createMesh(const std::string &name, const std::filesystem::path &filename);
-
-        /**
-         * Gets the mesh with the given name.
-         * @param name The name of the mesh to get.
-         * @return The mesh with the given name, or nullptr if no mesh with that name exists.
-         */
-        Mesh *getMesh(const std::string &name);
-
-        /**
-         * Allocates a new render object in the engine.
-         * @return A structure holding a pointer to the allocated render object and its handle for later retrieval.
-         */
-        RenderObjectDescriptor allocateRenderObject();
-
-        /**
-         * Gets the render object with the given handle.
-         * @param handle The handle of the render object to get.
-         * @return The render object, or nullptr if no render object with that handle exists.
-         */
-        RenderObject *getRenderObject(RenderHandle handle);
-
-      private:
-        /**
-         * Draws all objects using the given command buffer.
-         * @param cmdBuf The command buffer to use for drawing.
-         */
-        void drawObjects(VkCommandBuffer cmdBuf);
-
-        /**
-         * Updates the camera data for the current frame.
-         * @param deltaTime The time since the last frame in seconds.
-         */
-        void updateCamera(seconds_f deltaTime);
-
-        /**
-         * Gets the frame data to use for the current frame.
-         */
-        FrameData &getCurrentFrame();
-
-        /**
-         * Immediately submits a command buffer to the graphics queue and waits for completion.
-         * @param submitFunc The function to call to fill the command buffer.
-         */
-        void immediateSubmit(std::function<void(VkCommandBuffer cmd)> &&submitFunc);
-
-        /**
-         * Load a shader module from the given file path.
-         * @param filePath The path to the shader module.
-         * @param outShaderModule A pointer to the shader module to write to.
-         * @return True if the shader module was loaded successfully, false otherwise.
-         */
-        std::optional<VkShaderModule> loadShaderModule(const std::filesystem::path &filePath) const;
-
-        /**
-         * Creates a new uniform buffer with the given parameters.
-         * @param allocSize The size of the buffer to allocate.
-         * @param usage The usage flags for the buffer.
-         * @return The created uniform buffer.
-         */
-        AllocatedBuffer createUniformBuffer(size_t allocSize, VkBufferUsageFlags usage) const;
-
-        /**
-         * Uploads the given mesh to the GPU.
-         * @param mesh The mesh to upload.
-         */
-        void uploadMesh(Mesh &mesh);
-
-        /**
-         * Aligns the given size to the minimum uniform buffer offset alignment requirements.
-         */
-        size_t uniformBufferSizeAlignUp(size_t size) const;
-
-        /**
-         * Loads the core Vulkan structures
-         * @param surfaceWrap The surface wrapper to use for retrieve the surface.
-         */
-        void initVulkan(SurfaceWrapper &surfaceWrap);
-        void initSwapchain();
-        void initCommands();
-        void initSyncStructures();
-        void initDefaultRenderpass();
-        void initFramebuffers();
-        void initDescriptors();
-        void initPipelines();
-
-        void loadMeshes();
-        void initScene();
     };
 
 } // namespace dfv

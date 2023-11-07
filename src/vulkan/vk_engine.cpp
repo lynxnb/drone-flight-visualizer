@@ -39,42 +39,21 @@ namespace dfv {
         initDescriptors();
         // Create pipelines
         initPipelines();
-
-        // Initialize the placeholder scene
-        loadMeshes();
-        initScene();
+        // Create a camera perspective
+        initCameraParams();
 
         isInitialized = true;
     }
 
-    void VulkanEngine::loadMeshes() {
-        createMesh("monkey", "assets/monkey_smooth.obj");
-        createMesh("model", "assets/model.obj");
-    }
-
-    void VulkanEngine::initScene() {
-        Material *defaultMeshMaterial = getMaterial("defaultmesh");
-        assert(defaultMeshMaterial != nullptr);
-
-        RenderObject monkey = {};
-        monkey.mesh = getMesh("monkey");
-        assert(monkey.mesh != nullptr);
-        monkey.material = defaultMeshMaterial;
-
-        renderObjects.push_back(monkey);
-
+    void VulkanEngine::initCameraParams() {
         // Initialize camera parameters
         cameraParameters.position = {0.f, -6.f, -10.f};
-        cameraParameters.orientation = {0.f, 0.f, 0.f};
+        cameraParameters.orientation = {-0.5f, 0.f, 0.f};
         cameraParameters.fov = glm::radians(70.f);
         cameraParameters.nearPlane = 0.1f;
         cameraParameters.farPlane = 200.f;
         cameraParameters.movementSpeed = 5.f;
         cameraParameters.rotationSpeed = glm::radians(30.f);
-    }
-
-    void VulkanEngine::update(seconds_f deltaTime) {
-        updateCamera(deltaTime);
     }
 
     void VulkanEngine::updateCamera(seconds_f deltaTime) {

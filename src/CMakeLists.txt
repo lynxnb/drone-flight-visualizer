@@ -1,6 +1,5 @@
 set(DFV_SOURCE_COMMON
-        context.cpp
-        renderer/renderer.cpp
+        visualizer.cpp
         vulkan/vk_engine.cpp
         vulkan/vk_initializers.cpp
         vulkan/vk_pipeline.cpp
@@ -15,8 +14,8 @@ set(DFV_SOURCE_COMMON
 # drone_flight_visualizer executable
 add_executable(drone_flight_visualizer
         ${DFV_SOURCE_COMMON}
-        main.cpp
         glfw/glfw_surface.cpp
+        flight_data/drone_flight_data.cpp
         map/data_reader.cpp
         map/data_fetcher.cpp
         objects/drone.cpp
