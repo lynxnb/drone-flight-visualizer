@@ -171,6 +171,15 @@ namespace dfv {
             return &(*it).second;
     }
 
+    RenderObjectDescriptor VulkanEngine::allocateRenderObject() {
+        auto &object = renderObjects.emplace_back();
+        return {&object, renderObjects.size() - 1};
+    }
+
+    RenderObject *VulkanEngine::getRenderObject(RenderHandle handle) {
+        return &renderObjects[handle];
+    }
+
     size_t VulkanEngine::uniformBufferSizeAlignUp(size_t size) const {
         // Calculate required alignment based on minimum device offset alignment
         size_t minUboAlignment = traits.minUniformBufferOffsetAlignment;

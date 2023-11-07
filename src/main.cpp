@@ -70,7 +70,6 @@ int main(int argc, char **argv) {
                          context.engine.getMaterial("defaultmesh"),
                          upperBounds);
 
-    context.engine.renderObjects.push_back(drone.renderObject);
 //    objects::Drone drone(std::nullopt,
 //                         context.engine.getMesh("model"),
 //                         context.engine.getMaterial("defaultmesh"),

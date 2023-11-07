@@ -192,6 +192,19 @@ namespace dfv {
          */
         Mesh *getMesh(const std::string &name);
 
+        /**
+         * Allocates a new render object in the engine.
+         * @return A structure holding a pointer to the allocated render object and its handle for later retrieval.
+         */
+        RenderObjectDescriptor allocateRenderObject();
+
+        /**
+         * Gets the render object with the given handle.
+         * @param handle The handle of the render object to get.
+         * @return The render object, or nullptr if no render object with that handle exists.
+         */
+        RenderObject *getRenderObject(RenderHandle handle);
+
       private:
         /**
          * Draws all objects using the given command buffer.

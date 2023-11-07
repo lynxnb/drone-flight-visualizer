@@ -60,17 +60,6 @@ namespace dfv {
         monkey.mesh = getMesh("monkey");
         assert(monkey.mesh != nullptr);
         monkey.material = defaultMeshMaterial;
-        monkey.position = {0, 0, 0};
-        monkey.orientation = {0, 0, 0};
-        monkey.scale = {1, 1, 1};
-
-        monkey.updateFunc = [this](RenderObject &object, seconds_f deltaTime) {
-            object.position = glm::vec3{2 * sin(frameNumber / 120.f),
-                                        0,
-                                        2 * cos(frameNumber / 120.f)};
-            object.orientation += glm::vec3{0, 1, 0} * deltaTime.count();
-            object.computeTransform();
-        };
 
         renderObjects.push_back(monkey);
 
@@ -85,12 +74,6 @@ namespace dfv {
     }
 
     void VulkanEngine::update(seconds_f deltaTime) {
-        std::span renderObjectsSpan = renderObjects;
-        for (auto &object : renderObjectsSpan) {
-            if (object.updateFunc)
-                object.updateFunc(object, deltaTime);
-        }
-
         updateCamera(deltaTime);
     }
 
@@ -242,7 +225,7 @@ namespace dfv {
         ObjectData *objectBuffer;
         vmaMapMemory(allocator, frame.objectBuffer.allocation, reinterpret_cast<void **>(&objectBuffer));
         for (auto &object : renderObjects)
-            objectBuffer++->modelMatrix = object.transformMatrix;
+            objectBuffer++->modelMatrix = object.transform;
         vmaUnmapMemory(allocator, frame.objectBuffer.allocation);
 
         // Keep track of the last used mesh and material to avoid unnecessary binding
@@ -268,7 +251,7 @@ namespace dfv {
 
             MeshPushConstants constants = {};
             // Final render matrix, that we are calculating on the cpu
-            constants.renderMatrix = object.transformMatrix;
+            constants.renderMatrix = object.transform;
 
             // Upload the mesh render matrix to the GPU via push constants
             vkCmdPushConstants(cmdBuf, object.material->pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);

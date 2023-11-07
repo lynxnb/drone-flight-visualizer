@@ -1,52 +1,41 @@
-#pragma once
-
 #include "drone.h"
-#include "map/data_reader.h"
 
 #include <utility>
+#include <vector>
+
+#include <glm/gtx/transform.hpp>
+#include "map/data_reader.h"
+
 namespace dfv::objects {
-    Drone::Drone(optional<vector<structs::FlightDataPoint>> flightData, dfv::Mesh *mesh, dfv::Material *material,
-                 optional<glm::dvec2> bbLowerBounds) {
-        this->flightData = std::move(flightData);
-        this->bbLowerBounds = bbLowerBounds;
-        renderObject = {};
-        renderObject.mesh = mesh;
-        renderObject.material = material;
-        assert(renderObject.mesh != nullptr);
-        renderObject.position = {0, 0, 0};
-        renderObject.orientation = {0, 0, 0};
-        renderObject.scale = {0.01, 0.001, 0.001};
-        renderObject.updateFunc = [this](auto &object, seconds_f deltaTime) {
-            cout << "drone position: " << object.position.x << ", " << object.position.y << ", " << object.position.z
-                 <<", "<< this->currentFlightDataPointIndex << endl;
-            if (!this->flightData.has_value()) {
-                cout << "Drone: Missing drone flight data" << endl;
-                object.computeTransform();
-                return;
-            }
+    Drone::Drone(std::vector<structs::FlightDataPoint> flightData, dfv::Mesh *mesh, dfv::Material *material, std::optional<glm::dvec2> bbLowerBounds)
+        : flightData(std::move(flightData)), bbLowerBounds(bbLowerBounds) {
+        if (this->flightData.empty()) {
+            std::cerr << "Drone: Missing flight data" << std::endl;
+        }
 
-            auto flightDataV = this->flightData.value();
+        if (!this->bbLowerBounds.has_value()) {
+            std::cerr << "Drone: Missing bounding box upper bounds" << std::endl;
+        }
+    }
 
-            if (!this->bbLowerBounds.has_value()) {
-                cout << "Drone: Missing bounding box upper bounds" << endl;
-                object.computeTransform();
-                return;
-            }
+    void Drone::update(seconds_f deltaTime, RenderObject *renderObject) {
+        auto lowerBounds = this->bbLowerBounds.value();
 
-            auto lowerBounds = this->bbLowerBounds.value();
+        auto cords = map::calculateRelativePosition({flightData[currentFlightDataPointIndex].lat,
+                                                     flightData[currentFlightDataPointIndex].lon},
+                                                    lowerBounds);
 
-            auto cords = map::calculateRelativePosition({flightDataV[currentFlightDataPointIndex].lat,
-                                                         flightDataV[currentFlightDataPointIndex].lon},
-                                                        lowerBounds);
+        position = {cords.x, flightData[currentFlightDataPointIndex].alt / 1000, cords.y};
+        orientation = {flightData[currentFlightDataPointIndex].roll,
+                       flightData[currentFlightDataPointIndex].pitch,
+                       flightData[currentFlightDataPointIndex].yaw};
 
+        renderObject->transform = glm::translate(glm::mat4{1.0f}, position) *
+                                  glm::rotate(glm::mat4{1.0f}, orientation.x, glm::vec3{1.0f, 0.0f, 0.0f}) *
+                                  glm::rotate(glm::mat4{1.0f}, orientation.y, glm::vec3{0.0f, 1.0f, 0.0f}) *
+                                  glm::scale(glm::mat4{1.0f}, scale);
 
-            object.position = {cords.x, flightDataV[currentFlightDataPointIndex].alt/1000, cords.y};
-            object.orientation = {flightDataV[currentFlightDataPointIndex].roll,
-                                  flightDataV[currentFlightDataPointIndex].pitch,
-                                  flightDataV[currentFlightDataPointIndex].yaw};
-            object.computeTransform();
-            goToNextFlightDataPoint();
-        };
+        goToNextFlightDataPoint();
     }
 
     void Drone::goToNextFlightDataPoint() {
