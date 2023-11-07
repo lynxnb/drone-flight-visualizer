@@ -36,3 +36,29 @@ target_link_libraries(drone_flight_visualizer PRIVATE
 
 add_dependencies(drone_flight_visualizer Shaders)
 add_dependencies(drone_flight_visualizer Assets)
+
+
+# mock visualizer
+add_executable(mock_visualizer
+        ${DFV_SOURCE_COMMON}
+        glfw/glfw_surface.cpp
+        flight_data/drone_flight_data.cpp
+        flight_data/mock_flight_data.cpp
+        map/data_reader.cpp
+        map/data_fetcher.cpp
+        objects/drone.cpp
+        mock_entrypoint.cpp
+)
+target_include_directories(mock_visualizer PRIVATE ".")
+
+target_link_libraries(mock_visualizer PRIVATE
+        cpr::cpr
+        Vulkan::Vulkan
+        vk-bootstrap::vk-bootstrap
+        glfw
+        glm
+        tinyobjloader
+)
+
+add_dependencies(mock_visualizer Shaders)
+add_dependencies(mock_visualizer Assets)
