@@ -7,7 +7,7 @@
 namespace dfv {
     class DroneFlightData : public FlightData {
       public:
-        explicit DroneFlightData(std::filesystem::path  path);
+        explicit DroneFlightData(std::filesystem::path path);
 
         bool load() override;
 
@@ -22,5 +22,8 @@ namespace dfv {
 
       private:
         const std::filesystem::path path;
+        std::vector<FlightDataPoint> flightDataPoints;
+        std::vector<FlightDataPoint> loadFlightData(const std::string &csvPath);
+        std::optional<Coordinate> initialPosition;
     };
 } // namespace dfv
