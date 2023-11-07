@@ -19,6 +19,7 @@ add_executable(drone_flight_visualizer
         map/data_reader.cpp
         map/data_fetcher.cpp
         objects/drone.cpp
+        drone_entrypoint.cpp
 )
 
 target_include_directories(drone_flight_visualizer PRIVATE ".")
