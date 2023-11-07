@@ -56,11 +56,12 @@ namespace dfv::map {
         return buffer;
     }
 
-    glm::vec2 map::calculateRelativePosition(glm::dvec2 latLon, glm::dvec2 lowerBounds) {
+    glm::vec2 map::calculateRelativePosition(glm::dvec2 position, glm::dvec2 inRelationTo) {
         const auto scale = 100000; //  0.00001 = 1.11 meter
 
-        auto x = (latLon.x - lowerBounds.x) * scale;
-        auto y = (latLon.y - lowerBounds.y) * scale;
+        auto x = (position.x - inRelationTo.x) * scale;
+        auto y = (position.y - inRelationTo.y) * scale;
+
         return {x, y};
     }
 }

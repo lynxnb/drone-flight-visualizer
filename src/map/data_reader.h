@@ -9,5 +9,5 @@ namespace dfv::map {
     std::vector<structs::FlightDataPoint> readFlightData(const std::string &csvPath);
     structs::OsmData fetchOsmData(const std::string &bbox);
     std::vector<char> readFile(const std::string &filename);
-    glm::vec2 calculateRelativePosition(glm::dvec2 latLon, glm::dvec2 lowerBounds);
+    glm::vec2 calculateRelativePosition(glm::dvec2 position, glm::dvec2 inRelationTo);
 }
