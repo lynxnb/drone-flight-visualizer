@@ -11,36 +11,16 @@
 
 class DroneVisualizer : public dfv::Visualizer {
   public:
-    DroneVisualizer(dfv::GlfwSurface &surface, dfv::DroneFlightData &data)
-        : Visualizer(surface, data) {}
+    using dfv::Visualizer::Visualizer; // Inherit constructors
 
     void loadInitialScene() override {
-        auto monkeyMesh = engine.createMesh("monkey", "assets/monkey_smooth.obj");
-        auto defaultMaterial = engine.getMaterial("defaultmesh");
-
-        auto monkey1Object = engine.allocateRenderObject();
-        monkey1 = monkey1Object.handle;
-        *monkey1Object.object = {.mesh = monkeyMesh,
-                                 .material = defaultMaterial,
-                                 .transform = glm::mat4(1.0f)};
-
-        auto monkey2 = engine.allocateRenderObject();
-        *monkey2.object = {.mesh = monkeyMesh,
-                           .material = defaultMaterial,
-                           .transform = glm::translate(glm::mat4(1.0f), glm::vec3(-5.0f, 0.0f, 0.0f))};
-
-        auto monkey3 = engine.allocateRenderObject();
-        *monkey3.object = {.mesh = monkeyMesh,
-                           .material = defaultMaterial,
-                           .transform = glm::translate(glm::mat4(1.0f), glm::vec3(5.0f, 0.0f, 0.0f))};
     }
 
     void update(dfv::seconds_f deltaTime) override {
-        auto monkey = engine.getRenderObject(monkey1);
-        monkey->transform = glm::rotate(monkey->transform, 1.f * deltaTime.count(), glm::vec3(0.0f, 1.0f, 0.0f));
+        time += deltaTime;
     }
 
-    dfv::RenderHandle monkey1{};
+    dfv::seconds_f time{};
 };
 
 /*
