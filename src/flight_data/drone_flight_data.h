@@ -23,7 +23,9 @@ namespace dfv {
       private:
         const std::filesystem::path path;
         std::vector<FlightDataPoint> flightDataPoints;
-        std::vector<FlightDataPoint> loadFlightData(const std::string &csvPath);
         std::optional<Coordinate> initialPosition;
+        FlightBoundingBox boundingBox;
+        std::vector<FlightDataPoint> loadFlightData(const std::string &csvPath);
+        FlightDataPoint loadBBox();
     };
 } // namespace dfv

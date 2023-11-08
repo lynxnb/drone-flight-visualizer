@@ -4,6 +4,8 @@
 
 #include <csv.hpp>
 #include <utility>
+#include <utils/time_types.h>
+#define M_PI 3.14159265358979323846f
 
 namespace dfv {
     DroneFlightData::DroneFlightData(std::filesystem::path path)
@@ -24,29 +26,43 @@ namespace dfv {
     }
 
     FlightDataPoint DroneFlightData::getPoint(seconds_f timestamp) {
-        if(flightDataPoints.empty()){
+        if (flightDataPoints.empty()) {
             std::cerr << "Trying to get point from empty flight data" << std::endl;
-            return FlightDataPoint(0,0,0,0,0,0,0);
+            return FlightDataPoint(0, 0, 0, 0, 0, 0, 0);
         }
 
-
-        auto it = std::lower_bound(flightDataPoints.begin(), flightDataPoints.end(), timestamp,
+        auto pointIt = std::lower_bound(flightDataPoints.begin(), flightDataPoints.end(), timestamp,
                                    [](const FlightDataPoint &point, const seconds_f &timestamp) {
                                        return point.timestamp < timestamp.count();
                                    });
 
-        if (it == flightDataPoints.begin()) {
-            // targetTimestamp is before the first element in the vector
-            return *it;
-        } else if (it == flightDataPoints.end()) {
-            // targetTimestamp is after the last element in the vector
-            return flightDataPoints.back();
-        } else {
-            // Calculate which point is closer to the targetTimestamp.
-            float diffBefore = timestamp.count() - (it - 1)->timestamp;
-            float diffAfter = it->timestamp - timestamp.count();
-            return (diffBefore < diffAfter) ? *(it - 1) : *it;
-        }
+        auto nextPointIt = pointIt != flightDataPoints.end() ? pointIt + 1 : pointIt;
+
+        // Interpolate between the current point and the next one
+        float lerpTime = (timestamp.count() - pointIt->timestamp) / (nextPointIt->timestamp - pointIt->timestamp);
+
+        auto lerp = [&](float start, float end) {
+            return start + (end - start) * lerpTime;
+        };
+
+        auto lerpAngle = [&](float start, float end) {
+            float diff = end - start;
+            // Lerp the angle in the shortest direction
+            if (diff > M_PI)
+                diff -= 2 * M_PI;
+            else if (diff < -M_PI)
+                diff += 2 * M_PI;
+
+            return start + diff * lerpTime;
+        };
+
+        return {.timestamp = timestamp.count(),
+                .x = lerp(pointIt->x, nextPointIt->x),
+                .y = lerp(pointIt->y, nextPointIt->y),
+                .z = lerp(pointIt->z, nextPointIt->z),
+                .pitch = lerpAngle(pointIt->pitch, nextPointIt->pitch),
+                .yaw = lerpAngle(pointIt->yaw, nextPointIt->yaw),
+                .roll = lerpAngle(pointIt->roll, nextPointIt->roll)};
     }
 
     seconds_f DroneFlightData::getDuration() {
@@ -54,11 +70,11 @@ namespace dfv {
     }
 
     seconds_f DroneFlightData::getStartTime() {
-        return seconds_f{0};
+        return seconds_f{flightDataPoints.begin()->timestamp};
     }
 
     seconds_f DroneFlightData::getEndTime() {
-        return seconds_f{0};
+        return seconds_f{flightDataPoints.end()->timestamp};
     }
 
     FlightBoundingBox DroneFlightData::getBoundingBox() {
@@ -78,7 +94,7 @@ namespace dfv {
         const auto feetToMeter = 0.3048;
         using namespace csv;
 
-        auto startTime = std::chrono::high_resolution_clock::now();
+        auto startTime = clock::now();
         CSVReader reader(csvPath);
         std::vector<FlightDataPoint> flightData;
 
@@ -100,14 +116,14 @@ namespace dfv {
             flightData.emplace_back(
                     row["OSD.flyTime [s]"].get<float>(),
                     position.x,
+                    0,
                     position.y,
-                    row["OSD.altitude [ft]"].get<float>() * feetToMeter,
                     row["OSD.pitch"].get<float>(),
                     row["OSD.roll"].get<float>(),
                     row["OSD.yaw"].get<float>());
         }
-        auto endTime = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+        auto endTime = clock::now();
+        auto duration = duration_cast<milliseconds>(endTime - startTime);
         std::cout << "Flight data read in " << duration.count() << "ms" << std::endl;
         return flightData;
     }
