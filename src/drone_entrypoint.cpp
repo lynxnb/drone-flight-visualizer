@@ -4,7 +4,6 @@
 #include "flight_data/drone_flight_data.h"
 #include "glfw/glfw.h"
 #include "glfw/glfw_surface.h"
-#include "objects/drone.h"
 #include "visualizer.h"
 
 class DroneVisualizer : public dfv::Visualizer {
@@ -12,7 +11,7 @@ class DroneVisualizer : public dfv::Visualizer {
     using dfv::Visualizer::Visualizer; // Inherit constructors
 
     void onStart() override {
-        time = flightData.getStartTime() + dfv::seconds_f{100.f};
+        time = flightData.getStartTime();
     }
 
     void update(dfv::seconds_f deltaTime) override {
