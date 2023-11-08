@@ -1,7 +1,5 @@
 #include <iostream>
 
-#include <glm/gtx/transform.hpp>
-
 #include "config/config.h"
 #include "flight_data/drone_flight_data.h"
 #include "glfw/glfw.h"
@@ -13,7 +11,7 @@ class DroneVisualizer : public dfv::Visualizer {
   public:
     using dfv::Visualizer::Visualizer; // Inherit constructors
 
-    void loadInitialScene() override {
+    void onStart() override {
     }
 
     void update(dfv::seconds_f deltaTime) override {
@@ -54,8 +52,13 @@ int main(int argc, char **argv) {
     dfv::raii::Glfw glfw{WindowWidth, WindowHeight, WindowTitle};
     dfv::GlfwSurface surface{glfw.getWindow()};
 
-    DroneVisualizer visualizer{surface, data};
-    visualizer.init();
+    dfv::VisualizerCreateInfo createInfo{.surface = surface,
+                                         .flightData = data,
+                                         .objectModelPath = "assets/drone.obj",
+                                         .objectScale = 1.f};
+
+    DroneVisualizer visualizer{createInfo};
+    visualizer.start();
 
     auto lastFrameStart = dfv::clock::now();
 

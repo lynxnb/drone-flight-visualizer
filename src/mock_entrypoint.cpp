@@ -1,7 +1,5 @@
 #include <iostream>
 
-#include <glm/gtx/transform.hpp>
-
 #include "config/config.h"
 #include "flight_data/mock_flight_data.h"
 #include "glfw/glfw.h"
@@ -12,32 +10,17 @@ class MockVisualizer : public dfv::Visualizer {
   public:
     using dfv::Visualizer::Visualizer; // Inherit constructors
 
-    void loadInitialScene() override {
-        auto monkeyMesh = engine.createMesh("monkey", "assets/monkey_smooth.obj");
-        auto defaultMaterial = engine.getMaterial("defaultmesh");
-
-        auto monkeyObject = engine.allocateRenderObject();
-        monkeyHandle = monkeyObject.handle;
-        *monkeyObject.object = {.mesh = monkeyMesh,
-                                .material = defaultMaterial,
-                                .transform = glm::mat4(1.0f)};
-
-        auto point = data.getPoint(dfv::seconds_f{0});
-        monkeyObject.object->transform = glm::translate(glm::mat4(1.0f), glm::vec3(point.x, point.y, point.z));
+    void onStart() override {
     }
 
     void update(dfv::seconds_f deltaTime) override {
-        auto monkey = engine.getRenderObject(monkeyHandle);
-
         time += deltaTime;
-        auto point = data.getPoint(time);
-        monkey->transform = glm::translate(glm::mat4(1.0f), glm::vec3(point.x, point.y, point.z)) *
-                            glm::rotate(glm::mat4(1.0f), point.yaw, glm::vec3(0.0f, 1.0f, 0.0f)) *
-                            glm::rotate(glm::mat4(1.0f), point.pitch, glm::vec3(1.0f, 0.0f, 0.0f)) *
-                            glm::rotate(glm::mat4(1.0f), point.roll, glm::vec3(0.0f, 0.0f, 1.0f));
+
+        auto point = flightData.getPoint(time);
+        setObjectTransform(glm::vec3{point.x, point.y, point.z},
+                           glm::vec3{point.pitch, point.yaw, point.roll});
     }
 
-    dfv::RenderHandle monkeyHandle{};
     dfv::seconds_f time{};
 };
 
@@ -53,8 +36,13 @@ int main() {
     dfv::raii::Glfw glfw{WindowWidth, WindowHeight, WindowTitle};
     dfv::GlfwSurface surface{glfw.getWindow()};
 
-    MockVisualizer visualizer{surface, data};
-    visualizer.init();
+    dfv::VisualizerCreateInfo createInfo{.surface = surface,
+                                         .flightData = data,
+                                         .objectModelPath = "assets/monkey_smooth.obj",
+                                         .objectScale = 1.f};
+
+    MockVisualizer visualizer{createInfo};
+    visualizer.start();
 
     auto lastFrameStart = dfv::clock::now();
 
