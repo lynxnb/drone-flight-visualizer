@@ -16,7 +16,6 @@ add_executable(drone_flight_visualizer
         ${DFV_SOURCE_COMMON}
         glfw/glfw_surface.cpp
         flight_data/drone_flight_data.cpp
-        map/data_reader.cpp
         map/data_fetcher.cpp
         objects/drone.cpp
         drone_entrypoint.cpp

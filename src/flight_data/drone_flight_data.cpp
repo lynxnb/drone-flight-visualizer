@@ -1,5 +1,6 @@
 #include "drone_flight_data.h"
-#include "map/data_reader.h"
+
+#include <glm/glm.hpp>
 
 #include <csv.hpp>
 #include <utility>
@@ -64,6 +65,15 @@ namespace dfv {
         return {};
     }
 
+    static glm::vec2 calculateRelativePosition(glm::dvec2 position, glm::dvec2 inRelationTo) {
+        const auto scale = 100000; //  0.00001 = 1.11 meter
+
+        auto x = (position.x - inRelationTo.x) * scale;
+        auto y = (position.y - inRelationTo.y) * scale;
+
+        return {x, y};
+    }
+
     std::vector<FlightDataPoint> DroneFlightData::loadFlightData(const std::string &csvPath) {
         const auto feetToMeter = 0.3048;
         using namespace csv;
@@ -83,7 +93,7 @@ namespace dfv {
             // auto heading = !row["OSD.directionOfTravel"].is_null() ? row["OSD.directionOfTravel"].get<double>() : 0;
 
             // calculate position in relation to initial position
-            auto position = dfv::map::calculateRelativePosition(
+            auto position = calculateRelativePosition(
                     glm::dvec2{row["OSD.latitude"].get<double>(), row["OSD.longitude"].get<double>()},
                     glm::dvec2{initialPosition->lat, initialPosition->lon});
 

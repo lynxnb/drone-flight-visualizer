@@ -4,7 +4,6 @@
 #include <vector>
 
 #include <glm/gtx/transform.hpp>
-#include "map/data_reader.h"
 
 namespace dfv::objects {
     Drone::Drone(FlightData &flightData)
