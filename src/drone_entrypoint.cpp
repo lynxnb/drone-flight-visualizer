@@ -12,15 +12,14 @@ class DroneVisualizer : public dfv::Visualizer {
     using dfv::Visualizer::Visualizer; // Inherit constructors
 
     void onStart() override {
-        time = flightData.getStartTime();
+        time = flightData.getStartTime() + dfv::seconds_f{100.f};
     }
 
     void update(dfv::seconds_f deltaTime) override {
         time += deltaTime;
         auto flightPoint = flightData.getPoint(time);
         auto position = glm::vec3{flightPoint.x, flightPoint.y, flightPoint.z};
-        std::cout << "Position: " << position.x << ", " << position.y << ", " << position.z << std::endl;
-        auto attitude = glm::vec3{flightPoint.pitch, flightPoint.roll, flightPoint.yaw};
+        auto attitude = glm::vec3{flightPoint.pitch, flightPoint.yaw, flightPoint.roll};
         setObjectTransform(position, attitude);
     }
 

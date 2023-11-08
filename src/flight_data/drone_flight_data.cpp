@@ -46,6 +46,7 @@ namespace dfv {
         };
 
         auto lerpAngle = [&](float start, float end) {
+       
             float diff = end - start;
             // Lerp the angle in the shortest direction
             if (diff > M_PI)
@@ -118,9 +119,9 @@ namespace dfv {
                     position.x,
                     0,
                     position.y,
-                    row["OSD.pitch"].get<float>(),
-                    row["OSD.roll"].get<float>(),
-                    row["OSD.yaw"].get<float>());
+                    glm::radians(row["OSD.pitch"].get<float>()),
+                    glm::radians(row["OSD.yaw"].get<float>()),
+                    glm::radians(row["OSD.roll"].get<float>()));
         }
         auto endTime = clock::now();
         auto duration = duration_cast<milliseconds>(endTime - startTime);
