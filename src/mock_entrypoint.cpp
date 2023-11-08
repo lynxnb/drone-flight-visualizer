@@ -6,24 +6,6 @@
 #include "glfw/glfw_surface.h"
 #include "visualizer.h"
 
-class MockVisualizer : public dfv::Visualizer {
-  public:
-    using dfv::Visualizer::Visualizer; // Inherit constructors
-
-    void onStart() override {
-    }
-
-    void update(dfv::seconds_f deltaTime) override {
-        time += deltaTime;
-
-        auto point = flightData.getPoint(time);
-        setObjectTransform(glm::vec3{point.x, point.y, point.z},
-                           glm::vec3{point.pitch, point.yaw, point.roll});
-    }
-
-    dfv::seconds_f time{};
-};
-
 /*
  * The main entrypoint of the mock visualizer.
  */
@@ -41,7 +23,7 @@ int main() {
                                          .objectModelPath = "assets/models/monkey_smooth.obj",
                                          .objectScale = 1.f};
 
-    MockVisualizer visualizer{createInfo};
+    dfv::Visualizer visualizer{createInfo};
     visualizer.start();
 
     auto lastFrameStart = dfv::clock::now();
