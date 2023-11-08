@@ -60,8 +60,8 @@ int main(int argc, char **argv) {
 
     dfv::VisualizerCreateInfo createInfo{.surface = surface,
                                          .flightData = data,
-                                         .objectModelPath = "assets/drone.obj",
-                                         .objectScale = 1.f};
+                                         .objectModelPath = "assets/models/model.obj",
+                                         .objectScale = 0.04f};
 
     DroneVisualizer visualizer{createInfo};
     visualizer.start();

@@ -48,4 +48,6 @@ bin/
 .cache/
 
 # Excpetions for the assets folder
-!assets/*
+!assets/**/*
+
+.idea/csv-editor.xml

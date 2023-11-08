@@ -38,7 +38,7 @@ int main() {
 
     dfv::VisualizerCreateInfo createInfo{.surface = surface,
                                          .flightData = data,
-                                         .objectModelPath = "assets/monkey_smooth.obj",
+                                         .objectModelPath = "assets/models/monkey_smooth.obj",
                                          .objectScale = 1.f};
 
     MockVisualizer visualizer{createInfo};
