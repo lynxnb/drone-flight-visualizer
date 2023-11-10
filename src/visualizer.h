@@ -60,13 +60,13 @@ namespace dfv {
         /**
          * @brief Performs user-defined start-up operations
          */
-        virtual void onStart() = 0;
+        virtual void onStart() {};
 
         /**
-         * @brief User-defined method to update entities of the visualization.
-         * @param deltaTime The time since the last frame.
+         * @brief User-defined method called on every update (frame) of the visualization.
+         * @param deltaTime The time since the last update.
          */
-        virtual void update(seconds_f deltaTime) = 0;
+        virtual void onUpdate(seconds_f deltaTime) {};
 
         /**
          * @brief Sets the new position and attitude of the flying object.
@@ -83,6 +83,12 @@ namespace dfv {
          */
         void createScene();
 
+        /**
+         * @brief Updates the entities of the visualization.
+         * @param deltaTime The time since the last update.
+         */
+        void update(seconds_f deltaTime);
+
         SurfaceWrapper &surface; //!< The surface to render to
 
         std::filesystem::path objectModelPath; //!< The path to the flying object 3D model
@@ -91,6 +97,8 @@ namespace dfv {
 
         VulkanEngine engine; //!< The engine that handles rendering
         InputHandler inputHandler; //!< The input handler that handles input actions
+
+        seconds_f time{}; //!< The current time of the visualization
 
         Stats stats; //!< The statistics of the visualizer
     };

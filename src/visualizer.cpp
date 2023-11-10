@@ -70,4 +70,15 @@ namespace dfv {
         objectRenderHandle = ufoHandle;
     }
 
+    void Visualizer::update(seconds_f deltaTime) {
+        time += deltaTime;
+
+        auto point = flightData.getPoint(time);
+        setObjectTransform(glm::vec3{point.x, point.y, point.z},
+                           glm::vec3{point.pitch, point.yaw, point.roll});
+
+        // Run user-defined updates
+        onUpdate(deltaTime);
+    }
+
 } // namespace dfv

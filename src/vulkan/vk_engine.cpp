@@ -47,8 +47,8 @@ namespace dfv {
 
     void VulkanEngine::initCameraParams() {
         // Initialize camera parameters
-        cameraParameters.position = {0.f, -6.f, -10.f};
-        cameraParameters.orientation = {-0.5f, 0.f, 0.f};
+        cameraParameters.position = {0.f, -2.f, -5.f};
+        cameraParameters.orientation = {-0.2f, 0.f, 0.f};
         cameraParameters.fov = glm::radians(70.f);
         cameraParameters.nearPlane = 0.1f;
         cameraParameters.farPlane = 200.f;

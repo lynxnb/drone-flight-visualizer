@@ -4,27 +4,7 @@
 #include "flight_data/drone_flight_data.h"
 #include "glfw/glfw.h"
 #include "glfw/glfw_surface.h"
-#include "objects/drone.h"
 #include "visualizer.h"
-
-class DroneVisualizer : public dfv::Visualizer {
-  public:
-    using dfv::Visualizer::Visualizer; // Inherit constructors
-
-    void onStart() override {
-        time = flightData.getStartTime() + dfv::seconds_f{100.f};
-    }
-
-    void update(dfv::seconds_f deltaTime) override {
-        time += deltaTime;
-        auto flightPoint = flightData.getPoint(time);
-        auto position = glm::vec3{flightPoint.x, flightPoint.y, flightPoint.z};
-        auto attitude = glm::vec3{flightPoint.pitch, flightPoint.yaw, flightPoint.roll};
-        setObjectTransform(position, attitude);
-    }
-
-    dfv::seconds_f time{};
-};
 
 /*
  * The main entrypoint of the drone flight visualizer.
@@ -62,7 +42,7 @@ int main(int argc, char **argv) {
                                          .objectModelPath = "assets/models/model.obj",
                                          .objectScale = 0.04f};
 
-    DroneVisualizer visualizer{createInfo};
+    dfv::Visualizer visualizer{createInfo};
     visualizer.start();
 
     auto lastFrameStart = dfv::clock::now();
