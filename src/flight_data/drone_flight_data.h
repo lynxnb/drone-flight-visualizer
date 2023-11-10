@@ -26,6 +26,5 @@ namespace dfv {
         std::optional<Coordinate> initialPosition;
         FlightBoundingBox boundingBox;
         std::vector<FlightDataPoint> loadFlightData(const std::string &csvPath);
-        FlightDataPoint loadBBox();
     };
 } // namespace dfv

@@ -46,7 +46,7 @@ namespace dfv {
         };
 
         auto lerpAngle = [&](float start, float end) {
-       
+
             float diff = end - start;
             // Lerp the angle in the shortest direction
             if (diff > M_PI)
