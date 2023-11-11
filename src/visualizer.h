@@ -3,7 +3,6 @@
 #include <filesystem>
 
 #include "flight_data/flight_data.h"
-#include "input/input_handler.h"
 #include "utils/time_types.h"
 #include "vulkan/surface_wrapper.h"
 #include "vulkan/vk_engine.h"
