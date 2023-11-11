@@ -45,6 +45,7 @@ CPMAddPackage("gh:glfw/glfw#3.3.8")
 include_directories(SYSTEM ${glfw_SOURCE_DIR}/include)
 
 # GLM: Vector and matrix math
+add_compile_definitions(GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_LEFT_HANDED)
 CPMAddPackage("gh:g-truc/glm#0.9.9.8")
 include_directories(SYSTEM ${glm_SOURCE_DIR}/glm)
 
