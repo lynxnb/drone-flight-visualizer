@@ -21,10 +21,11 @@ namespace dfv {
         FlightBoundingBox getBoundingBox() override;
 
       private:
+        std::vector<FlightDataPoint> loadFlightData(const std::string &csvPath);
+
         const std::filesystem::path path;
         std::vector<FlightDataPoint> flightDataPoints;
         std::optional<Coordinate> initialPosition;
         FlightBoundingBox boundingBox;
-        std::vector<FlightDataPoint> loadFlightData(const std::string &csvPath);
     };
 } // namespace dfv

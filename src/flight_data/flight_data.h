@@ -22,8 +22,8 @@ namespace dfv {
         float x; //!< Position in the x-axis, corresponds to longitude in our plane
         float y; //!< Position in the y-axis, corresponds to altitude in our plane
         float z; //!< Position in the z-axis, corresponds to latitude in our plane
-        float pitch; //!< Angle of rotation about the x-axis
         float yaw; //!< Angle of rotation about the y-axis
+        float pitch; //!< Angle of rotation about the x-axis
         float roll; //!< Angle of rotation about the z-axis
     };
 

@@ -49,9 +49,9 @@ namespace dfv {
     void Visualizer::setObjectTransform(const glm::vec3 &position, const glm::vec3 &attitude) {
         auto ufo = engine.getRenderObject(objectRenderHandle);
         ufo->transform = glm::translate(position) *
-                         glm::rotate(attitude.x, glm::vec3{1.f, 0.f, 0.f}) *
-                         glm::rotate(attitude.y, glm::vec3{0.f, 1.f, 0.f}) *
-                         glm::rotate(attitude.z, glm::vec3{0.f, 0.f, 1.f}) *
+                         glm::rotate(attitude.x, glm::vec3{0.f, 1.f, 0.f}) * // yaw
+                         glm::rotate(attitude.y, glm::vec3{1.f, 0.f, 0.f}) * // pitch
+                         glm::rotate(attitude.z, glm::vec3{0.f, 0.f, 1.f}) * // roll
                          glm::scale(glm::vec3{objectScale});
     }
 
@@ -75,7 +75,7 @@ namespace dfv {
 
         auto point = flightData.getPoint(time);
         setObjectTransform(glm::vec3{point.x, point.y, point.z},
-                           glm::vec3{point.pitch, point.yaw, point.roll});
+                           glm::vec3{point.yaw, point.pitch, point.roll});
 
         // Run user-defined updates
         onUpdate(deltaTime);

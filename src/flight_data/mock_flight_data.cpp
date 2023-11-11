@@ -80,8 +80,8 @@ namespace dfv {
                 .x = lerp(pointIt->x, nextPointIt->x),
                 .y = lerp(pointIt->y, nextPointIt->y),
                 .z = lerp(pointIt->z, nextPointIt->z),
-                .pitch = lerpAngle(pointIt->pitch, nextPointIt->pitch),
                 .yaw = lerpAngle(pointIt->yaw, nextPointIt->yaw),
+                .pitch = lerpAngle(pointIt->pitch, nextPointIt->pitch),
                 .roll = lerpAngle(pointIt->roll, nextPointIt->roll)};
     }
 

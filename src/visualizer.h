@@ -71,7 +71,7 @@ namespace dfv {
         /**
          * @brief Sets the new position and attitude of the flying object.
          * @param position x, y, z coordinates of the flying object.
-         * @param attitude pitch, yaw, roll angles of the flying object.
+         * @param attitude yaw, pitch, roll angles of the flying object.
          */
         void setObjectTransform(const glm::vec3 &position, const glm::vec3 &attitude);
 
