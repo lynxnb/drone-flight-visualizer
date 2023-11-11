@@ -128,18 +128,42 @@ namespace dfv {
             return frameNumber;
         }
 
+        struct {
+            glm::vec3 position; //!< The position of the camera
+            glm::vec3 orientation; //!< The orientation of the camera in radians (yaw, pitch, roll)
+            glm::vec3 front; //!< Normalized vector pointing in the direction the camera is facing
+            glm::vec3 up; //!< The up vector
+
+            float fov{glm::radians(70.f)}; //!< Field of view in radians
+            float nearPlane{0.1f}; //!< Near plane distance
+            float farPlane{200.f}; //!< Far plane distance
+
+            /**
+             * @brief Updates the front vector based on the current orientation.
+             */
+            void updateFront() {
+                glm::vec3 direction = {std::cos(orientation.x) * std::cos(orientation.y),
+                                       std::sin(orientation.y),
+                                       std::sin(orientation.x) * std::cos(orientation.y)};
+
+                front = glm::normalize(direction);
+            }
+
+            /**
+             * @brief Updates the orientation based on the current front vector.
+             */
+            void updateOrientation() {
+                orientation.x = std::atan2(front.z, front.x);
+                orientation.y = std::asin(front.y);
+            }
+        } camera; //!< Camera parameters to use during rendering
+
       private:
         /**
          * Draws all objects using the given command buffer.
          * @param cmdBuf The command buffer to use for drawing.
          */
         void drawObjects(VkCommandBuffer cmdBuf);
-
-        /**
-         * Updates the camera data for the current frame.
-         * @param deltaTime The time since the last frame in seconds.
-         */
-        void updateCamera(seconds_f deltaTime);
 
         /**
          * Gets the frame data to use for the current frame.
@@ -192,8 +216,6 @@ namespace dfv {
         void initDescriptors();
         void initPipelines();
 
-        void initCameraParams();
-
       private:
         bool isInitialized{false};
         uint32_t frameNumber{0};
@@ -241,34 +263,6 @@ namespace dfv {
 
         SceneData sceneParameters; //!< Scene parameters to use during rendering
         AllocatedBuffer sceneParametersBuffer; //!< Buffer containing the scene parameters
-
-        struct {
-            glm::vec3 position; //!< The position of the camera
-            glm::vec3 orientation; //!< The orientation of the camera (x = pitch, y = yaw, z = roll)
-
-            float fov; //!< Field of view in radians
-            float nearPlane; //!< Near plane distance
-            float farPlane; //!< Far plane distance
-
-            float movementSpeed; //!< Movement speed in units per second
-            std::atomic<float> speedMultiplier = 1.0f; //!< Speed multiplier (used for sprinting)
-            float rotationSpeed; //!< Rotation speed in radians per second
-
-            std::atomic<float> surgeDirection = 0; //!< Whether the camera is moving forward or backwards (1 for forward, -1 for backwards)
-            std::atomic<float> swayDirection = 0; //!< Whether the camera is moving left or right (1 for right, -1 for left)
-            std::atomic<float> heaveDirection = 0; //!< Whether the camera is moving up or down (-1 for up, 1 for down)
-
-            std::atomic<float> yawDirection = 0; //!< Whether the camera is rotating left or right (1 for right, -1 for left)
-            std::atomic<float> pitchDirection = 0; //!< Whether the camera is rotating up or down (1 for up, -1 for down)
-
-            /**
-             * @brief Gets the adjusted movement speed, taking into account the speed multiplier.
-             * @return The adjusted movement speed.
-             */
-            float adjustedMovementSpeed() {
-                return movementSpeed * speedMultiplier.load(std::memory_order_relaxed);
-            }
-        } cameraParameters; //!< Camera parameters to use during rendering
     };
 
 } // namespace dfv

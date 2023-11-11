@@ -13,10 +13,31 @@ namespace dfv {
      * @brief Structure containing creation parameters for the visualizer.
      */
     struct VisualizerCreateInfo {
-        SurfaceWrapper &surface; //!< The surface to render to, must be valid for the lifetime of the visualizer.
-        FlightData &flightData; //!< The data source to visualize, must be valid for the lifetime of the visualizer.
+        SurfaceWrapper &surface; //!< The surface to render to, must be valid for the lifetime of the visualizer
+        FlightData &flightData; //!< The data source to visualize, must be valid for the lifetime of the visualizer
         std::filesystem::path objectModelPath; //!< The path to the flying object 3D model
         float objectScale; //!< The scale of the flying object model relative to the world coordinates (1u = 1m)
+    };
+
+    /**
+     * @brief A structure describing the current movement of the camera.
+     */
+    struct CameraMovement {
+        float surge; //!< The camera is moving forward or backwards (1 forward, -1 backwards)
+        float sway; //!< The camera is moving left or right (1 right, -1 left)
+        float heave; //!< The camera is moving up or down (1 up, -1 down)
+        float tilt; //!< The camera is tilting (1 up, -1 down)
+        float pan; //!< The camera is panning (1 left, -1 right)
+    };
+
+    /**
+     * @brief The camera mode of the visualizer.
+     */
+    enum class CameraMode {
+        Free, //!< The camera is free to move around the scene
+        LockedOn, //!< The camera is locked onto the flying object but can be moved around it
+        Follow1stPerson, //!< The camera follows the flying object in 1st person
+        Follow3rdPerson, //!< The camera follows the flying object in 3rd person
     };
 
     /**
@@ -51,6 +72,28 @@ namespace dfv {
         void drawFrame(seconds_f deltaTime);
 
         /**
+         * @brief Sets the movement state of the camera.
+         */
+        void setCameraMovement(const CameraMovement &movement);
+
+        /**
+         * @brief Turns the camera by the given amount.
+         * @param rotation A vector containing the amount to rotate the camera by in radians (yaw, pitch, roll).
+         */
+        void turnCamera(const glm::vec3 &rotation);
+
+        /**
+         * @brief Recenters the camera on the flying object.
+         * Applies to non-following camera modes only.
+         */
+         void recenterCamera();
+
+        /**
+         * @brief Sets the camera mode.
+         */
+        void setCameraMode(CameraMode mode);
+
+        /**
          * @brief Gets the statistics of the visualizer.
          * @return The statistics of the visualizer.
          */
@@ -60,13 +103,13 @@ namespace dfv {
         /**
          * @brief Performs user-defined start-up operations
          */
-        virtual void onStart() {};
+        virtual void onStart() {}
 
         /**
          * @brief User-defined method called on every update (frame) of the visualization.
          * @param deltaTime The time since the last update.
          */
-        virtual void onUpdate(seconds_f deltaTime) {};
+        virtual void onUpdate(seconds_f deltaTime) {}
 
         /**
          * @brief Sets the new position and attitude of the flying object.
@@ -79,7 +122,7 @@ namespace dfv {
 
       private:
         /**
-         * @brief Loads the initial scene.
+         * @brief Loads the initial scene and sets up the camera.
          */
         void createScene();
 
@@ -89,17 +132,27 @@ namespace dfv {
          */
         void update(seconds_f deltaTime);
 
+        /**
+         * @brief Updates the camera based on the current camera mode and movement state.
+         * @param deltaTime The time since the last update.
+         * @param dataPoint The current flight data point.
+         */
+        void updateCamera(seconds_f deltaTime, FlightDataPoint &dataPoint);
+
         SurfaceWrapper &surface; //!< The surface to render to
+        VulkanEngine engine; //!< The engine that handles rendering
+
+        CameraMode cameraMode{CameraMode::Free}; //!< The current camera mode
+        float cameraMovementSpeed{5.f}; //!< The speed of the camera movement in m/s
+        float cameraRotationSpeed{glm::radians(60.f)}; //!< The speed of the camera rotation in radians/s
+        CameraMovement cameraMovement{}; //!< The current movement state of the camera
 
         std::filesystem::path objectModelPath; //!< The path to the flying object 3D model
         float objectScale; //!< The scale of the flying object model
-        RenderHandle objectRenderHandle; //!< The render handle of the flying object
+        RenderHandle objectRenderHandle{}; //!< The render handle of the flying object
 
-        VulkanEngine engine; //!< The engine that handles rendering
-        InputHandler inputHandler; //!< The input handler that handles input actions
+        seconds_f time{0}; //!< The current time of the visualization
 
-        seconds_f time{}; //!< The current time of the visualization
-
-        Stats stats; //!< The statistics of the visualizer
+        Stats stats{}; //!< The statistics of the visualizer
     };
 } // namespace dfv

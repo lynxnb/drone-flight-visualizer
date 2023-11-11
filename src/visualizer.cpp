@@ -6,8 +6,8 @@
 
 namespace dfv {
     Visualizer::Visualizer(const VisualizerCreateInfo &createInfo)
-        : surface(createInfo.surface), flightData(createInfo.flightData), objectModelPath(createInfo.objectModelPath),
-          objectScale(createInfo.objectScale), objectRenderHandle(), engine(), inputHandler(), stats() {}
+        : flightData(createInfo.flightData), surface(createInfo.surface), engine(),
+          objectModelPath(createInfo.objectModelPath), objectScale(createInfo.objectScale) {}
 
     Visualizer::~Visualizer() {
         engine.cleanup();
@@ -17,6 +17,9 @@ namespace dfv {
         // Load flight data
         if (!flightData.load())
             throw std::runtime_error("Failed to load flight data");
+
+        // Start the visualization at the start time of the flight data
+        time = flightData.getStartTime();
 
         // Load initial map chunks
         FlightBoundingBox bbox = flightData.getBoundingBox();
@@ -55,9 +58,53 @@ namespace dfv {
                          glm::scale(glm::vec3{objectScale});
     }
 
+    void Visualizer::setCameraMovement(const CameraMovement &movement) {
+        cameraMovement = movement;
+    }
+
+    void Visualizer::turnCamera(const glm::vec3 &rotation) {
+        switch (cameraMode) {
+            case CameraMode::Free: {
+                engine.camera.orientation += rotation;
+                // Limit pitch range to prevent the camera from flipping
+                engine.camera.orientation.y = glm::clamp(engine.camera.orientation.y,
+                                                         glm::radians(-89.f), glm::radians(89.f));
+                engine.camera.updateFront();
+            } break;
+
+            default:
+                break;
+        }
+    }
+
+    void Visualizer::recenterCamera() {
+        if (cameraMode == CameraMode::Free) {
+            auto point = flightData.getPoint(time);
+            auto direction = glm::normalize(glm::vec3{point.x, point.y, point.z} - engine.camera.position);
+
+            engine.camera.orientation = {std::atan2(direction.z, direction.x),
+                                         std::asin(direction.y),
+                                         0.f};
+            engine.camera.updateFront();
+        }
+    }
+
+    void Visualizer::setCameraMode(CameraMode mode) {
+        cameraMode = mode;
+    }
+
     void Visualizer::createScene() {
         if (!is_regular_file(objectModelPath))
             throw std::runtime_error("Invalid object model file provided");
+
+        auto firstDataPoint = flightData.getPoint(flightData.getStartTime());
+
+        // Set the initial camera position and direction
+        engine.camera.position = glm::vec3{firstDataPoint.x, firstDataPoint.y, firstDataPoint.z} +
+                                 glm::vec3{0.f, 1.f, -5.f};
+        engine.camera.orientation = {glm::radians(90.f), 0.f, 0.f};
+        engine.camera.updateFront();
+        engine.camera.up = {0.f, 1.f, 0.f};
 
         auto ufoMesh = engine.createMesh("ufo", objectModelPath);
         auto defaultMat = engine.getMaterial("defaultmesh");
@@ -77,8 +124,85 @@ namespace dfv {
         setObjectTransform(glm::vec3{point.x, point.y, point.z},
                            glm::vec3{point.yaw, point.pitch, point.roll});
 
+        // Update camera
+        updateCamera(deltaTime, point);
+
         // Run user-defined updates
         onUpdate(deltaTime);
+    }
+
+    void Visualizer::updateCamera(seconds_f deltaTime, FlightDataPoint &dataPoint) {
+        switch (cameraMode) {
+            case CameraMode::Free: {
+                // Remove the y component to avoid moving up/down when moving on the xz plane
+                glm::vec3 frontPlane = glm::normalize(glm::vec3{engine.camera.front.x, 0.f, engine.camera.front.z});
+                glm::vec3 rightPlane = glm::normalize(glm::cross(engine.camera.up, frontPlane));
+
+                glm::vec3 positionMask = cameraMovement.surge * frontPlane +
+                                         cameraMovement.sway * rightPlane +
+                                         cameraMovement.heave * engine.camera.up;
+                glm::vec3 rotationMask = {cameraMovement.pan, // yaw
+                                          cameraMovement.tilt, // pitch
+                                          0};
+
+                engine.camera.position += positionMask * cameraMovementSpeed * deltaTime.count();
+                engine.camera.orientation += rotationMask * cameraRotationSpeed * deltaTime.count();
+                engine.camera.updateFront();
+            } break;
+
+            case CameraMode::LockedOn: {
+                glm::vec3 frontPlane = glm::normalize(glm::vec3{engine.camera.front.x, 0.f, engine.camera.front.z});
+                glm::vec3 rightPlane = glm::normalize(glm::cross(engine.camera.up, frontPlane));
+
+                // The amount to move the camera in each direction x, y, z
+                glm::vec3 positionMask = cameraMovement.surge * frontPlane +
+                                         cameraMovement.sway * rightPlane +
+                                         cameraMovement.heave * engine.camera.up;
+
+                glm::vec3 target = {dataPoint.x,
+                                    dataPoint.y,
+                                    dataPoint.z};
+
+                // Direction from the camera to the object
+                glm::vec3 direction = glm::normalize(target - engine.camera.position);
+
+                engine.camera.position += positionMask * cameraMovementSpeed * deltaTime.count();
+                // Look in the direction of the object
+                engine.camera.front = direction;
+                engine.camera.updateOrientation();
+            } break;
+
+            case CameraMode::Follow1stPerson: {
+                glm::vec3 target = {dataPoint.x,
+                                    dataPoint.y + 0.3f, // Float the camera slightly above the object
+                                    dataPoint.z};
+
+                // TODO: implement configurable vertical first-person offset
+                glm::vec3 heading = {std::sin(dataPoint.yaw),
+                                     0.f,
+                                     std::cos(dataPoint.yaw)};
+
+                engine.camera.position = target;
+                engine.camera.front = heading;
+                engine.camera.updateOrientation();
+            } break;
+
+            case CameraMode::Follow3rdPerson: {
+                glm::vec3 target = {dataPoint.x,
+                                    dataPoint.y,
+                                    dataPoint.z};
+
+                // TODO: implement configurable follow distance
+                glm::vec3 heading = {std::sin(dataPoint.yaw),
+                                     -0.4f, // Float the camera slightly above the object
+                                     std::cos(dataPoint.yaw)};
+
+                // Place the camera 5m behind the object in the direction it's heading
+                engine.camera.position = target - heading * 5.f;
+                engine.camera.front = glm::normalize(target - engine.camera.position);
+                engine.camera.updateOrientation();
+            } break;
+        }
     }
 
 } // namespace dfv

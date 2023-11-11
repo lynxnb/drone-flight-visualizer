@@ -39,40 +39,8 @@ namespace dfv {
         initDescriptors();
         // Create pipelines
         initPipelines();
-        // Create a camera perspective
-        initCameraParams();
 
         isInitialized = true;
-    }
-
-    void VulkanEngine::initCameraParams() {
-        // Initialize camera parameters
-        cameraParameters.position = {0.f, -2.f, -5.f};
-        cameraParameters.orientation = {-0.2f, 0.f, 0.f};
-        cameraParameters.fov = glm::radians(70.f);
-        cameraParameters.nearPlane = 0.1f;
-        cameraParameters.farPlane = 200.f;
-        cameraParameters.movementSpeed = 5.f;
-        cameraParameters.rotationSpeed = glm::radians(30.f);
-    }
-
-    void VulkanEngine::updateCamera(seconds_f deltaTime) {
-        glm::vec3 cameraOrientation = {cameraParameters.pitchDirection.load(std::memory_order_relaxed),
-                                       cameraParameters.yawDirection.load(std::memory_order_relaxed),
-                                       0.f};
-
-        // Multiply by delta time for framerate-independent movement
-        cameraParameters.orientation += cameraOrientation * cameraParameters.rotationSpeed * deltaTime.count();
-
-        glm::vec3 directions = {cameraParameters.surgeDirection.load(std::memory_order_relaxed), // Forward/backward
-                                cameraParameters.heaveDirection.load(std::memory_order_relaxed), // Up/down
-                                cameraParameters.swayDirection.load(std::memory_order_relaxed)}; // Left/right
-        float yaw = cameraParameters.orientation.y;
-        glm::vec3 cameraMovement = {directions.x * sin(yaw) + directions.z * cos(yaw),
-                                    directions.y,
-                                    directions.z * sin(yaw) - directions.x * cos(yaw)};
-
-        cameraParameters.position -= cameraMovement * cameraParameters.adjustedMovementSpeed() * deltaTime.count();
     }
 
     void VulkanEngine::draw() {
@@ -165,19 +133,13 @@ namespace dfv {
     void VulkanEngine::drawObjects(VkCommandBuffer cmdBuf) {
         auto &frame = getCurrentFrame();
 
-        // Apply camera position
-        glm::mat4 view = glm::translate(glm::mat4(1.f), cameraParameters.position);
-        // Apply pitch rotation
-        glm::mat4 rot = glm::rotate(glm::mat4(1.f), cameraParameters.orientation.x, glm::vec3(-1.f, 0.f, 0.f));
-        // Apply yaw rotation
-        rot = glm::rotate(rot, cameraParameters.orientation.y, glm::vec3(0.f, 1.f, 0.f));
-        view = rot * view;
-
+        // Camera view
+        glm::mat4 view = glm::lookAt(camera.position, camera.position + camera.front, camera.up);
         // Camera projection
-        glm::mat4 projection = glm::perspective(cameraParameters.fov,
+        glm::mat4 projection = glm::perspective(camera.fov,
                                                 (float) windowExtent.width / (float) windowExtent.height,
-                                                cameraParameters.nearPlane, cameraParameters.farPlane);
-        projection[1][1] *= -1;
+                                                camera.nearPlane, camera.farPlane);
+        projection[1][1] *= -1; // Flip projection matrix from GL to Vulkan orientation (y-axis)
 
         // Copy the camera data into the buffer
         CameraData *cameraData;
