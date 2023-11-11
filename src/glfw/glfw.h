@@ -4,7 +4,7 @@
 
 namespace dfv::raii {
     /**
-     * @brief RAII wrapper for GLFW
+     * @brief Refcounted RAII wrapper for GLFW with support for copy and move semantics.
      */
     class Glfw {
       public:
@@ -14,19 +14,50 @@ namespace dfv::raii {
             glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); // Remove once swapchain recreation is implemented
 
             using namespace dfv::window_config;
-            glfwWindow = glfwCreateWindow(width, height, title, nullptr, nullptr);
+            window = glfwCreateWindow(width, height, title, nullptr, nullptr);
+            ++instanceCount;
         }
 
         ~Glfw() {
-            glfwDestroyWindow(glfwWindow);
-            glfwTerminate();
+            if (--instanceCount == 0) {
+                glfwDestroyWindow(window);
+                glfwTerminate();
+            }
+        }
+
+        Glfw(const Glfw &other) noexcept
+            : window(other.window) {
+            ++instanceCount;
+        }
+
+        Glfw(Glfw &&other) noexcept
+            : window(other.window) {
+            other.window = nullptr;
+        }
+
+        Glfw &operator=(const Glfw &other) noexcept {
+            if (this != &other) {
+                window = other.window;
+                ++instanceCount;
+            }
+            return *this;
+        }
+
+        Glfw &operator=(Glfw &&other) noexcept {
+            if (this != &other) {
+                window = other.window;
+                other.window = nullptr;
+            }
+            return *this;
         }
 
         GLFWwindow *getWindow() {
-            return glfwWindow;
+            return window;
         }
 
       private:
-        GLFWwindow *glfwWindow = nullptr;
+        GLFWwindow *window = nullptr;
+
+        static inline int instanceCount{0}; //!< The number of instances of Glfw
     };
 } // namespace dfv::raii
