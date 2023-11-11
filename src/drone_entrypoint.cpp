@@ -6,6 +6,8 @@
 #include "glfw/glfw_surface.h"
 #include "visualizer.h"
 
+void setupInput(dfv::raii::Glfw &glfw, dfv::Visualizer &visualizer);
+
 /*
  * The main entrypoint of the drone flight visualizer.
  *
@@ -44,6 +46,7 @@ int main(int argc, char **argv) {
 
     dfv::Visualizer visualizer{createInfo};
     visualizer.start();
+    setupInput(glfw, visualizer);
 
     auto lastFrameStart = dfv::clock::now();
 
@@ -70,4 +73,81 @@ int main(int argc, char **argv) {
     std::cout << "Average FPS: " << fpsAvg << std::endl;
 
     return 0;
+}
+
+void setupInput(dfv::raii::Glfw &glfw, dfv::Visualizer &visualizer) {
+    static dfv::Visualizer &visualizerRef = visualizer;
+
+    static dfv::CameraMovement movement{};
+
+    glfwSetKeyCallback(glfw.getWindow(), [](GLFWwindow *window, int key, int scancode, int action, int mods) {
+        if (action == GLFW_REPEAT) {
+            return;
+        }
+
+        // clang-format off
+        #define CASE_INPUT_AXIS(axis, keyPositive, keyNegative)     \
+            case keyPositive:                                       \
+                movement.axis += action == GLFW_PRESS ? 1.f : -1.f; \
+                break;                                              \
+            case keyNegative:                                       \
+                movement.axis -= action == GLFW_PRESS ? 1.f : -1.f; \
+                break
+        // clang-format on
+
+        switch (key) {
+            CASE_INPUT_AXIS(surge, GLFW_KEY_W, GLFW_KEY_S);
+            CASE_INPUT_AXIS(sway, GLFW_KEY_D, GLFW_KEY_A);
+            CASE_INPUT_AXIS(heave, GLFW_KEY_SPACE, GLFW_KEY_LEFT_CONTROL);
+            CASE_INPUT_AXIS(tilt, GLFW_KEY_UP, GLFW_KEY_DOWN);
+            CASE_INPUT_AXIS(pan, GLFW_KEY_LEFT, GLFW_KEY_RIGHT);
+            case GLFW_KEY_ESCAPE:
+                glfwSetWindowShouldClose(window, GLFW_TRUE);
+                break;
+            case GLFW_KEY_1:
+                visualizerRef.setCameraMode(dfv::CameraMode::Free);
+                break;
+            case GLFW_KEY_2:
+                visualizerRef.setCameraMode(dfv::CameraMode::LockedOn);
+                break;
+            case GLFW_KEY_3:
+                visualizerRef.setCameraMode(dfv::CameraMode::Follow1stPerson);
+                break;
+            case GLFW_KEY_4:
+                visualizerRef.setCameraMode(dfv::CameraMode::Follow3rdPerson);
+                break;
+            case GLFW_KEY_R:
+                visualizerRef.recenterCamera();
+                break;
+            default:
+                break;
+        }
+
+        visualizerRef.setCameraMovement(movement);
+    });
+
+    static double lastCursorX, lastCursorY;
+
+    static auto cursorPosCallback = [](GLFWwindow *window, double xpos, double ypos) {
+        double xoffset = lastCursorX - xpos; // Reversed since Vulkan used left-handed coordinates
+        double yoffset = lastCursorY - ypos; // Reversed since y-coordinates range from bottom to top
+        lastCursorX = xpos;
+        lastCursorY = ypos;
+
+        const float sensitivity = 0.0005f;
+        xoffset *= sensitivity;
+        yoffset *= sensitivity;
+
+        visualizerRef.turnCamera({xoffset, yoffset, 0.f});
+    };
+
+    glfwSetInputMode(glfw.getWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    // We set the callback once to get the initial cursor position, to avoid a camera jump when the cursor first enters the window
+    // We then set the callback to the actual callback
+    glfwSetCursorPosCallback(glfw.getWindow(), [](GLFWwindow *window, double xpos, double ypos) {
+        lastCursorX = xpos;
+        lastCursorY = ypos;
+        glfwSetCursorPosCallback(window, cursorPosCallback);
+    });
 }
