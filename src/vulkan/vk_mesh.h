@@ -1,7 +1,8 @@
 #pragma once
 
-#include <vector>
 #include <filesystem>
+#include <optional>
+#include <vector>
 
 #include <glm/glm.hpp>
 
@@ -30,11 +31,6 @@ namespace dfv {
         AllocatedBuffer vertexBuffer;
 
         static std::optional<Mesh> loadFromObj(const std::filesystem::path &filename);
-    };
-
-    struct MeshPushConstants {
-        glm::vec4 data;
-        glm::mat4 renderMatrix;
     };
 
 } // namespace dfv

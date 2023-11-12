@@ -11,28 +11,11 @@
 #include "vk_mesh.h"
 #include "vk_traits.h"
 #include "vk_types.h"
+#include "uniform_types.h"
 
 namespace dfv {
 
     constexpr unsigned int MaxFramesInFlight = 2;
-
-    struct CameraData {
-        glm::mat4 view; // View matrix (camera location/transform)
-        glm::mat4 proj; // Projection matrix (perspective)
-        glm::mat4 viewproj; // View * Projection matrix to avoid multiplication in the shader
-    };
-
-    struct SceneData {
-        glm::vec4 fogColor; // w is for exponent
-        glm::vec4 fogDistances; //x for min, y for max, zw unused.
-        glm::vec4 ambientColor;
-        glm::vec4 sunlightDirection; //w for sun power
-        glm::vec4 sunlightColor;
-    };
-
-    struct ObjectData {
-        glm::mat4 modelMatrix;
-    };
 
     /**
      * A structure containing per-frame data used by the engine.
@@ -43,8 +26,6 @@ namespace dfv {
 
         VkCommandPool commandPool;
         VkCommandBuffer mainCommandBuffer;
-
-        AllocatedBuffer cameraBuffer; //!< Buffer containing a single CameraData object to use for the frame.
 
         VkDescriptorSet globalDescriptor; //!< Global descriptor set for the frame.
 
@@ -261,7 +242,7 @@ namespace dfv {
         std::unordered_map<std::string, Mesh> meshes; //!< Meshes loaded by the engine
         std::unordered_map<std::string, Material> materials; //!< Materials loaded by the engine
 
-        SceneData sceneParameters; //!< Scene parameters to use during rendering
+        uniform::SceneData sceneParameters; //!< Scene parameters to use during rendering
         AllocatedBuffer sceneParametersBuffer; //!< Buffer containing the scene parameters
     };
 

@@ -281,7 +281,6 @@ namespace dfv {
 
         // Create framebuffers for each of the swapchain image views
         for (int i = 0; i < swapchainImageCount; i++) {
-            // Allocate memory for the attachments
             std::array attachments = {swapchainImageViews[i], depthImageView};
             framebufferInfo.attachmentCount = attachments.size();
             framebufferInfo.pAttachments = attachments.data();
@@ -297,8 +296,7 @@ namespace dfv {
     }
 
     void VulkanEngine::initDescriptors() {
-        std::array<VkDescriptorPoolSize, 3> poolSizes = {
-                VkDescriptorPoolSize{        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10},
+        std::array poolSizes = {
                 VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10},
                 VkDescriptorPoolSize{        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10}
         };
@@ -311,50 +309,43 @@ namespace dfv {
 
         vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool);
 
-        std::array<VkDescriptorSetLayoutBinding, 2> bindings = {};
-        // Binding for camera data at 0
-        bindings[0] = vkinit::descriptorset_layout_binding(
-                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0);
+        // Set 0: Global data
+        VkDescriptorSetLayoutBinding sceneBinding = vkinit::descriptorset_layout_binding(
+                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT, 0);
 
-        // Binding for scene data at 1
-        bindings[1] = vkinit::descriptorset_layout_binding(
-                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 1);
-
+        std::array globalBindings = {sceneBinding};
         VkDescriptorSetLayoutCreateInfo globalSetInfo = {.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
                                                          .flags = 0,
-                                                         .bindingCount = bindings.size(),
-                                                         .pBindings = bindings.data()};
+                                                         .bindingCount = globalBindings.size(),
+                                                         .pBindings = globalBindings.data()};
 
-        // Binding for object data at 0 of second set
+        // Set 1: Per-object data
         VkDescriptorSetLayoutBinding objectBinding = vkinit::descriptorset_layout_binding(
                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0);
 
+        std::array objectBindings = {objectBinding};
         VkDescriptorSetLayoutCreateInfo objectSetInfo = {.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
                                                          .flags = 0,
-                                                         .bindingCount = 1,
-                                                         .pBindings = &objectBinding};
+                                                         .bindingCount = objectBindings.size(),
+                                                         .pBindings = objectBindings.data()};
 
         vkCreateDescriptorSetLayout(device, &globalSetInfo, nullptr, &globalSetLayout);
         vkCreateDescriptorSetLayout(device, &objectSetInfo, nullptr, &objectSetLayout);
 
-        const size_t sceneParamBufferSize = MaxFramesInFlight * uniformBufferSizeAlignUp(sizeof(SceneData));
+        const size_t sceneParamBufferSize = MaxFramesInFlight * uniformBufferSizeAlignUp(sizeof(uniform::SceneData));
         sceneParametersBuffer = createUniformBuffer(sceneParamBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
         for (auto &frame : frames) {
-            // Allocate the camera buffer
-            frame.cameraBuffer = createUniformBuffer(sizeof(CameraData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-
             // Allocate the object buffer
             constexpr int MAX_OBJECTS = 10000;
-            frame.objectBuffer = createUniformBuffer(sizeof(ObjectData) * MAX_OBJECTS, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+            frame.objectBuffer = createUniformBuffer(sizeof(uniform::ObjectData) * MAX_OBJECTS, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
             // Add to the deletion queue
             mainDeletionQueue.pushFunction([&]() {
-                vmaDestroyBuffer(allocator, frame.cameraBuffer.buffer, frame.cameraBuffer.allocation);
                 vmaDestroyBuffer(allocator, frame.objectBuffer.buffer, frame.objectBuffer.allocation);
             });
 
-            // Allocate a global descriptor set per frame
+            // Set 0: Allocate a global descriptor set per frame
             VkDescriptorSetAllocateInfo globalSetAlloc = {.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
                                                           .descriptorPool = descriptorPool,
                                                           .descriptorSetCount = 1,
@@ -362,7 +353,14 @@ namespace dfv {
 
             vkAllocateDescriptorSets(device, &globalSetAlloc, &frame.globalDescriptor);
 
-            // Allocate an object descriptor set per frame
+            VkDescriptorBufferInfo sceneInfo = {.buffer = sceneParametersBuffer.buffer,
+                                                .offset = 0,
+                                                .range = sizeof(uniform::SceneData)};
+
+            auto sceneWrite = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+                                                              frame.globalDescriptor, &sceneInfo, 0);
+
+            // Set 1: Allocate an object descriptor set per frame
             VkDescriptorSetAllocateInfo objectSetAlloc = {.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
                                                           .descriptorPool = descriptorPool,
                                                           .descriptorSetCount = 1,
@@ -370,24 +368,15 @@ namespace dfv {
 
             vkAllocateDescriptorSets(device, &objectSetAlloc, &frame.objectDescriptor);
 
-            // Update the global descriptor with our camera data
-            VkDescriptorBufferInfo cameraInfo = {.buffer = frame.cameraBuffer.buffer,
-                                                 .offset = 0,
-                                                 .range = sizeof(CameraData)};
-
-            VkDescriptorBufferInfo sceneInfo = {.buffer = sceneParametersBuffer.buffer,
-                                                .offset = 0,
-                                                .range = sizeof(SceneData)};
-
             VkDescriptorBufferInfo objectInfo = {.buffer = frame.objectBuffer.buffer,
                                                  .offset = 0,
-                                                 .range = sizeof(ObjectData) * MAX_OBJECTS};
+                                                 .range = sizeof(uniform::ObjectData) * MAX_OBJECTS};
 
-            auto cameraWrite = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frame.globalDescriptor, &cameraInfo, 0);
-            auto sceneWrite = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, frame.globalDescriptor, &sceneInfo, 1);
-            auto objectWrite = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, frame.objectDescriptor, &objectInfo, 0);
+            auto objectWrite = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                               frame.objectDescriptor, &objectInfo, 0);
 
-            std::array<VkWriteDescriptorSet, 3> setWrites = {cameraWrite, sceneWrite, objectWrite};
+            // Update the descriptor sets
+            std::array setWrites = {sceneWrite, objectWrite};
             vkUpdateDescriptorSets(device, setWrites.size(), setWrites.data(), 0, nullptr);
         }
 
@@ -437,9 +426,9 @@ namespace dfv {
         VkPipelineLayoutCreateInfo meshPipelineLayoutInfo = vkinit::pipeline_layout_create_info();
 
         // Setup push constants
-        VkPushConstantRange pushConstant = {.stageFlags = VK_SHADER_STAGE_VERTEX_BIT, // This push constant range is accessible only in the vertex shader
+        VkPushConstantRange pushConstant = {.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
                                             .offset = 0,
-                                            .size = sizeof(MeshPushConstants)}; // This push constant range takes up the size of a MeshPushConstants struct
+                                            .size = sizeof(uniform::MeshPushConstants)};
 
         meshPipelineLayoutInfo.pPushConstantRanges = &pushConstant;
         meshPipelineLayoutInfo.pushConstantRangeCount = 1;
@@ -465,7 +454,7 @@ namespace dfv {
         pipelineBuilder.vertexInputInfo.vertexBindingDescriptionCount = vertexDescription.bindings.size();
 
         // Compile mesh vertex shader
-        auto meshVertShader = loadShaderModule("shaders/tri_mesh.vert.spv");
+        auto meshVertShader = loadShaderModule("shaders/default.vert.spv");
         if (!meshVertShader)
             std::cout << "Error when building the triangle vertex shader module" << std::endl;
         else
