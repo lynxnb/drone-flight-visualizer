@@ -1,6 +1,7 @@
 #include "vk_mesh.h"
 
 #include <iostream>
+#include <numeric>
 
 #include <tiny_obj_loader.h>
 
@@ -53,7 +54,7 @@ namespace dfv {
         std::vector<tinyobj::material_t> materials;
 
         // Error and warning output from the load function
-        std::string err;
+        std::string err, warn;
 
         auto objDir = filename.parent_path().string() + "/";
         // Load the OBJ file
@@ -68,44 +69,36 @@ namespace dfv {
         if (!loaded)
             return std::nullopt;
 
-        std::vector<Vertex> vertices(attrib.vertices.size() / 3);
-        // Loop over shapes
-        for (auto &shape : shapes) {
-            // Loop over faces
-            size_t indexOffset = 0;
-            for (size_t f = 0; f < shape.mesh.num_face_vertices.size(); f++) {
-                // Hardcode loading triangles only
-                constexpr int fv = 3;
+        std::vector<Vertex> vertices;
+        vertices.reserve(attrib.vertices.size() / 3);
+        // Get total index count by summing up the number of indices in each shape
+        size_t indexCount = std::accumulate(shapes.begin(), shapes.end(), 0,
+                                            [](size_t acc, const tinyobj::shape_t &shape) {
+                                                return acc + shape.mesh.indices.size();
+                                            });
+        std::vector<uint32_t> indices;
+        indices.reserve(indexCount);
 
-                // Loop over vertices in the face
-                for (size_t v = 0; v < fv; v++) {
-                    // Access to vertex
-                    tinyobj::index_t idx = shape.mesh.indices[indexOffset + v];
+        for (const auto &shape : shapes) {
+            for (const auto &index : shape.mesh.indices) {
+                Vertex vertex{};
+                vertex.position = {attrib.vertices[3 * index.vertex_index + 0],
+                                   attrib.vertices[3 * index.vertex_index + 1],
+                                   attrib.vertices[3 * index.vertex_index + 2]};
 
-                    // Vertex position
-                    tinyobj::real_t vx = attrib.vertices[3 * idx.vertex_index + 0];
-                    tinyobj::real_t vy = attrib.vertices[3 * idx.vertex_index + 1];
-                    tinyobj::real_t vz = attrib.vertices[3 * idx.vertex_index + 2];
-                    // Vertex normal
-                    tinyobj::real_t nx = attrib.normals[3 * idx.normal_index + 0];
-                    tinyobj::real_t ny = attrib.normals[3 * idx.normal_index + 1];
-                    tinyobj::real_t nz = attrib.normals[3 * idx.normal_index + 2];
+                vertex.normal = {attrib.normals[3 * index.normal_index + 0],
+                                 attrib.normals[3 * index.normal_index + 1],
+                                 attrib.normals[3 * index.normal_index + 2]};
 
-                    // Copy it into our vertex
-                    Vertex newVert{
-                            .position = {vx, vy, vz},
-                            .normal = {nx, ny, nz},
-                            // Set the vertex color as the vertex normal, this is just for display purposes
-                            .color = newVert.normal,
-                    };
+                vertex.color = vertex.normal;
 
-                    vertices.push_back(newVert);
-                }
-                indexOffset += fv;
+                vertices.push_back(vertex);
+                indices.push_back(indices.size());
             }
         }
 
-        return Mesh{.vertices = std::move(vertices)};
+        return Mesh{.vertices = std::move(vertices),
+                    .indices = std::move(indices)};
     }
 
 } // namespace dfv

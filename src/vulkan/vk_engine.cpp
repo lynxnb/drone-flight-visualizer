@@ -187,13 +187,13 @@ namespace dfv {
 
             // Only bind the mesh if it's a different one from last bind
             if (object.mesh != lastMesh) {
-                // Bind the mesh vertex buffer with offset 0
                 VkDeviceSize offset = 0;
                 vkCmdBindVertexBuffers(cmdBuf, 0, 1, &object.mesh->vertexBuffer.buffer, &offset);
+                vkCmdBindIndexBuffer(cmdBuf, object.mesh->indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
                 lastMesh = object.mesh;
             }
 
-            vkCmdDraw(cmdBuf, object.mesh->vertices.size(), 1, 0, objectIndex);
+            vkCmdDrawIndexed(cmdBuf, object.mesh->indices.size(), 1, 0, 0, objectIndex);
         }
     }
 
