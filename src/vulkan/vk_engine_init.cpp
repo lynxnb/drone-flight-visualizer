@@ -393,8 +393,15 @@ namespace dfv {
         // Build the stage-create-info for both vertex and fragment stages
         PipelineBuilder pipelineBuilder;
 
-        // Vertex input controls how to read vertices from vertex buffers. We aren't using it yet
+        // Setup vertex input state
         pipelineBuilder.vertexInputInfo = vkinit::vertex_input_state_create_info();
+        VertexInputDescription vertexDescription = Vertex::getVertexDescription();
+
+        // Connect the pipeline builder vertex input info to the one we get from Vertex
+        pipelineBuilder.vertexInputInfo.pVertexAttributeDescriptions = vertexDescription.attributes.data();
+        pipelineBuilder.vertexInputInfo.vertexAttributeDescriptionCount = vertexDescription.attributes.size();
+        pipelineBuilder.vertexInputInfo.pVertexBindingDescriptions = vertexDescription.bindings.data();
+        pipelineBuilder.vertexInputInfo.vertexBindingDescriptionCount = vertexDescription.bindings.size();
 
         // Input assembly is the configuration for drawing triangle lists, strips, or individual points
         // We are just going to draw triangle list
@@ -442,16 +449,6 @@ namespace dfv {
 
         // Use the push constants layout
         pipelineBuilder.pipelineLayout = meshPipelineLayout;
-
-        // Build the mesh pipeline
-        VertexInputDescription vertexDescription = Vertex::getVertexDescription();
-
-        // Connect the pipeline builder vertex input info to the one we get from Vertex
-        pipelineBuilder.vertexInputInfo.pVertexAttributeDescriptions = vertexDescription.attributes.data();
-        pipelineBuilder.vertexInputInfo.vertexAttributeDescriptionCount = vertexDescription.attributes.size();
-
-        pipelineBuilder.vertexInputInfo.pVertexBindingDescriptions = vertexDescription.bindings.data();
-        pipelineBuilder.vertexInputInfo.vertexBindingDescriptionCount = vertexDescription.bindings.size();
 
         // Compile mesh vertex shader
         auto meshVertShader = loadShaderModule("shaders/default.vert.spv");
