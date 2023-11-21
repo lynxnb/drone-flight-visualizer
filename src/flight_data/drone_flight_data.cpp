@@ -9,7 +9,7 @@
 
 namespace dfv {
     DroneFlightData::DroneFlightData(std::filesystem::path path)
-        : path(std::move(path)) {}
+        : path(std::move(path)), boundingBox() {}
 
     bool DroneFlightData::load() {
         try {
@@ -31,12 +31,14 @@ namespace dfv {
             return FlightDataPoint(0, 0, 0, 0, 0, 0, 0);
         }
 
-        auto pointIt = std::lower_bound(flightDataPoints.begin(), flightDataPoints.end(), timestamp,
-                                   [](const FlightDataPoint &point, const seconds_f &timestamp) {
-                                       return point.timestamp < timestamp.count();
-                                   });
+        // upper_bound returns the first element that is greater than the timestamp, aka the next point
+        auto nextPointIt = std::upper_bound(flightDataPoints.begin(), flightDataPoints.end(), timestamp,
+                                            [](const seconds_f &timestamp, const FlightDataPoint &point) {
+                                                return timestamp.count() < point.timestamp;
+                                            });
 
-        auto nextPointIt = pointIt != flightDataPoints.end() ? pointIt + 1 : pointIt;
+        // Get the current point by going back one element
+        auto pointIt = nextPointIt != flightDataPoints.begin() ? nextPointIt - 1 : nextPointIt;
 
         // Interpolate between the current point and the next one
         float lerpTime = (timestamp.count() - pointIt->timestamp) / (nextPointIt->timestamp - pointIt->timestamp);
@@ -46,7 +48,6 @@ namespace dfv {
         };
 
         auto lerpAngle = [&](float start, float end) {
-
             float diff = end - start;
             // Lerp the angle in the shortest direction
             if (diff > M_PI)
@@ -92,7 +93,7 @@ namespace dfv {
     }
 
     std::vector<FlightDataPoint> DroneFlightData::loadFlightData(const std::string &csvPath) {
-        const auto feetToMeter = 0.3048;
+        const double feetToMeter = 0.3048;
         using namespace csv;
 
         auto startTime = clock::now();
@@ -100,24 +101,24 @@ namespace dfv {
         std::vector<FlightDataPoint> flightData;
 
         for (CSVRow &row : reader) {
+            glm::dvec2 coords = {row["OSD.latitude"].get<double>(),
+                                      row["OSD.longitude"].get<double>()};
+            double altitude = row["OSD.altitude [ft]"].get<double>() * feetToMeter;
+
             // set initial position if not set yet
             if (!initialPosition)
-                initialPosition = Coordinate{
-                        row["OSD.latitude"].get<double>(),
-                        row["OSD.longitude"].get<double>(),
-                        row["OSD.altitude [ft]"].get<double>() * feetToMeter};
-
-            // auto heading = !row["OSD.directionOfTravel"].is_null() ? row["OSD.directionOfTravel"].get<double>() : 0;
+                initialPosition = Coordinate{coords.x,
+                                             coords.y,
+                                             altitude};
 
             // calculate position in relation to initial position
-            auto position = calculateRelativePosition(
-                    glm::dvec2{row["OSD.latitude"].get<double>(), row["OSD.longitude"].get<double>()},
-                    glm::dvec2{initialPosition->lat, initialPosition->lon});
+            auto position = calculateRelativePosition(coords,
+                                                      glm::dvec2{initialPosition->lat, initialPosition->lon});
 
             flightData.emplace_back(
                     row["OSD.flyTime [s]"].get<float>(),
                     position.x,
-                    row["OSD.altitude [ft]"].get<double>() * feetToMeter,
+                    static_cast<float>(altitude),
                     position.y,
                     glm::radians(row["OSD.yaw"].get<float>()),
                     glm::radians(row["OSD.pitch"].get<float>()),
