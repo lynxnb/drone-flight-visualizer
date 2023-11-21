@@ -26,11 +26,6 @@ namespace dfv {
     }
 
     FlightDataPoint DroneFlightData::getPoint(seconds_f timestamp) {
-        if (flightDataPoints.empty()) {
-            std::cerr << "Trying to get point from empty flight data" << std::endl;
-            return FlightDataPoint(0, 0, 0, 0, 0, 0, 0);
-        }
-
         // upper_bound returns the first element that is greater than the timestamp, aka the next point
         auto nextPointIt = std::upper_bound(flightDataPoints.begin(), flightDataPoints.end(), timestamp,
                                             [](const seconds_f &timestamp, const FlightDataPoint &point) {
@@ -39,6 +34,9 @@ namespace dfv {
 
         // Get the current point by going back one element
         auto pointIt = nextPointIt != flightDataPoints.begin() ? nextPointIt - 1 : nextPointIt;
+
+        if (nextPointIt == flightDataPoints.end())
+            return *pointIt;
 
         // Interpolate between the current point and the next one
         float lerpTime = (timestamp.count() - pointIt->timestamp) / (nextPointIt->timestamp - pointIt->timestamp);
@@ -102,7 +100,7 @@ namespace dfv {
 
         for (CSVRow &row : reader) {
             glm::dvec2 coords = {row["OSD.latitude"].get<double>(),
-                                      row["OSD.longitude"].get<double>()};
+                                 row["OSD.longitude"].get<double>()};
             double altitude = row["OSD.altitude [ft]"].get<double>() * feetToMeter;
 
             // set initial position if not set yet
