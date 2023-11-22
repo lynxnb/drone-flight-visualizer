@@ -91,6 +91,159 @@ namespace dfv::map {
         std::cout << "Elevation data fetched in " << duration.count() << "ms" << std::endl;
     }
 
+    /// Create a complex grid around the drone flight path. Creates a 3 blocks wide dense area around the drone and decreases the density of dots by density/(node_density_coefficient^block_distance)
+    /// \param box Box that includes all the drone_path points. Behavior is undefined otherwise
+    /// \param drone_path Vector of dots where the drone has been
+    /// \param box_size Size of the chunk. All boxes are squares so the last one might be discarded
+    /// \return Node matrix
+    std::vector<std::vector<structs::Node>> createGrid(structs::DiscreteBox box, std::vector<structs::Node> &drone_path, double sparsity, double box_size, double node_density_coefficient){
+        // Calculate the number of boxes in latitude and longitude
+        int latBoxes = floor((box.urLat - box.llLat) / box_size);
+        int lonBoxes = floor((box.urLon - box.llLon) / box_size);
+
+        std::vector<std::vector<structs::DiscreteBoxInfo>> box_matrix(latBoxes, std::vector<structs::DiscreteBoxInfo>(lonBoxes));
+
+        // Iterate over each box in the matrix
+        for (int i = 0; i < latBoxes; i++) {
+            for (int j = 0; j < lonBoxes; j++) {
+                // Calculate the bounds of the box
+                double minLat = box.llLat + i * box_size;
+                double maxLat = minLat + box_size;
+                double minLon = box.llLon + j * box_size;
+                double maxLon = minLon + box_size;
+
+                // Create the box and fill in the information
+                structs::DiscreteBoxInfo boxInfo{};
+                boxInfo.box = {minLat, minLon, maxLat, maxLon, box.spacingMeters};
+
+                boxInfo.is_on_path = false;
+                for (const auto& node : drone_path) {
+                    if (node.lat >= minLat && node.lat <= maxLat &&
+                        node.lon >= minLon && node.lon <= maxLon) {
+                        boxInfo.is_on_path = true;
+                        break; // No need to check further if one node is inside the box
+                    }
+                }
+
+                // Add the boxInfo to the matrix
+                box_matrix[i][j] = boxInfo;
+            }
+        }
+
+        // create the 3 block wide high density area. If a box on path is on the edge meh.
+        for (int i = 1; i < box_matrix.size() - 1; i++) {
+            for (int j = 1; j < box_matrix[0].size() - 1; j++) {
+                if(box_matrix[i][j].is_on_path){
+                    box_matrix[i-1][j-1].sparsity = sparsity;
+                    box_matrix[i-1][j].sparsity = sparsity;
+                    box_matrix[i-1][j+1].sparsity = sparsity;
+
+                    box_matrix[i][j-1].sparsity = sparsity;
+                    box_matrix[i][j].sparsity = sparsity;
+                    box_matrix[i][j+1].sparsity = sparsity;
+
+                    box_matrix[i+1][j-1].sparsity = sparsity;
+                    box_matrix[i+1][j].sparsity = sparsity;
+                    box_matrix[i+1][j+1].sparsity = sparsity;
+
+                    if (box_matrix[i-1][j-1].distance != 0) box_matrix[i-1][j-1].distance = 1;
+                    if (box_matrix[i-1][j].distance != 0) box_matrix[i-1][j].distance = 1;
+                    if (box_matrix[i-1][j+1].distance != 0) box_matrix[i-1][j+1].distance = 1;
+
+                    if (box_matrix[i][j-1].distance != 0) box_matrix[i][j-1].distance = 1;
+                    box_matrix[i][j].distance = 0;
+                    if (box_matrix[i][j+1].distance != 0) box_matrix[i][j+1].distance = 1;
+
+                    if (box_matrix[i+1][j-1].distance != 0) box_matrix[i+1][j-1].distance = 1;
+                    if (box_matrix[i+1][j].distance != 0) box_matrix[i+1][j].distance = 1;
+                    if (box_matrix[i+1][j+1].distance != 0) box_matrix[i+1][j+1].distance = 1;
+                }
+            }
+        }
+
+        int max_iterations = 1000;
+        int iter = 0;
+        bool no_changes = false;
+        while(!no_changes && iter < max_iterations){
+            no_changes = true;
+            for (int i = 0; i < box_matrix.size(); i++) {
+                for (int j = 0; j < box_matrix[0].size(); j++) {
+                    int closest = INT_MAX;
+                    bool iter_changes = false;
+                    for (int a = 1; a < box_matrix.size(); a++) {
+                        if(i-a>0){
+                            if(box_matrix[i-a][j].distance < closest){
+                                closest = box_matrix[i-a][j].distance + a;
+                                iter_changes = true;
+                            }
+                        }
+                        if(i+a<box_matrix.size()){
+                            if(box_matrix[i+a][j].distance < closest){
+                                closest = box_matrix[i+a][j].distance + a;
+                                iter_changes = true;
+                            }
+                        }
+                        if(j-a>0){
+                            if(box_matrix[i][j-a].distance < closest){
+                                closest = box_matrix[i][j-a].distance + a;
+                                iter_changes = true;
+                            }
+                        }
+                        if(j+a<box_matrix.size()){
+                            if(box_matrix[i][j+a].distance < closest){
+                                closest = box_matrix[i][j+a].distance + a;
+                                iter_changes = true;
+                            }
+                        }
+                        if(iter_changes) {
+                            break;
+                        }
+                    }
+                    if(box_matrix[i][j].distance <= closest){
+                        continue;
+                    }
+                    box_matrix[i][j].distance = closest;
+                    no_changes = false;
+                }
+            }
+            iter++;
+        }
+
+        for (int i = 0; i < box_matrix.size(); i++) {
+            for (int j = 0; j < box_matrix[0].size(); j++) {
+                std::cout << box_matrix[i][j].distance << ",";
+            }
+            std::cout << std::endl; // New line at the end of each row
+        }
+
+        // Set the sparsity for each box
+        for(auto &row: box_matrix){
+            for(auto &inode: row){
+                inode.sparsity = sparsity / (pow(node_density_coefficient, inode.distance));
+            }
+        }
+
+        for (int i = 0; i < box_matrix.size(); i++) {
+            for (int j = 0; j < box_matrix[0].size(); j++) {
+                std::cout << box_matrix[i][j].sparsity << ",";
+            }
+            std::cout << std::endl; // New line at the end of each row
+        }
+
+        // Fill the boxes with nodes
+        for(auto &row: box_matrix){
+            for(auto &inode: row){
+                inode.dots = createGridSlave(inode.box.llLat, inode.box.llLon, inode.box.urLat, inode.box.urLon, inode.sparsity);
+            }
+        }
+
+        // Merge the boxes into nodes
+
+
+        return {}; // Replace with the appropriate return value
+
+    }
+
     std::vector<std::vector<structs::Node>> createGrid(std::vector<structs::DiscreteBox> boxes) {
         std::vector<std::vector<std::vector<structs::Node>>> allNodes;
         int i = 0;

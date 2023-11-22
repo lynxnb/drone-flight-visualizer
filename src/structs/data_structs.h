@@ -37,6 +37,14 @@ namespace dfv::structs {
         double spacingMeters;
     };
 
+    struct DiscreteBoxInfo {
+        DiscreteBox box;
+        bool is_on_path;
+        double sparsity = 0;
+        int distance = INT_MAX;
+        std::vector<std::vector<structs::Node>> dots;
+    };
+
     struct Way {
         std::string type;
         int64_t id;
