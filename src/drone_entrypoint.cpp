@@ -62,10 +62,10 @@ int main(int argc, char **argv) {
     }
 
     auto stats = visualizer.getStats();
-    auto updateTimeAvg = duration_cast<dfv::milliseconds>(stats.updateTotalTime / stats.frameCount);
-    auto drawTimeAvg = duration_cast<dfv::milliseconds>(stats.drawTotalTime / stats.frameCount);
-    auto frameTimeAvg = duration_cast<dfv::milliseconds>((stats.updateTotalTime + stats.drawTotalTime) / stats.frameCount);
-    auto fpsAvg = 1000.0 / static_cast<double>(frameTimeAvg.count());
+    auto updateTimeAvg = duration_cast<dfv::milliseconds_f>(stats.updateTotalTime / stats.frameCount);
+    auto drawTimeAvg = duration_cast<dfv::milliseconds_f>(stats.drawTotalTime / stats.frameCount);
+    auto frameTimeAvg = duration_cast<dfv::milliseconds_f>((stats.updateTotalTime + stats.drawTotalTime) / stats.frameCount);
+    auto fpsAvg = 1000.0f / frameTimeAvg.count();
 
     std::cout << "Average update time: " << updateTimeAvg << std::endl;
     std::cout << "Average draw time: " << drawTimeAvg << std::endl;

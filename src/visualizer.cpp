@@ -66,10 +66,6 @@ namespace dfv {
         switch (cameraMode) {
             case CameraMode::Free: {
                 engine.camera.orientation += rotation;
-                // Limit pitch range to prevent the camera from flipping
-                engine.camera.orientation.y = glm::clamp(engine.camera.orientation.y,
-                                                         glm::radians(-89.f), glm::radians(89.f));
-                engine.camera.updateFront();
             } break;
 
             default:
@@ -147,6 +143,9 @@ namespace dfv {
 
                 engine.camera.position += positionMask * cameraMovementSpeed * deltaTime.count();
                 engine.camera.orientation += rotationMask * cameraRotationSpeed * deltaTime.count();
+                // Limit pitch range to prevent the camera from flipping
+                engine.camera.orientation.y = glm::clamp(engine.camera.orientation.y,
+                                                         glm::radians(-89.f), glm::radians(89.f));
                 engine.camera.updateFront();
             } break;
 

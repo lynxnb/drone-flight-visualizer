@@ -1,7 +1,8 @@
 #pragma once
 
-#include <vector>
 #include <filesystem>
+#include <optional>
+#include <vector>
 
 #include <glm/glm.hpp>
 
@@ -19,22 +20,19 @@ namespace dfv {
     struct Vertex {
         glm::vec3 position;
         glm::vec3 normal;
-        glm::vec3 color;
+        glm::vec2 uv;
 
         static VertexInputDescription getVertexDescription();
     };
 
     struct Mesh {
         std::vector<Vertex> vertices;
+        std::vector<uint32_t> indices;
 
         AllocatedBuffer vertexBuffer;
+        AllocatedBuffer indexBuffer;
 
         static std::optional<Mesh> loadFromObj(const std::filesystem::path &filename);
-    };
-
-    struct MeshPushConstants {
-        glm::vec4 data;
-        glm::mat4 renderMatrix;
     };
 
 } // namespace dfv

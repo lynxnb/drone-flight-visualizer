@@ -87,11 +87,15 @@ namespace dfv {
     }
 
     void VulkanEngine::uploadMesh(Mesh &mesh) {
-        const size_t bufferSize = mesh.vertices.size() * sizeof(Vertex);
-        // Allocate a staging (temporary) buffer
+        const size_t vertexBufSize = mesh.vertices.size() * sizeof(Vertex);
+        const size_t indexBufSize = mesh.indices.size() * sizeof(uint32_t);
+
+        const size_t stagingBufferSize = vertexBufSize + indexBufSize;
+
+        // Allocate staging buffer for vertex + index data
         VkBufferCreateInfo stagingBufferInfo = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
                                                 .pNext = nullptr,
-                                                .size = bufferSize,
+                                                .size = stagingBufferSize,
                                                 .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT};
 
         // Allocate the buffer as writable sequentially from the CPU
@@ -100,30 +104,47 @@ namespace dfv {
         VK_CHECK(vmaCreateBuffer(allocator, &stagingBufferInfo, &stagingAllocInfo,
                                  &stagingBuffer.buffer, &stagingBuffer.allocation, nullptr));
 
-        // Copy vertex data into the staging buffer
         Vertex *stagingVertexData;
         vmaMapMemory(allocator, stagingBuffer.allocation, (void **) &stagingVertexData);
+        // Copy vertex data into the staging buffer
         std::ranges::copy(mesh.vertices, stagingVertexData);
+
+        // Copy index data past the vertex data
+        auto stagingIndexData = reinterpret_cast<uint32_t *>(stagingVertexData + mesh.vertices.size());
+        std::ranges::copy(mesh.indices, stagingIndexData);
         vmaUnmapMemory(allocator, stagingBuffer.allocation);
 
-        // Allocate the vertex buffer on the GPU
+        // Allocate the vertex and index buffers on the GPU
         VkBufferCreateInfo vertexBufferInfo = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
                                                .pNext = nullptr,
-                                               .size = bufferSize,
+                                               .size = vertexBufSize,
                                                .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT};
+        VkBufferCreateInfo indexBufferInfo = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                                              .pNext = nullptr,
+                                              .size = indexBufSize,
+                                              .usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT};
 
-        VmaAllocationCreateInfo vertexAllocInfo = {.usage = VMA_MEMORY_USAGE_GPU_ONLY};
-        VK_CHECK(vmaCreateBuffer(allocator, &vertexBufferInfo, &vertexAllocInfo,
+        VmaAllocationCreateInfo allocInfo = {.usage = VMA_MEMORY_USAGE_GPU_ONLY};
+        VK_CHECK(vmaCreateBuffer(allocator, &vertexBufferInfo, &allocInfo,
                                  &mesh.vertexBuffer.buffer, &mesh.vertexBuffer.allocation, nullptr));
+        VK_CHECK(vmaCreateBuffer(allocator, &indexBufferInfo, &allocInfo,
+                                 &mesh.indexBuffer.buffer, &mesh.indexBuffer.allocation, nullptr));
 
-        // Submit a GPU command to copy the staging buffer to the vertex buffer
-        immediateSubmit([&, stagingBuffer](VkCommandBuffer cmd) {
-            VkBufferCopy bufferCopy = {.size = bufferSize};
-            vkCmdCopyBuffer(cmd, stagingBuffer.buffer, mesh.vertexBuffer.buffer, 1, &bufferCopy);
+        // Submit a GPU command to copy the staging buffer to the vertex and index buffers
+        immediateSubmit([&](VkCommandBuffer cmd) {
+            VkBufferCopy vertexCopy = {.srcOffset = 0,
+                                       .dstOffset = 0,
+                                       .size = vertexBufSize};
+            VkBufferCopy indexCopy = {.srcOffset = vertexBufSize,
+                                      .dstOffset = 0,
+                                      .size = indexBufSize};
+            vkCmdCopyBuffer(cmd, stagingBuffer.buffer, mesh.vertexBuffer.buffer, 1, &vertexCopy);
+            vkCmdCopyBuffer(cmd, stagingBuffer.buffer, mesh.indexBuffer.buffer, 1, &indexCopy);
         });
 
         mainDeletionQueue.pushFunction([=, this]() {
             vmaDestroyBuffer(allocator, mesh.vertexBuffer.buffer, mesh.vertexBuffer.allocation);
+            vmaDestroyBuffer(allocator, mesh.indexBuffer.buffer, mesh.indexBuffer.allocation);
         });
 
         // Immediately destroy the staging buffer

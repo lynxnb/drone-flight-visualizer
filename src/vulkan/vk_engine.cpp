@@ -141,13 +141,8 @@ namespace dfv {
                                                 camera.nearPlane, camera.farPlane);
         projection[1][1] *= -1; // Flip projection matrix from GL to Vulkan orientation (y-axis)
 
-        // Copy the camera data into the buffer
-        CameraData *cameraData;
-        vmaMapMemory(allocator, frame.cameraBuffer.allocation, reinterpret_cast<void **>(&cameraData));
-        *cameraData = {.view = view,
-                       .proj = projection,
-                       .viewproj = projection * view};
-        vmaUnmapMemory(allocator, frame.cameraBuffer.allocation);
+        // Precompute the view-projection matrix
+        glm::mat4 viewProj = projection * view;
 
         // Update scene parameters
         float framed = static_cast<float>(frameNumber) / 120.f;
@@ -157,17 +152,10 @@ namespace dfv {
         vmaMapMemory(allocator, sceneParametersBuffer.allocation, reinterpret_cast<void **>(&sceneBuffer));
 
         unsigned int frameIndex = frameNumber % MaxFramesInFlight;
-        sceneBuffer += uniformBufferSizeAlignUp(sizeof(SceneData)) * frameIndex;
-        std::memcpy(sceneBuffer, &sceneParameters, sizeof(SceneData));
+        sceneBuffer += uniformBufferSizeAlignUp(sizeof(uniform::SceneData)) * frameIndex;
+        std::memcpy(sceneBuffer, &sceneParameters, sizeof(uniform::SceneData));
 
         vmaUnmapMemory(allocator, sceneParametersBuffer.allocation);
-
-        // Update object data
-        ObjectData *objectBuffer;
-        vmaMapMemory(allocator, frame.objectBuffer.allocation, reinterpret_cast<void **>(&objectBuffer));
-        for (auto &object : renderObjects)
-            objectBuffer++->modelMatrix = object.transform;
-        vmaUnmapMemory(allocator, frame.objectBuffer.allocation);
 
         // Keep track of the last used mesh and material to avoid unnecessary binding
         Mesh *lastMesh = nullptr;
@@ -181,7 +169,7 @@ namespace dfv {
                 lastMaterial = object.material;
 
                 // Bind descriptor set 0 (global data, camera and scene)
-                uint32_t uniformOffset = uniformBufferSizeAlignUp(sizeof(SceneData)) * frameIndex;
+                uint32_t uniformOffset = uniformBufferSizeAlignUp(sizeof(uniform::SceneData)) * frameIndex;
                 vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipelineLayout, 0, 1,
                                         &frame.globalDescriptor, 1, &uniformOffset);
 
@@ -190,22 +178,22 @@ namespace dfv {
                                         &frame.objectDescriptor, 0, nullptr);
             }
 
-            MeshPushConstants constants = {};
-            // Final render matrix, that we are calculating on the cpu
-            constants.renderMatrix = object.transform;
+            // Upload the model transform matrix to the GPU via push constants
+            uniform::MeshPushConstants constants = {.modelTransform = object.transform,
+                                                    .worldTransform = viewProj * object.transform};
 
-            // Upload the mesh render matrix to the GPU via push constants
-            vkCmdPushConstants(cmdBuf, object.material->pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);
+            vkCmdPushConstants(cmdBuf, object.material->pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+                               0, sizeof(uniform::MeshPushConstants), &constants);
 
             // Only bind the mesh if it's a different one from last bind
             if (object.mesh != lastMesh) {
-                // Bind the mesh vertex buffer with offset 0
                 VkDeviceSize offset = 0;
                 vkCmdBindVertexBuffers(cmdBuf, 0, 1, &object.mesh->vertexBuffer.buffer, &offset);
+                vkCmdBindIndexBuffer(cmdBuf, object.mesh->indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
                 lastMesh = object.mesh;
             }
 
-            vkCmdDraw(cmdBuf, object.mesh->vertices.size(), 1, 0, objectIndex);
+            vkCmdDrawIndexed(cmdBuf, object.mesh->indices.size(), 1, 0, 0, objectIndex);
         }
     }
 
