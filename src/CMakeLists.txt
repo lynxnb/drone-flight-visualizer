@@ -54,3 +54,26 @@ target_link_libraries(mock_visualizer PRIVATE
 
 add_dependencies(mock_visualizer Shaders)
 add_dependencies(mock_visualizer Assets)
+
+# mesh visualizer
+add_executable(mesh_visualizer
+        ${DFV_SOURCE_COMMON}
+        glfw/glfw_surface.cpp
+        flight_data/mock_flight_data.cpp
+        map/data_fetcher.cpp
+        mesh_entrypoint.cpp
+)
+target_include_directories(mesh_visualizer PRIVATE ".")
+
+target_link_libraries(mesh_visualizer PRIVATE
+        cpr::cpr
+        Vulkan::Vulkan
+        vk-bootstrap::vk-bootstrap
+        glfw
+        glm
+        tinyobjloader
+)
+
+add_dependencies(mesh_visualizer Shaders)
+add_dependencies(mesh_visualizer Assets)
+

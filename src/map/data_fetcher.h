@@ -10,4 +10,5 @@ namespace dfv::map{
     structs::OsmData fetchOsmData(const std::string &bbox);
     std::vector<std::vector<structs::Node>> createGridSlave(double llLat, double llLon, double urLat, double urLon, double spacingMeters);
     std::vector<std::vector<structs::Node>> createGridSlaveMock(double llLat, double llLon, double urLat, double urLon, double spacingMeters);
+    void populateElevation(std::vector<structs::Node> &nodes);
 }
