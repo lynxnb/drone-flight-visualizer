@@ -5,12 +5,20 @@
 #include <vector>
 
 namespace dfv::structs {
+    struct GameNode {
+        double x;
+        double y;
+        double z = 0;
+    };
+
+
     struct Node {
         std::string type;
         int64_t id;
         double lat;
         double lon;
         double elev = 0;
+        GameNode *game_node = nullptr;
         std::map<std::string, std::string> tags;
 
         Node(std::string type, int64_t id, double lat, double lon, std::map<std::string, std::string> tags) :
@@ -27,6 +35,12 @@ namespace dfv::structs {
                 std::cout << "\tKey: " << tag.first << " Value: " << tag.second << std::endl;
             }
         }
+    };
+
+    struct Triangle {
+        GameNode *a;
+        GameNode *b;
+        GameNode *c;
     };
 
     struct DiscreteBox {

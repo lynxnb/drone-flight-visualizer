@@ -19,60 +19,70 @@ namespace dfv::map {
 
 
     void PopulateBatchWithElevation(std::vector<std::reference_wrapper<structs::Node>> &nodes) {
-        // write locations to json
-        StringBuffer s;
-        Writer<StringBuffer> writer(s);
-        writer.StartArray();
-        for (const auto &node : nodes) {
-            writer.StartObject();
-            writer.Key("latitude");
-            writer.Double(node.get().lat);
-            writer.Key("longitude");
-            writer.Double(node.get().lon);
-            writer.EndObject();
-        }
-        writer.EndArray();
-        // send request to open-elevation api
-        auto startTime = std::chrono::high_resolution_clock::now();
-        cpr::Response r = cpr::Post(cpr::Url{
-                                            "https://api.open-elevation.com/api/v1/lookup"
-        },
-                                    cpr::Body{"{\"locations\":" + std::string(s.GetString()) + "}"}, cpr::Header{{"Content-Type", "application/json"}, {"Accept", "application/json"}});
-        if (r.status_code != 200)
-            throw std::runtime_error(
-                    "Error in response while fetching elevation data with code " + std::to_string(r.status_code));
-        std::string text = r.text;
-        std::cout << r.text;
-
-        auto endTime = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
-        std::cout << "Elevation batch fetched in " << duration.count() << "ms" << std::endl;
-
-        // parse response and return elevations
-        rapidjson::Document responseData;
-        responseData.Parse(text.c_str());
-        if (!responseData.IsObject()) {
-            std::cout << "Invalid JSON format." << std::endl;
-            return;
-        }
-
-        if (!responseData.HasMember("results")) {
-            std::cout << "Invalid JSON result." << std::endl;
-            return;
-        }
-
-        const rapidjson::Value &results = responseData["results"];
-
-        for (rapidjson::SizeType i = 0; i < results.Size(); ++i) {
-            const rapidjson::Value &result = results[i];
-            if (!result.HasMember("elevation") || !result.HasMember("latitude") || !result.HasMember("longitude")) {
-                std::cerr << "Missing data in result #" << i << std::endl;
-                nodes[i].get().elev = 0;
+        int max_iter = 100;
+        int i = 0;
+        while(i<max_iter){
+            // write locations to json
+            StringBuffer s;
+            Writer<StringBuffer> writer(s);
+            writer.StartArray();
+            for (const auto &node : nodes) {
+                writer.StartObject();
+                writer.Key("latitude");
+                writer.Double(node.get().lat);
+                writer.Key("longitude");
+                writer.Double(node.get().lon);
+                writer.EndObject();
+            }
+            writer.EndArray();
+            // send request to open-elevation api
+            auto startTime = std::chrono::high_resolution_clock::now();
+            cpr::Response r = cpr::Post(cpr::Url{
+                                                "https://api.open-elevation.com/api/v1/lookup"
+            },
+                                        cpr::Body{"{\"locations\":" + std::string(s.GetString()) + "}"}, cpr::Header{{"Content-Type", "application/json"}, {"Accept", "application/json"}});
+            if (r.status_code == 429){
+                i++;
+                std::chrono::milliseconds(i*100);
                 continue;
             }
-            nodes[i].get().elev = result["elevation"].GetDouble();
-            // Add logging here to see what's being set
-            std::cout << "Node #" << i << " elevation set to: " << nodes[i].get().elev << std::endl;
+            if (r.status_code != 200)
+                throw std::runtime_error(
+                        "Error in response while fetching elevation data with code " + std::to_string(r.status_code));
+            std::string text = r.text;
+            std::cout << r.text;
+
+            auto endTime = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+            std::cout << "Elevation batch fetched in " << duration.count() << "ms" << std::endl;
+
+            // parse response and return elevations
+            rapidjson::Document responseData;
+            responseData.Parse(text.c_str());
+            if (!responseData.IsObject()) {
+                std::cout << "Invalid JSON format." << std::endl;
+                return;
+            }
+
+            if (!responseData.HasMember("results")) {
+                std::cout << "Invalid JSON result." << std::endl;
+                return;
+            }
+
+            const rapidjson::Value &results = responseData["results"];
+
+            for (rapidjson::SizeType i = 0; i < results.Size(); ++i) {
+                const rapidjson::Value &result = results[i];
+                if (!result.HasMember("elevation") || !result.HasMember("latitude") || !result.HasMember("longitude")) {
+                    std::cerr << "Missing data in result #" << i << std::endl;
+                    nodes[i].get().elev = 0;
+                    continue;
+                }
+                nodes[i].get().elev = result["elevation"].GetDouble();
+                // Add logging here to see what's being set
+                std::cout << "Node #" << i << " elevation set to: " << nodes[i].get().elev << std::endl;
+            }
+            return;
         }
 
     }
@@ -85,6 +95,7 @@ namespace dfv::map {
 
             std::vector<std::reference_wrapper<structs::Node>> batch(startIter, endIter);
             PopulateBatchWithElevation(batch); // Ensure PopulateBatchWithElevation is compatible with this change.
+            std::chrono::milliseconds(10);
         }
         auto endTime = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
@@ -93,10 +104,10 @@ namespace dfv::map {
 
     /// Create a complex grid around the drone flight path. Creates a 3 blocks wide dense area around the drone and decreases the density of dots by density/(node_density_coefficient^block_distance)
     /// \param box Box that includes all the drone_path points. Behavior is undefined otherwise
-    /// \param drone_path Vector of dots where the drone has been
+    /// \param drone_path Vector of dots where the drone has been. The PATH on the edge of the box is ignored.
     /// \param box_size Size of the chunk. All boxes are squares so the last one might be discarded
     /// \return Node matrix
-    std::vector<std::vector<structs::Node>> createGrid(structs::DiscreteBox box, std::vector<structs::Node> &drone_path, double sparsity, double box_size, double node_density_coefficient){
+    std::vector<std::vector<structs::DiscreteBoxInfo>> createGrid(structs::DiscreteBox box, std::vector<structs::Node> &drone_path, double sparsity, double box_size, double node_density_coefficient){
         // Calculate the number of boxes in latitude and longitude
         int latBoxes = floor((box.urLat - box.llLat) / box_size);
         int lonBoxes = floor((box.urLon - box.llLon) / box_size);
@@ -234,15 +245,64 @@ namespace dfv::map {
         for(auto &row: box_matrix){
             for(auto &inode: row){
                 inode.dots = createGridSlave(inode.box.llLat, inode.box.llLon, inode.box.urLat, inode.box.urLon, inode.sparsity);
+                for(auto &irow: inode.dots){
+                    populateElevation(irow);
+                }
             }
         }
 
-        // Merge the boxes into nodes
-
-
-        return {}; // Replace with the appropriate return value
+        return box_matrix;
 
     }
+
+    std::vector<dfv::structs::Triangle> createMeshArray(std::vector<std::vector<structs::DiscreteBoxInfo>> *box_matrix, double ulLatBound, double ulLonBound, double lrLatBound, double lrLonBound) {
+        double totalLatWorldLatSpan = ulLatBound - lrLatBound;
+        double totalLonWorldLatSpan = lrLonBound - ulLonBound;
+        std::vector<structs::Triangle> triangles;
+
+        for(auto &row: *box_matrix){
+            for(auto &box: row){
+                //create inner box mash
+                for (int i = 0; i < box.dots.size() - 1; ++i) {
+                    for (int e = 0; e < box.dots[0].size() - 1; ++e) {
+                        if(box.dots[i][e].game_node == nullptr){
+                            box.dots[i][e].game_node = new GameNode();
+                            box.dots[i][e].game_node->x = (box.dots[i][e].lat - ulLatBound) / totalLatWorldLatSpan;
+                            box.dots[i][e].game_node->y = (box.dots[i][e].lon - lrLonBound) / totalLonWorldLatSpan;
+                            box.dots[i][e].game_node->z = box.dots[i][e].elev;
+                        }
+                        if(box.dots[i][e+1].game_node == nullptr){
+                            box.dots[i][e+1].game_node = new GameNode();
+                            box.dots[i][e+1].game_node->x = (box.dots[i][e].lat - ulLatBound) / totalLatWorldLatSpan;
+                            box.dots[i][e+1].game_node->y = (box.dots[i][e].lon - lrLonBound) / totalLonWorldLatSpan;
+                            box.dots[i][e+1].game_node->z = box.dots[i][e].elev;
+                        }
+                        if(box.dots[i+1][e].game_node == nullptr){
+                            box.dots[i+1][e].game_node = new GameNode();
+                            box.dots[i+1][e].game_node->x = (box.dots[i][e].lat - ulLatBound) / totalLatWorldLatSpan;
+                            box.dots[i+1][e].game_node->y = (box.dots[i][e].lon - lrLonBound) / totalLonWorldLatSpan;
+                            box.dots[i+1][e].game_node->z = box.dots[i][e].elev;
+                        }
+                        structs::Triangle triangle (box.dots[i][e].game_node, box.dots[i][e+1].game_node, box.dots[i+1][e].game_node);
+                        triangles.push_back(triangle);
+                    }
+                    for (int e = 1; e < (*box_matrix)[0].size() - 1; ++e) {
+                        if(box.dots[i+1][e+1].game_node == nullptr){
+                            box.dots[i+1][e+1].game_node = new GameNode();
+                            box.dots[i+1][e+1].game_node->x = (box.dots[i][e].lat - ulLatBound) / totalLatWorldLatSpan;
+                            box.dots[i+1][e+1].game_node->y = (box.dots[i][e].lon - lrLonBound) / totalLonWorldLatSpan;
+                            box.dots[i+1][e+1].game_node->z = box.dots[i][e].elev;
+                        }
+                        structs::Triangle triangle (box.dots[i+1][e].game_node, box.dots[i+1][e+1].game_node, box.dots[i][e+1].game_node);
+                        triangles.push_back(triangle);
+                    }
+                }
+            }
+        }
+
+        return triangles;
+    }
+
 
     std::vector<std::vector<structs::Node>> createGrid(std::vector<structs::DiscreteBox> boxes) {
         std::vector<std::vector<std::vector<structs::Node>>> allNodes;
@@ -309,30 +369,47 @@ namespace dfv::map {
         return nodesBox;
     }
 
-    std::vector<std::vector<structs::Node>> createGridSlave(double llLat, double llLon, double urLat, double urLon, double spacingMeters) {
+    std::vector<std::vector<structs::Node>> createGridSlave(double llLat, double llLon, double urLat, double urLon, double sparsity) {
         std::vector<std::vector<structs::Node>> nodes;
 
-        const double EarthRadius = 6371e3; // Radius of the Earth in meters
-        const double meterToLat = 1 / (111320 * std::cos(llLat * M_PI / 180));
+        // Calculate the number of inner nodes (not including corners)
+        double latInnerNodes = std::max(0.0, std::floor((urLat - llLat) / sparsity) - 1);
+        double lonInnerNodes = std::max(0.0, std::floor((urLon - llLon) / sparsity) - 1);
 
-        for (double lat = llLat; lat <= urLat; ) {
-            std::vector<structs::Node> row; // Create a new row for nodes
-            for (double lon = llLon; lon <= urLon; ) {
-                row.emplace_back("node", -1, lat, lon, std::map<std::string, std::string>());
+        // Total nodes including corners
+        double latTotalNodes = latInnerNodes + 2;
+        double lonTotalNodes = lonInnerNodes + 2;
 
-                // Calculate the new longitude, adjusting for latitude
-                double deltaLon = (spacingMeters / EarthRadius) * (180 / M_PI) / std::cos(lat * M_PI / 180);
-                lon += deltaLon; // Increment longitude
+        double latStep = (urLon - llLon) / (latTotalNodes - 1);
+        double lonStep = (urLon - llLon) / (lonTotalNodes - 1);
+
+        // Iterate through each grid point and create nodes
+        for (int i = 0; i < latTotalNodes; i++) {
+            std::vector<structs::Node> row;
+            for (int j = 0; j < lonTotalNodes; j++) {
+                double lat = (i == 0) ? llLat : (i == latTotalNodes - 1) ? urLat : llLat + i * latStep;
+                double lon = (j == 0) ? llLon : (j == lonTotalNodes - 1) ? urLon : llLon + j * lonStep;
+
+                // Create a node and add it to the row
+                structs::Node node{"node", 0, lat, lon, {}}; // Adjust parameters as needed
+                row.push_back(node);
             }
-            nodes.push_back(row); // Add the new row to the nodes
+            // Add the row to the nodes matrix
+            nodes.push_back(row);
+        }
 
-            // Calculate the new latitude
-            double deltaLat = spacingMeters * meterToLat;
-            lat += deltaLat; // Increment latitude
+        std::cout << "Starting block" << std::endl;
+
+        for (int i = 0; i < nodes.size(); i++) {
+            for (int j = 0; j < nodes[0].size(); j++) {
+                std::cout << nodes[i][j].lat << ":" << nodes[i][j].lon << ",";
+            }
+            std::cout << "|" << std::endl; // New line at the end of each row
         }
 
         return nodes;
     }
+
 
     std::vector<std::vector<structs::Node>> createGridSlaveMock(double llLat, double llLon, double urLat, double urLon, double spacingMeters) {
         std::vector<std::vector<structs::Node>> nodes;
