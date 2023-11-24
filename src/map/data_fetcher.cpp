@@ -18,7 +18,7 @@ namespace dfv::map {
     using namespace rapidjson;
 
 
-    void PopulateBatchWithElevation(std::vector<std::reference_wrapper<structs::Node>> &nodes) {
+    void PopulateBatchWithElevation(std::vector<std::reference_wrapper<structs::Node*>> &nodes) {
         int max_iter = 100;
         int i = 0;
         while(i<max_iter){
@@ -29,9 +29,9 @@ namespace dfv::map {
             for (const auto &node : nodes) {
                 writer.StartObject();
                 writer.Key("latitude");
-                writer.Double(node.get().lat);
+                writer.Double(node.get()->lat);
                 writer.Key("longitude");
-                writer.Double(node.get().lon);
+                writer.Double(node.get()->lon);
                 writer.EndObject();
             }
             writer.EndArray();
@@ -43,6 +43,7 @@ namespace dfv::map {
                                         cpr::Body{"{\"locations\":" + std::string(s.GetString()) + "}"}, cpr::Header{{"Content-Type", "application/json"}, {"Accept", "application/json"}});
             if (r.status_code == 429){
                 i++;
+                std::cerr << "Received Too Many Requests from API, waiting " << i*100 << "ms" << std::endl;
                 std::chrono::milliseconds(i*100);
                 continue;
             }
@@ -50,11 +51,11 @@ namespace dfv::map {
                 throw std::runtime_error(
                         "Error in response while fetching elevation data with code " + std::to_string(r.status_code));
             std::string text = r.text;
-            std::cout << r.text;
+            // std::cout << r.text;
 
             auto endTime = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
-            std::cout << "Elevation batch fetched in " << duration.count() << "ms" << std::endl;
+            // std::cout << "Elevation batch fetched in " << duration.count() << "ms" << std::endl;
 
             // parse response and return elevations
             rapidjson::Document responseData;
@@ -75,32 +76,60 @@ namespace dfv::map {
                 const rapidjson::Value &result = results[i];
                 if (!result.HasMember("elevation") || !result.HasMember("latitude") || !result.HasMember("longitude")) {
                     std::cerr << "Missing data in result #" << i << std::endl;
-                    nodes[i].get().elev = 0;
+                    nodes[i].get()->elev = 0;
                     continue;
                 }
-                nodes[i].get().elev = result["elevation"].GetDouble();
+                nodes[i].get()->elev = result["elevation"].GetDouble();
                 // Add logging here to see what's being set
-                std::cout << "Node #" << i << " elevation set to: " << nodes[i].get().elev << std::endl;
+                // std::cout << "Node #" << i << " elevation set to: " << nodes[i].get().elev << std::endl;
             }
             return;
         }
 
     }
 
-    void populateElevation(std::vector<structs::Node> &nodes) {
+    void populateElevation(std::vector<structs::Node*> *nodes) {
         auto startTime = std::chrono::high_resolution_clock::now();
-        for (int i = 0; i < nodes.size(); i += BATCH_SIZE) {
-            auto startIter = nodes.begin() + i;
-            auto endIter = nodes.begin() + (nodes.size() > i + BATCH_SIZE ? i + BATCH_SIZE : nodes.size());
+        for (int i = 0; i < nodes->size(); i += BATCH_SIZE) {
+            auto startIter = nodes->begin() + i;
+            auto endIter = nodes->begin() + (nodes->size() > i + BATCH_SIZE ? i + BATCH_SIZE : nodes->size());
 
-            std::vector<std::reference_wrapper<structs::Node>> batch(startIter, endIter);
+            std::vector<std::reference_wrapper<structs::Node*>> batch(startIter, endIter);
             PopulateBatchWithElevation(batch); // Ensure PopulateBatchWithElevation is compatible with this change.
             std::chrono::milliseconds(10);
         }
         auto endTime = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
-        std::cout << "Elevation data fetched in " << duration.count() << "ms" << std::endl;
+        // std::cout << "Elevation data fetched in " << duration.count() << "ms" << std::endl;
     }
+
+    std::vector<structs::Triangle> sewBoxesSlave(std::vector<Node>* commonNodes, std::vector<Node>* sparseNodes){
+        std::vector<structs::Triangle> triangles;
+        int sparseIndex = 0;
+        for (int k = 0; k < commonNodes->size(); ++k) {
+            if(k == commonNodes->size() - 1){
+                structs::GameNode* l = (*commonNodes)[k].game_node;
+                structs::GameNode* m = (*commonNodes)[sparseIndex].game_node;
+                structs::GameNode* n = (*sparseNodes)[sparseIndex+1].game_node;
+                sparseIndex++;
+                continue;
+            }
+            structs::GameNode* a = (*commonNodes)[k].game_node;
+            structs::GameNode* b = (*commonNodes)[k+1].game_node;
+            structs::GameNode* c = (*sparseNodes)[sparseIndex].game_node;
+            if((*sparseNodes)[sparseIndex+1].game_node->y <= a->y){
+                structs::GameNode* n = (*sparseNodes)[sparseIndex+1].game_node;
+                structs::Triangle triangle(a,c,n);
+                triangles.push_back(triangle);
+                sparseIndex++;
+                c = (*sparseNodes)[sparseIndex].game_node;
+            }
+            structs::Triangle triangle(a,b,c);
+            triangles.push_back(triangle);
+        }
+        return triangles;
+    }
+
 
     /// Create a complex grid around the drone flight path. Creates a 3 blocks wide dense area around the drone and decreases the density of dots by density/(node_density_coefficient^block_distance)
     /// \param box Box that includes all the drone_path points. Behavior is undefined otherwise
@@ -241,68 +270,121 @@ namespace dfv::map {
             std::cout << std::endl; // New line at the end of each row
         }
 
+        int i = 1;
         // Fill the boxes with nodes
         for(auto &row: box_matrix){
-            for(auto &inode: row){
-                inode.dots = createGridSlave(inode.box.llLat, inode.box.llLon, inode.box.urLat, inode.box.urLon, inode.sparsity);
-                for(auto &irow: inode.dots){
-                    populateElevation(irow);
+            for(auto &ibox: row){
+                ibox.dots = createGridSlave(ibox.box.llLat, ibox.box.llLon, ibox.box.urLat, ibox.box.urLon, ibox.sparsity);
+                std::vector<structs::Node*> nodes;
+                for (auto &irow: ibox.dots){
+                    for (auto &inode : irow){
+                        nodes.push_back(&inode);
+                    }
                 }
+                populateElevation(&nodes);
             }
+            std::cout << "Fetched elevation for box: " << i << "/" << box_matrix.size() << "," << std::endl;
+            i++;
         }
 
         return box_matrix;
 
     }
 
-    std::vector<dfv::structs::Triangle> createMeshArray(std::vector<std::vector<structs::DiscreteBoxInfo>> *box_matrix, double ulLatBound, double ulLonBound, double lrLatBound, double lrLonBound) {
-        double totalLatWorldLatSpan = ulLatBound - lrLatBound;
-        double totalLonWorldLatSpan = lrLonBound - ulLonBound;
+    std::vector<dfv::structs::Triangle> createMeshArray(std::vector<std::vector<structs::DiscreteBoxInfo>> *box_matrix, double llLatBound, double llLonBound, double urLatBound, double urLonBound) {
+        double totalLatWorldLatSpan = urLatBound - llLatBound;
+        double totalLonWorldLatSpan = urLonBound - llLonBound;
+
         std::vector<structs::Triangle> triangles;
 
-        for(auto &row: *box_matrix){
-            for(auto &box: row){
+        for(int ii = 0; ii < box_matrix->size(); ++ii){
+            for(int ie = 0; ie < box_matrix[0].size(); ++ie){
+                structs::DiscreteBoxInfo box = (*box_matrix)[ii][ie];
+
                 //create inner box mash
                 for (int i = 0; i < box.dots.size() - 1; ++i) {
                     for (int e = 0; e < box.dots[0].size() - 1; ++e) {
                         if(box.dots[i][e].game_node == nullptr){
                             box.dots[i][e].game_node = new GameNode();
-                            box.dots[i][e].game_node->x = (box.dots[i][e].lat - ulLatBound) / totalLatWorldLatSpan;
-                            box.dots[i][e].game_node->y = (box.dots[i][e].lon - lrLonBound) / totalLonWorldLatSpan;
+                            box.dots[i][e].game_node->x = (box.dots[i][e].lat - llLatBound) / totalLatWorldLatSpan;
+                            box.dots[i][e].game_node->y = (box.dots[i][e].lon - llLonBound) / totalLonWorldLatSpan;
                             box.dots[i][e].game_node->z = box.dots[i][e].elev;
                         }
                         if(box.dots[i][e+1].game_node == nullptr){
                             box.dots[i][e+1].game_node = new GameNode();
-                            box.dots[i][e+1].game_node->x = (box.dots[i][e].lat - ulLatBound) / totalLatWorldLatSpan;
-                            box.dots[i][e+1].game_node->y = (box.dots[i][e].lon - lrLonBound) / totalLonWorldLatSpan;
-                            box.dots[i][e+1].game_node->z = box.dots[i][e].elev;
+                            box.dots[i][e+1].game_node->x = (box.dots[i][e+1].lat - llLatBound) / totalLatWorldLatSpan;
+                            box.dots[i][e+1].game_node->y = (box.dots[i][e+1].lon - llLonBound) / totalLonWorldLatSpan;
+                            box.dots[i][e+1].game_node->z = box.dots[i][e+1].elev;
                         }
                         if(box.dots[i+1][e].game_node == nullptr){
                             box.dots[i+1][e].game_node = new GameNode();
-                            box.dots[i+1][e].game_node->x = (box.dots[i][e].lat - ulLatBound) / totalLatWorldLatSpan;
-                            box.dots[i+1][e].game_node->y = (box.dots[i][e].lon - lrLonBound) / totalLonWorldLatSpan;
-                            box.dots[i+1][e].game_node->z = box.dots[i][e].elev;
+                            box.dots[i+1][e].game_node->x = (box.dots[i+1][e].lat - llLatBound) / totalLatWorldLatSpan;
+                            box.dots[i+1][e].game_node->y = (box.dots[i+1][e].lon - llLonBound) / totalLonWorldLatSpan;
+                            box.dots[i+1][e].game_node->z = box.dots[i+1][e].elev;
                         }
                         structs::Triangle triangle (box.dots[i][e].game_node, box.dots[i][e+1].game_node, box.dots[i+1][e].game_node);
                         triangles.push_back(triangle);
                     }
-                    for (int e = 1; e < (*box_matrix)[0].size() - 1; ++e) {
+                    for (int e = 0; e < box.dots[0].size() - 1; ++e) {
                         if(box.dots[i+1][e+1].game_node == nullptr){
                             box.dots[i+1][e+1].game_node = new GameNode();
-                            box.dots[i+1][e+1].game_node->x = (box.dots[i][e].lat - ulLatBound) / totalLatWorldLatSpan;
-                            box.dots[i+1][e+1].game_node->y = (box.dots[i][e].lon - lrLonBound) / totalLonWorldLatSpan;
-                            box.dots[i+1][e+1].game_node->z = box.dots[i][e].elev;
+                            box.dots[i+1][e+1].game_node->x = (box.dots[i+1][e+1].lat - llLatBound) / totalLatWorldLatSpan;
+                            box.dots[i+1][e+1].game_node->y = (box.dots[i+1][e+1].lon - llLonBound) / totalLonWorldLatSpan;
+                            box.dots[i+1][e+1].game_node->z = box.dots[i+1][e+1].elev;
                         }
                         structs::Triangle triangle (box.dots[i+1][e].game_node, box.dots[i+1][e+1].game_node, box.dots[i][e+1].game_node);
                         triangles.push_back(triangle);
                     }
+                }
+
+                //sew left box
+                if(ie > 0){
+                    std::vector<Node> commonNodes;
+                    std::vector<Node> sparseNodes;
+                    commonNodes.reserve((*box_matrix)[ii][ie].dots[0].size() + (*box_matrix)[ii][ie-1].dots[0].size());
+                    for (auto &row: (*box_matrix)[ii][ie].dots){
+                        commonNodes.push_back(row[0]);
+                    }
+                    for (auto &row: (*box_matrix)[ii][ie-1].dots){
+                        commonNodes.push_back(row.back());
+                    }
+                    std::sort (commonNodes.begin(), commonNodes.end(), [](structs::Node &a, structs::Node &b){return a.lon > b.lon;});
+                    if((*box_matrix)[ii][ie].sparsity > (*box_matrix)[ii][ie-1].sparsity){
+                        for (auto &row: (*box_matrix)[ii][ie].dots){
+                            sparseNodes.push_back(row[1]);
+                        }
+                    } else {
+                        for (auto &row: (*box_matrix)[ii][ie-1].dots){
+                            sparseNodes.push_back(row.rbegin()[1]);
+                        }
+                    }
+
+                    std::vector<structs::Triangle> T = sewBoxesSlave(&commonNodes, &sparseNodes);
+                    triangles.insert(triangles.end(), T.begin(), T.end());
+                }
+                //sew top box
+                if(ii != 0){
+                    std::vector<Node> commonNodes;
+                    std::vector<Node> sparseNodes;
+                    commonNodes.reserve((*box_matrix)[ii][ie].dots[0].size() + (*box_matrix)[ii-1][ie].dots[0].size());
+                    commonNodes.insert(commonNodes.end(), (*box_matrix)[ii][ie].dots[0].begin(), (*box_matrix)[ii][ie].dots[0].end());
+                    commonNodes.insert(commonNodes.end(), (*box_matrix)[ii-1][ie].dots[0].begin(), (*box_matrix)[ii-1][ie].dots[0].end());
+                    std::sort (commonNodes.begin(), commonNodes.end(), [](structs::Node &a, structs::Node &b){return a.lon > b.lon;});
+
+                    if((*box_matrix)[ii][ie].sparsity > (*box_matrix)[ii-1][ie].sparsity){
+                        sparseNodes.insert(sparseNodes.begin(), (*box_matrix)[ii][ie].dots[0].begin(), (*box_matrix)[ii][ie].dots[0].end());
+                    } else {
+                        sparseNodes.insert(sparseNodes.begin(), (*box_matrix)[ii-1][ie].dots.back().begin(), (*box_matrix)[ii-1][ie].dots.back().end());
+                    }
+
+                    std::vector<structs::Triangle> T = sewBoxesSlave(&commonNodes, &sparseNodes);
+                    triangles.insert(triangles.end(), T.begin(), T.end());
                 }
             }
         }
 
         return triangles;
     }
-
 
     std::vector<std::vector<structs::Node>> createGrid(std::vector<structs::DiscreteBox> boxes) {
         std::vector<std::vector<std::vector<structs::Node>>> allNodes;
@@ -398,14 +480,7 @@ namespace dfv::map {
             nodes.push_back(row);
         }
 
-        std::cout << "Starting block" << std::endl;
-
-        for (int i = 0; i < nodes.size(); i++) {
-            for (int j = 0; j < nodes[0].size(); j++) {
-                std::cout << nodes[i][j].lat << ":" << nodes[i][j].lon << ",";
-            }
-            std::cout << "|" << std::endl; // New line at the end of each row
-        }
+        //std::cout << "Starting block" << std::endl;
 
         return nodes;
     }
