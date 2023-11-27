@@ -85,7 +85,7 @@ namespace dfv {
          * @brief Recenters the camera on the flying object.
          * Applies to non-following camera modes only.
          */
-         void recenterCamera();
+        void recenterCamera();
 
         /**
          * @brief Sets the camera mode.
@@ -97,6 +97,12 @@ namespace dfv {
          * @return The statistics of the visualizer.
          */
         Stats getStats();
+
+        /**
+         * @brief Changes the time multiplier of the drone visualization.
+         * @param multiplier The new time multiplier. 0 to pause, 1 to resume, 2 to double the speed, etc.
+         */
+        void changeTimeMultiplier(float multiplier = 2.f);
 
       protected:
         /**
@@ -153,5 +159,6 @@ namespace dfv {
         seconds_f time{0}; //!< The current time of the visualization
 
         Stats stats{}; //!< The statistics of the visualizer
+        float droneTimeMultiplier{1.f}; //!< The time multiplier of the drone visualization
     };
 } // namespace dfv

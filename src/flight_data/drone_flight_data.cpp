@@ -27,6 +27,7 @@ namespace dfv {
 
     FlightDataPoint DroneFlightData::getPoint(seconds_f timestamp) {
         // upper_bound returns the first element that is greater than the timestamp, aka the next point
+        // if the timestamp is 0 or less, this will return the first point
         auto nextPointIt = std::upper_bound(flightDataPoints.begin(), flightDataPoints.end(), timestamp,
                                             [](const seconds_f &timestamp, const FlightDataPoint &point) {
                                                 return timestamp.count() < point.timestamp;

@@ -114,7 +114,7 @@ namespace dfv {
     }
 
     void Visualizer::update(seconds_f deltaTime) {
-        time += deltaTime;
+        time += deltaTime * droneTimeMultiplier;
 
         auto point = flightData.getPoint(time);
         setObjectTransform(glm::vec3{point.x, point.y, point.z},
@@ -202,6 +202,10 @@ namespace dfv {
                 engine.camera.updateOrientation();
             } break;
         }
+    }
+
+    void Visualizer::changeTimeMultiplier(float multiplier) {
+        droneTimeMultiplier = multiplier;
     }
 
 } // namespace dfv
