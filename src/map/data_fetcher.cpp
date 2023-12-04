@@ -117,7 +117,7 @@ namespace dfv::map {
             structs::GameNode* a = (*commonNodes)[k].game_node;
             structs::GameNode* b = (*commonNodes)[k+1].game_node;
             structs::GameNode* c = (*sparseNodes)[sparseIndex].game_node;
-            if((*sparseNodes)[sparseIndex+1].game_node->y <= a->y){
+            if(sparseIndex+1 < sparseNodes->size() - 1 && (*sparseNodes)[sparseIndex+1].game_node->y <= a->y){
                 structs::GameNode* n = (*sparseNodes)[sparseIndex+1].game_node;
                 structs::Triangle triangle(a,c,n);
                 triangles.push_back(triangle);
@@ -299,40 +299,40 @@ namespace dfv::map {
 
         for(int ii = 0; ii < box_matrix->size(); ++ii){
             for(int ie = 0; ie < box_matrix[0].size(); ++ie){
-                structs::DiscreteBoxInfo box = (*box_matrix)[ii][ie];
+                structs::DiscreteBoxInfo *box = &(*box_matrix)[ii][ie];
 
                 //create inner box mash
-                for (int i = 0; i < box.dots.size() - 1; ++i) {
-                    for (int e = 0; e < box.dots[0].size() - 1; ++e) {
-                        if(box.dots[i][e].game_node == nullptr){
-                            box.dots[i][e].game_node = new GameNode();
-                            box.dots[i][e].game_node->x = (box.dots[i][e].lat - llLatBound) / totalLatWorldLatSpan;
-                            box.dots[i][e].game_node->y = (box.dots[i][e].lon - llLonBound) / totalLonWorldLatSpan;
-                            box.dots[i][e].game_node->z = box.dots[i][e].elev;
+                for (int i = 0; i < box->dots.size() - 1; ++i) {
+                    for (int e = 0; e < box->dots[0].size() - 1; ++e) {
+                        if(box->dots[i][e].game_node == nullptr){
+                            box->dots[i][e].game_node = new GameNode();
+                            box->dots[i][e].game_node->x = (box->dots[i][e].lat - llLatBound) / totalLatWorldLatSpan;
+                            box->dots[i][e].game_node->y = (box->dots[i][e].lon - llLonBound) / totalLonWorldLatSpan;
+                            box->dots[i][e].game_node->z = box->dots[i][e].elev;
                         }
-                        if(box.dots[i][e+1].game_node == nullptr){
-                            box.dots[i][e+1].game_node = new GameNode();
-                            box.dots[i][e+1].game_node->x = (box.dots[i][e+1].lat - llLatBound) / totalLatWorldLatSpan;
-                            box.dots[i][e+1].game_node->y = (box.dots[i][e+1].lon - llLonBound) / totalLonWorldLatSpan;
-                            box.dots[i][e+1].game_node->z = box.dots[i][e+1].elev;
+                        if(box->dots[i][e+1].game_node == nullptr){
+                            box->dots[i][e+1].game_node = new GameNode();
+                            box->dots[i][e+1].game_node->x = (box->dots[i][e+1].lat - llLatBound) / totalLatWorldLatSpan;
+                            box->dots[i][e+1].game_node->y = (box->dots[i][e+1].lon - llLonBound) / totalLonWorldLatSpan;
+                            box->dots[i][e+1].game_node->z = box->dots[i][e+1].elev;
                         }
-                        if(box.dots[i+1][e].game_node == nullptr){
-                            box.dots[i+1][e].game_node = new GameNode();
-                            box.dots[i+1][e].game_node->x = (box.dots[i+1][e].lat - llLatBound) / totalLatWorldLatSpan;
-                            box.dots[i+1][e].game_node->y = (box.dots[i+1][e].lon - llLonBound) / totalLonWorldLatSpan;
-                            box.dots[i+1][e].game_node->z = box.dots[i+1][e].elev;
+                        if(box->dots[i+1][e].game_node == nullptr){
+                            box->dots[i+1][e].game_node = new GameNode();
+                            box->dots[i+1][e].game_node->x = (box->dots[i+1][e].lat - llLatBound) / totalLatWorldLatSpan;
+                            box->dots[i+1][e].game_node->y = (box->dots[i+1][e].lon - llLonBound) / totalLonWorldLatSpan;
+                            box->dots[i+1][e].game_node->z = box->dots[i+1][e].elev;
                         }
-                        structs::Triangle triangle (box.dots[i][e].game_node, box.dots[i][e+1].game_node, box.dots[i+1][e].game_node);
+                        structs::Triangle triangle (box->dots[i][e].game_node, box->dots[i][e+1].game_node, box->dots[i+1][e].game_node);
                         triangles.push_back(triangle);
                     }
-                    for (int e = 0; e < box.dots[0].size() - 1; ++e) {
-                        if(box.dots[i+1][e+1].game_node == nullptr){
-                            box.dots[i+1][e+1].game_node = new GameNode();
-                            box.dots[i+1][e+1].game_node->x = (box.dots[i+1][e+1].lat - llLatBound) / totalLatWorldLatSpan;
-                            box.dots[i+1][e+1].game_node->y = (box.dots[i+1][e+1].lon - llLonBound) / totalLonWorldLatSpan;
-                            box.dots[i+1][e+1].game_node->z = box.dots[i+1][e+1].elev;
+                    for (int e = 0; e < box->dots[0].size() - 1; ++e) {
+                        if(box->dots[i+1][e+1].game_node == nullptr){
+                            box->dots[i+1][e+1].game_node = new GameNode();
+                            box->dots[i+1][e+1].game_node->x = (box->dots[i+1][e+1].lat - llLatBound) / totalLatWorldLatSpan;
+                            box->dots[i+1][e+1].game_node->y = (box->dots[i+1][e+1].lon - llLonBound) / totalLonWorldLatSpan;
+                            box->dots[i+1][e+1].game_node->z = box->dots[i+1][e+1].elev;
                         }
-                        structs::Triangle triangle (box.dots[i+1][e].game_node, box.dots[i+1][e+1].game_node, box.dots[i][e+1].game_node);
+                        structs::Triangle triangle (box->dots[i+1][e].game_node, box->dots[i+1][e+1].game_node, box->dots[i][e+1].game_node);
                         triangles.push_back(triangle);
                     }
                 }
