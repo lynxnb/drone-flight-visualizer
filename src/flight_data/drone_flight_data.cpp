@@ -117,7 +117,7 @@ namespace dfv {
             flightData.emplace_back(
                     row["OSD.flyTime [s]"].get<float>(),
                     position.x,
-                    static_cast<float>(altitude),
+                    0,//static_cast<float>(altitude),
                     position.y,
                     glm::radians(row["OSD.yaw"].get<float>()),
                     glm::radians(row["OSD.pitch"].get<float>()),
