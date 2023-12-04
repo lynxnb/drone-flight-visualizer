@@ -8,10 +8,10 @@
 #include "deletion_queue.h"
 #include "render_object.h"
 #include "surface_wrapper.h"
+#include "uniform_types.h"
 #include "vk_mesh.h"
 #include "vk_traits.h"
 #include "vk_types.h"
-#include "uniform_types.h"
 
 namespace dfv {
 
@@ -78,12 +78,20 @@ namespace dfv {
         Material *getMaterial(const std::string &name);
 
         /**
-         * Creates a new mesh with the given name.
+         * Creates a new mesh with the given name from an model file.
          * @param name The name of the mesh, used to identify it later.
          * @param filename The path to the mesh file to load.
          * @return A pointer to the created mesh.
          */
         Mesh *createMesh(const std::string &name, const std::filesystem::path &filename);
+
+        /**
+         * Inserts an already loaded mesh into the engine.
+         * @param name The name of the mesh, used to identify it later.
+         * @param mesh The mesh to insert.
+         * @return A pointer to the inserted mesh.
+         */
+        Mesh *insertMesh(const std::string &name, Mesh &&mesh);
 
         /**
          * Gets the mesh with the given name.

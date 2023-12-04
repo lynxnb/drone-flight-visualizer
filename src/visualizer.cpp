@@ -1,10 +1,61 @@
 #include "visualizer.h"
+#include "map/data_fetcher.h"
+#include "structs/data_structs.h"
 
 #include <glm/gtx/transform.hpp>
 
 #include <iostream>
 
 namespace dfv {
+    Mesh setupMap() {
+        dfv::structs::DiscreteBox box = {0, 0, 10, 10}; // Example values
+
+        // Create a sample drone path
+        std::vector<dfv::structs::Node> drone_path = {
+                dfv::structs::Node("drone", 1, 5.5, 5.5, {}),
+                dfv::structs::Node("drone", 2, 6.5, 6.5, {})
+                // Add more nodes as needed
+        };
+
+        // Call the createGrid method with some debug values
+        double sparsity = 0.5; // Example density
+        double box_size = 2; // Example box size
+        double node_density_coefficient = 0.8; // Example coefficient
+
+        std::vector<std::vector<dfv::structs::DiscreteBoxInfo>> box_matrix = dfv::map::createGrid(box, drone_path, sparsity, box_size, node_density_coefficient);
+
+        double lrLatBound = box_matrix.back().back().dots.back().back().lat;
+        double lrLonBound = box_matrix.back().back().dots.back().back().lon;
+        std::vector<dfv::structs::Triangle> mesh_array = dfv::map::createMeshArray(&box_matrix,
+                                                                                   box_matrix[0][0].dots[0][0].lat,
+                                                                                   box_matrix[0][0].dots[0][0].lon,
+                                                                                   lrLatBound,
+                                                                                   lrLonBound);
+        Mesh mesh = {};
+        for (auto &triangle : mesh_array) {
+            mesh.vertices.push_back({
+                    {triangle.a->x, triangle.a->y, triangle.a->z},
+                    {0.f, 1.f, 0.f},
+                    {0.f, 0.f}
+            });
+            mesh.indices.push_back(mesh.indices.size());
+            mesh.vertices.push_back({
+                    {triangle.b->x, triangle.b->y, triangle.b->z},
+                    {0.f, 1.f, 0.f},
+                    {0.f, 0.f}
+            });
+            mesh.indices.push_back(mesh.indices.size());
+            mesh.vertices.push_back({
+                    {triangle.c->x, triangle.c->y, triangle.c->z},
+                    {0.f, 1.f, 0.f},
+                    {0.f, 0.f}
+            });
+            mesh.indices.push_back(mesh.indices.size());
+        }
+
+        return mesh;
+    }
+
     Visualizer::Visualizer(const VisualizerCreateInfo &createInfo)
         : flightData(createInfo.flightData), surface(createInfo.surface), engine(),
           objectModelPath(createInfo.objectModelPath), objectScale(createInfo.objectScale) {}
@@ -111,6 +162,11 @@ namespace dfv {
                 .transform = glm::mat4{1.f}};
 
         objectRenderHandle = ufoHandle;
+
+        auto [mapObject, mapHandle] = engine.allocateRenderObject();
+        *mapObject = {.mesh = engine.insertMesh("map", setupMap()),
+                      .material = defaultMat,
+                      .transform = glm::mat4{1.f}};
     }
 
     void Visualizer::update(seconds_f deltaTime) {

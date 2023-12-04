@@ -184,6 +184,15 @@ namespace dfv {
         return &meshIt->second;
     }
 
+    Mesh *VulkanEngine::insertMesh(const std::string &name, Mesh &&mesh) {
+        auto [meshIt, isNewInsertion] = meshes.insert_or_assign(name, std::move(mesh));
+        if (!isNewInsertion)
+            std::cerr << "Warning: mesh '" << name << "' was overwritten" << std::endl;
+
+        uploadMesh(meshIt->second);
+        return &meshIt->second;
+    }
+
     Mesh *VulkanEngine::getMesh(const std::string &name) {
         auto it = meshes.find(name);
         if (it == meshes.end())
