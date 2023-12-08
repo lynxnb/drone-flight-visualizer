@@ -7,55 +7,74 @@
 #include <iostream>
 
 namespace dfv {
-    Mesh setupMap() {
-        dfv::structs::DiscreteBox box = {0, 0, 10, 10}; // Example values
+    class MapRenderer {
+      private:
+        std::vector<dfv::structs::Node> drone_path = {};
 
-        // Create a sample drone path
-        std::vector<dfv::structs::Node> drone_path = {
-                dfv::structs::Node("drone", 1, 5.5, 5.5, {}),
-                dfv::structs::Node("drone", 2, 6.5, 6.5, {})
-                // Add more nodes as needed
-        };
+      public:
+        Mesh initialize(std::vector<FlightDataPoint> drone_path) {
+            dfv::structs::DiscreteBox box = {}; // Example values
+            for (const auto &point : drone_path) {
+                if(point.z == 0 || point.x == 0) {
+                    std::cout << "found null: " << point.x << point.z << std::endl;
+                }
+                box.llLat = std::min(box.llLat, double(point.x));
+                box.llLon = std::min(box.llLon, double(point.z));
+                box.urLat = std::max(box.urLat, double(point.x));
+                box.urLon = std::max(box.urLon, double(point.z));
+                this->drone_path.push_back(structs::Node(double(point.x), double(point.z), double(point.y)));
+            }
 
-        // Call the createGrid method with some debug values
-        double sparsity = 0.5; // Example density
-        double box_size = 2; // Example box size
-        double node_density_coefficient = 0.8; // Example coefficient
+            box.llLat -= 5;
+            box.llLon -= 5;
+            box.urLat += 5;
+            box.urLon += 5;
 
-        std::vector<std::vector<dfv::structs::DiscreteBoxInfo>> box_matrix = dfv::map::createGrid(box, drone_path, sparsity, box_size, node_density_coefficient);
+            for(auto el: drone_path) {
+                this->drone_path.emplace_back(el.x, el.z, el.y);
+            }
 
-        double lrLatBound = box_matrix.back().back().dots.back().back().lat;
-        double lrLonBound = box_matrix.back().back().dots.back().back().lon;
-        std::vector<dfv::structs::Triangle> mesh_array = dfv::map::createMeshArray(&box_matrix,
-                                                                                   box_matrix[0][0].dots[0][0].lat,
-                                                                                   box_matrix[0][0].dots[0][0].lon,
-                                                                                   lrLatBound,
-                                                                                   lrLonBound);
-        Mesh mesh = {};
-        for (auto &triangle : mesh_array) {
-            mesh.vertices.push_back({
-                    {triangle.a->x, triangle.a->y, triangle.a->z},
-                    {0.f, 1.f, 0.f},
-                    {0.f, 0.f}
-            });
-            mesh.indices.push_back(mesh.indices.size());
-            mesh.vertices.push_back({
-                    {triangle.b->x, triangle.b->y, triangle.b->z},
-                    {0.f, 1.f, 0.f},
-                    {0.f, 0.f}
-            });
-            mesh.indices.push_back(mesh.indices.size());
-            mesh.vertices.push_back({
-                    {triangle.c->x, triangle.c->y, triangle.c->z},
-                    {0.f, 1.f, 0.f},
-                    {0.f, 0.f}
-            });
-            mesh.indices.push_back(mesh.indices.size());
+            // Call the createGrid method with some debug values
+            double sparsity = 4; // Example density
+            double box_size = 2; // Example box size
+            double node_density_coefficient = 0.8; // Example coefficient
+
+            std::vector<std::vector<dfv::structs::DiscreteBoxInfo>> box_matrix = dfv::map::createGrid(box, this->drone_path, sparsity, box_size, node_density_coefficient);
+
+            double lrLatBound = box_matrix.back().back().dots.back().back().lat;
+            double lrLonBound = box_matrix.back().back().dots.back().back().lon;
+            auto mesh_array = dfv::map::createMeshArray(&box_matrix,
+                                                                                       box_matrix[0][0].dots[0][0].lat,
+                                                                                       box_matrix[0][0].dots[0][0].lon,
+                                                                                       lrLatBound,
+                                                                                       lrLonBound);
+//            Mesh mesh = {};
+//            for (auto &triangle : mesh_array) {
+//                mesh.vertices.push_back({
+//                        {triangle.a->x, triangle.a->y / 100, triangle.a->z},
+//                        {0.f, 1.f, 0.f},
+//                        {0.f, 0.f}
+//                });
+//                mesh.indices.push_back(mesh.indices.size());
+//                mesh.vertices.push_back({
+//                        {triangle.b->x, triangle.b->y / 100, triangle.b->z},
+//                        {0.f, 1.f, 0.f},
+//                        {0.f, 0.f}
+//                });
+//                mesh.indices.push_back(mesh.indices.size());
+//                mesh.vertices.push_back({
+//                        {triangle.c->x, triangle.c->y / 100, triangle.c->z},
+//                        {0.f, 1.f, 0.f},
+//                        {0.f, 0.f}
+//                });
+//                mesh.indices.push_back(mesh.indices.size());
+//            }
+
+            return mesh_array;
         }
-
-        return mesh;
-    }
-
+    };
+}
+namespace dfv {
     Visualizer::Visualizer(const VisualizerCreateInfo &createInfo)
         : flightData(createInfo.flightData), surface(createInfo.surface), engine(),
           objectModelPath(createInfo.objectModelPath), objectScale(createInfo.objectScale) {}
@@ -163,8 +182,10 @@ namespace dfv {
 
         objectRenderHandle = ufoHandle;
 
+        MapRenderer mapRenderer = {};
+
         auto [mapObject, mapHandle] = engine.allocateRenderObject();
-        *mapObject = {.mesh = engine.insertMesh("map", setupMap()),
+        *mapObject = {.mesh = engine.insertMesh("map", mapRenderer.initialize(flightData.getPath())),
                       .material = defaultMat,
                       .transform = glm::mat4{1.f}};
     }

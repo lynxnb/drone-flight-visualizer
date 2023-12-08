@@ -1,6 +1,7 @@
 #define _USE_MATH_DEFINES
 #define NOMINMAX // Disable min and max macros from windows.h
 #include "data_fetcher.h"
+#include "vulkan/vk_mesh.h"
 #include <chrono>
 #include <cpr/cpr.h>
 #include <iostream>
@@ -291,99 +292,136 @@ namespace dfv::map {
 
     }
 
-    std::vector<dfv::structs::Triangle> createMeshArray(std::vector<std::vector<structs::DiscreteBoxInfo>> *box_matrix, double llLatBound, double llLonBound, double urLatBound, double urLonBound) {
+    Mesh createMeshArray(std::vector<std::vector<structs::DiscreteBoxInfo>> *box_matrix, double llLatBound, double llLonBound, double urLatBound, double urLonBound) {
         double totalLatWorldLatSpan = urLatBound - llLatBound;
         double totalLonWorldLatSpan = urLonBound - llLonBound;
-
+        Mesh mesh = {};
         std::vector<structs::Triangle> triangles;
+        float elevation_scale = 0.01;
 
-        for(int ii = 0; ii < box_matrix->size(); ++ii){
-            for(int ie = 0; ie < box_matrix[0].size(); ++ie){
+        for (int ii = 0; ii < box_matrix->size(); ++ii) {
+            for (int ie = 0; ie < box_matrix[0].size(); ++ie) {
                 structs::DiscreteBoxInfo *box = &(*box_matrix)[ii][ie];
 
                 //create inner box mash
                 for (int i = 0; i < box->dots.size() - 1; ++i) {
                     for (int e = 0; e < box->dots[0].size() - 1; ++e) {
-                        if(box->dots[i][e].game_node == nullptr){
+                        if (box->dots[i][e].game_node == nullptr) {
                             box->dots[i][e].game_node = new GameNode();
-                            box->dots[i][e].game_node->x = (box->dots[i][e].lat - llLatBound) / totalLatWorldLatSpan;
-                            box->dots[i][e].game_node->y = (box->dots[i][e].lon - llLonBound) / totalLonWorldLatSpan;
-                            box->dots[i][e].game_node->z = box->dots[i][e].elev;
+                            box->dots[i][e].game_node->x = 100 * (box->dots[i][e].lat - llLatBound) / totalLatWorldLatSpan;
+                            box->dots[i][e].game_node->z = 100 * (box->dots[i][e].lon - llLonBound) / totalLonWorldLatSpan;
+                            box->dots[i][e].game_node->y = box->dots[i][e].elev * elevation_scale;
+                            mesh.vertices.push_back({
+                                    {box->dots[i][e].game_node->x, box->dots[i][e].game_node->y, box->dots[i][e].game_node->z},
+                                    {0.f, 1.f, 0.f},
+                                    {0.f, 0.f}
+                            });
+                            box->dots[i][e].game_node->vertex_index = mesh.vertices.size() - 1;
                         }
-                        if(box->dots[i][e+1].game_node == nullptr){
-                            box->dots[i][e+1].game_node = new GameNode();
-                            box->dots[i][e+1].game_node->x = (box->dots[i][e+1].lat - llLatBound) / totalLatWorldLatSpan;
-                            box->dots[i][e+1].game_node->y = (box->dots[i][e+1].lon - llLonBound) / totalLonWorldLatSpan;
-                            box->dots[i][e+1].game_node->z = box->dots[i][e+1].elev;
+                        if (box->dots[i][e + 1].game_node == nullptr) {
+                            box->dots[i][e + 1].game_node = new GameNode();
+                            box->dots[i][e + 1].game_node->x = 100 * (box->dots[i][e + 1].lat - llLatBound) / totalLatWorldLatSpan;
+                            box->dots[i][e + 1].game_node->z = 100 * (box->dots[i][e + 1].lon - llLonBound) / totalLonWorldLatSpan;
+                            box->dots[i][e + 1].game_node->y = box->dots[i][e + 1].elev * elevation_scale;
+                            mesh.vertices.push_back({
+                                    {box->dots[i][e + 1].game_node->x, box->dots[i][e + 1].game_node->y, box->dots[i][e + 1].game_node->z},
+                                    {0.f, 1.f, 0.f},
+                                    {0.f, 0.f}
+                            });
+                            box->dots[i][e + 1].game_node->vertex_index = mesh.vertices.size() - 1;
                         }
-                        if(box->dots[i+1][e].game_node == nullptr){
-                            box->dots[i+1][e].game_node = new GameNode();
-                            box->dots[i+1][e].game_node->x = (box->dots[i+1][e].lat - llLatBound) / totalLatWorldLatSpan;
-                            box->dots[i+1][e].game_node->y = (box->dots[i+1][e].lon - llLonBound) / totalLonWorldLatSpan;
-                            box->dots[i+1][e].game_node->z = box->dots[i+1][e].elev;
+                        if (box->dots[i + 1][e].game_node == nullptr) {
+                            box->dots[i + 1][e].game_node = new GameNode();
+                            box->dots[i + 1][e].game_node->x = 100 * (box->dots[i + 1][e].lat - llLatBound) / totalLatWorldLatSpan;
+                            box->dots[i + 1][e].game_node->z = 100 * (box->dots[i + 1][e].lon - llLonBound) / totalLonWorldLatSpan;
+                            box->dots[i + 1][e].game_node->y = box->dots[i + 1][e].elev * elevation_scale;
+                            mesh.vertices.push_back({
+                                    {box->dots[i + 1][e].game_node->x, box->dots[i + 1][e].game_node->y, box->dots[i + 1][e].game_node->z},
+                                    {0.f, 1.f, 0.f},
+                                    {0.f, 0.f}
+                            });
+                            box->dots[i + 1][e].game_node->vertex_index = mesh.vertices.size() - 1;
                         }
-                        structs::Triangle triangle (box->dots[i][e].game_node, box->dots[i][e+1].game_node, box->dots[i+1][e].game_node);
+
+                        structs::Triangle triangle(box->dots[i][e].game_node, box->dots[i][e + 1].game_node, box->dots[i + 1][e].game_node);
                         triangles.push_back(triangle);
+                        mesh.indices.push_back(box->dots[i][e].game_node->vertex_index);
+                        mesh.indices.push_back(box->dots[i][e + 1].game_node->vertex_index);
+                        mesh.indices.push_back(box->dots[i + 1][e].game_node->vertex_index);
                     }
                     for (int e = 0; e < box->dots[0].size() - 1; ++e) {
-                        if(box->dots[i+1][e+1].game_node == nullptr){
-                            box->dots[i+1][e+1].game_node = new GameNode();
-                            box->dots[i+1][e+1].game_node->x = (box->dots[i+1][e+1].lat - llLatBound) / totalLatWorldLatSpan;
-                            box->dots[i+1][e+1].game_node->y = (box->dots[i+1][e+1].lon - llLonBound) / totalLonWorldLatSpan;
-                            box->dots[i+1][e+1].game_node->z = box->dots[i+1][e+1].elev;
+                        if (box->dots[i + 1][e + 1].game_node == nullptr) {
+                            box->dots[i + 1][e + 1].game_node = new GameNode();
+                            box->dots[i + 1][e + 1].game_node->x = 100 * (box->dots[i + 1][e + 1].lat - llLatBound) / totalLatWorldLatSpan;
+                            box->dots[i + 1][e + 1].game_node->z = 100 * (box->dots[i + 1][e + 1].lon - llLonBound) / totalLonWorldLatSpan;
+                            box->dots[i + 1][e + 1].game_node->y = box->dots[i + 1][e + 1].elev * elevation_scale;
+                            mesh.vertices.push_back({
+                                    {box->dots[i + 1][e + 1].game_node->x, box->dots[i + 1][e + 1].game_node->y, box->dots[i + 1][e + 1].game_node->z},
+                                    {0.f, 1.f, 0.f},
+                                    {0.f, 0.f}
+                            });
+                            box->dots[i + 1][e + 1].game_node->vertex_index = mesh.vertices.size() - 1;
                         }
-                        structs::Triangle triangle (box->dots[i+1][e].game_node, box->dots[i+1][e+1].game_node, box->dots[i][e+1].game_node);
+                        structs::Triangle triangle(box->dots[i + 1][e].game_node, box->dots[i + 1][e + 1].game_node, box->dots[i][e + 1].game_node);
                         triangles.push_back(triangle);
+                        mesh.indices.push_back(box->dots[i + 1][e].game_node->vertex_index);
+                        mesh.indices.push_back(box->dots[i + 1][e + 1].game_node->vertex_index);
+                        mesh.indices.push_back(box->dots[i][e + 1].game_node->vertex_index);
                     }
                 }
 
                 //sew left box
-                if(ie > 0){
+                if (ie > 0) {
                     std::vector<Node> commonNodes;
                     std::vector<Node> sparseNodes;
-                    commonNodes.reserve((*box_matrix)[ii][ie].dots[0].size() + (*box_matrix)[ii][ie-1].dots[0].size());
-                    for (auto &row: (*box_matrix)[ii][ie].dots){
+                    commonNodes.reserve((*box_matrix)[ii][ie].dots[0].size() + (*box_matrix)[ii][ie - 1].dots[0].size());
+                    for (auto &row : (*box_matrix)[ii][ie].dots) {
                         commonNodes.push_back(row[0]);
                     }
-                    for (auto &row: (*box_matrix)[ii][ie-1].dots){
+                    for (auto &row : (*box_matrix)[ii][ie - 1].dots) {
                         commonNodes.push_back(row.back());
                     }
-                    std::sort (commonNodes.begin(), commonNodes.end(), [](structs::Node &a, structs::Node &b){return a.lon > b.lon;});
-                    if((*box_matrix)[ii][ie].sparsity > (*box_matrix)[ii][ie-1].sparsity){
-                        for (auto &row: (*box_matrix)[ii][ie].dots){
+                    std::sort(commonNodes.begin(), commonNodes.end(), [](structs::Node &a, structs::Node &b) {
+                        return a.lon > b.lon;
+                    });
+                    if ((*box_matrix)[ii][ie].sparsity > (*box_matrix)[ii][ie - 1].sparsity) {
+                        for (auto &row : (*box_matrix)[ii][ie].dots) {
                             sparseNodes.push_back(row[1]);
                         }
                     } else {
-                        for (auto &row: (*box_matrix)[ii][ie-1].dots){
+                        for (auto &row : (*box_matrix)[ii][ie - 1].dots) {
                             sparseNodes.push_back(row.rbegin()[1]);
                         }
                     }
 
-                    std::vector<structs::Triangle> T = sewBoxesSlave(&commonNodes, &sparseNodes);
-                    triangles.insert(triangles.end(), T.begin(), T.end());
+                    //std::vector<structs::Triangle> T = sewBoxesSlave(&commonNodes, &sparseNodes);
+                    //triangles.insert(triangles.end(), T.begin(), T.end());
                 }
                 //sew top box
-                if(ii != 0){
+                if (ii != 0) {
                     std::vector<Node> commonNodes;
                     std::vector<Node> sparseNodes;
-                    commonNodes.reserve((*box_matrix)[ii][ie].dots[0].size() + (*box_matrix)[ii-1][ie].dots[0].size());
+                    commonNodes.reserve((*box_matrix)[ii][ie].dots[0].size() + (*box_matrix)[ii - 1][ie].dots[0].size());
                     commonNodes.insert(commonNodes.end(), (*box_matrix)[ii][ie].dots[0].begin(), (*box_matrix)[ii][ie].dots[0].end());
-                    commonNodes.insert(commonNodes.end(), (*box_matrix)[ii-1][ie].dots[0].begin(), (*box_matrix)[ii-1][ie].dots[0].end());
-                    std::sort (commonNodes.begin(), commonNodes.end(), [](structs::Node &a, structs::Node &b){return a.lon > b.lon;});
+                    commonNodes.insert(commonNodes.end(), (*box_matrix)[ii - 1][ie].dots[0].begin(), (*box_matrix)[ii - 1][ie].dots[0].end());
+                    std::sort(commonNodes.begin(), commonNodes.end(), [](structs::Node &a, structs::Node &b) {
+                        return a.lon > b.lon;
+                    });
 
-                    if((*box_matrix)[ii][ie].sparsity > (*box_matrix)[ii-1][ie].sparsity){
+                    if ((*box_matrix)[ii][ie].sparsity > (*box_matrix)[ii - 1][ie].sparsity) {
                         sparseNodes.insert(sparseNodes.begin(), (*box_matrix)[ii][ie].dots[0].begin(), (*box_matrix)[ii][ie].dots[0].end());
                     } else {
-                        sparseNodes.insert(sparseNodes.begin(), (*box_matrix)[ii-1][ie].dots.back().begin(), (*box_matrix)[ii-1][ie].dots.back().end());
+                        sparseNodes.insert(sparseNodes.begin(), (*box_matrix)[ii - 1][ie].dots.back().begin(), (*box_matrix)[ii - 1][ie].dots.back().end());
                     }
 
-                    std::vector<structs::Triangle> T = sewBoxesSlave(&commonNodes, &sparseNodes);
-                    triangles.insert(triangles.end(), T.begin(), T.end());
+                    //std::vector<structs::Triangle> T = sewBoxesSlave(&commonNodes, &sparseNodes);
+                    //triangles.insert(triangles.end(), T.begin(), T.end());
                 }
             }
         }
 
-        return triangles;
+        return mesh;
+
     }
 
     std::vector<std::vector<structs::Node>> createGrid(std::vector<structs::DiscreteBox> boxes) {

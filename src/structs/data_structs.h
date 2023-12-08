@@ -9,6 +9,7 @@ namespace dfv::structs {
         double x;
         double y;
         double z = 0;
+        unsigned long long vertex_index = -1;
     };
 
 
@@ -20,6 +21,9 @@ namespace dfv::structs {
         double elev = 0;
         GameNode *game_node = nullptr;
         std::map<std::string, std::string> tags;
+
+        Node(double lat, double lon, double elev) :
+              id(0), lat(lat), lon(lon), elev(elev) {}
 
         Node(std::string type, int64_t id, double lat, double lon, std::map<std::string, std::string> tags) :
                 type(std::move(type)), id(id), lat(lat), lon(lon), tags(std::move(tags)) {}
@@ -44,10 +48,10 @@ namespace dfv::structs {
     };
 
     struct DiscreteBox {
-        double llLat;
-        double llLon;
-        double urLat;
-        double urLon;
+        double llLat = 10000;
+        double llLon = 10000;
+        double urLat = -10000;
+        double urLon = -10000;
         double spacingMeters;
     };
 

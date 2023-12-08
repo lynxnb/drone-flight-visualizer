@@ -56,5 +56,6 @@ namespace dfv {
         virtual seconds_f getEndTime() = 0;
 
         virtual FlightBoundingBox getBoundingBox() = 0;
+        virtual std::vector<FlightDataPoint> getPath() = 0;
     };
 } // namespace dfv

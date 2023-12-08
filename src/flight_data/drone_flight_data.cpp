@@ -25,6 +25,10 @@ namespace dfv {
         return initialPosition ? initialPosition.value() : Coordinate{};
     }
 
+    std::vector<FlightDataPoint> DroneFlightData::getPath(){
+        return flightDataPoints;
+    }
+
     FlightDataPoint DroneFlightData::getPoint(seconds_f timestamp) {
         // upper_bound returns the first element that is greater than the timestamp, aka the next point
         // if the timestamp is 0 or less, this will return the first point
@@ -83,6 +87,7 @@ namespace dfv {
     }
 
     static glm::vec2 calculateRelativePosition(glm::dvec2 position, glm::dvec2 inRelationTo) {
+        return {position.x, position.y}; //testing
         const auto scale = 100000; //  0.00001 = 1.11 meter
 
         auto x = (position.x - inRelationTo.x) * scale;
