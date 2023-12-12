@@ -292,6 +292,18 @@ namespace dfv::map {
 
     }
 
+    glm::vec3 calculateTriangleNormal(const Vertex& v1, const Vertex& v2, const Vertex& v3) {
+        // Compute two edges of the triangle
+        glm::vec3 edge1 = v2.position - v1.position;
+        glm::vec3 edge2 = v3.position - v1.position;
+
+        // Calculate the cross product of the edges
+        glm::vec3 normal = glm::cross(edge1, edge2);
+
+        // Normalize the normal to ensure it has unit length
+        return glm::normalize(normal);
+    }
+
     Mesh createMeshArray(std::vector<std::vector<structs::DiscreteBoxInfo>> *box_matrix, double llLatBound, double llLonBound, double urLatBound, double urLonBound) {
         double totalLatWorldLatSpan = urLatBound - llLatBound;
         double totalLonWorldLatSpan = urLonBound - llLonBound;
@@ -313,7 +325,7 @@ namespace dfv::map {
                             box->dots[i][e].game_node->y = box->dots[i][e].elev * elevation_scale;
                             mesh.vertices.push_back({
                                     {box->dots[i][e].game_node->x, box->dots[i][e].game_node->y, box->dots[i][e].game_node->z},
-                                    {0.f, 1.f, 0.f},
+                                    {0.f, 0.f, 0.f},
                                     {0.f, 0.f}
                             });
                             box->dots[i][e].game_node->vertex_index = mesh.vertices.size() - 1;
@@ -325,7 +337,7 @@ namespace dfv::map {
                             box->dots[i][e + 1].game_node->y = box->dots[i][e + 1].elev * elevation_scale;
                             mesh.vertices.push_back({
                                     {box->dots[i][e + 1].game_node->x, box->dots[i][e + 1].game_node->y, box->dots[i][e + 1].game_node->z},
-                                    {0.f, 1.f, 0.f},
+                                    {0.f, 0.f, 0.f},
                                     {0.f, 0.f}
                             });
                             box->dots[i][e + 1].game_node->vertex_index = mesh.vertices.size() - 1;
@@ -337,7 +349,7 @@ namespace dfv::map {
                             box->dots[i + 1][e].game_node->y = box->dots[i + 1][e].elev * elevation_scale;
                             mesh.vertices.push_back({
                                     {box->dots[i + 1][e].game_node->x, box->dots[i + 1][e].game_node->y, box->dots[i + 1][e].game_node->z},
-                                    {0.f, 1.f, 0.f},
+                                    {0.f, 0.f, 0.f},
                                     {0.f, 0.f}
                             });
                             box->dots[i + 1][e].game_node->vertex_index = mesh.vertices.size() - 1;
@@ -357,7 +369,7 @@ namespace dfv::map {
                             box->dots[i + 1][e + 1].game_node->y = box->dots[i + 1][e + 1].elev * elevation_scale;
                             mesh.vertices.push_back({
                                     {box->dots[i + 1][e + 1].game_node->x, box->dots[i + 1][e + 1].game_node->y, box->dots[i + 1][e + 1].game_node->z},
-                                    {0.f, 1.f, 0.f},
+                                    {0.f, 0.f, 0.f},
                                     {0.f, 0.f}
                             });
                             box->dots[i + 1][e + 1].game_node->vertex_index = mesh.vertices.size() - 1;
@@ -420,9 +432,33 @@ namespace dfv::map {
             }
         }
 
+        std::vector<uint32_t> vertex_normal_accumulator(mesh.vertices.size(), 0);
+
+
+        for (int i = 0; i < mesh.indices.size(); i += 3) {
+            Vertex &v1 = mesh.vertices[mesh.indices[i]];
+            Vertex &v2 = mesh.vertices[mesh.indices[i + 1]];
+            Vertex &v3 = mesh.vertices[mesh.indices[i + 2]];
+
+            auto normal = calculateTriangleNormal(v1, v2, v3);
+
+            v1.normal += normal;
+            vertex_normal_accumulator[mesh.indices[i]] ++;
+            v2.normal += normal;
+            vertex_normal_accumulator[mesh.indices[i + 1]] ++;
+            v3.normal += normal;
+            vertex_normal_accumulator[mesh.indices[i + 2]] ++;
+        }
+
+        for (int i = 0; i < mesh.vertices.size(); ++i) {
+            mesh.vertices[i].normal.operator/=(vertex_normal_accumulator[i]);
+        }
+
         return mesh;
 
     }
+
+
 
     std::vector<std::vector<structs::Node>> createGrid(std::vector<structs::DiscreteBox> boxes) {
         std::vector<std::vector<std::vector<structs::Node>>> allNodes;
