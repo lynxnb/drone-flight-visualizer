@@ -442,6 +442,8 @@ namespace dfv::map {
 
             auto normal = calculateTriangleNormal(v1, v2, v3);
 
+            if(normal.y < 0) normal.y *= -1;
+
             v1.normal += normal;
             vertex_normal_accumulator[mesh.indices[i]] ++;
             v2.normal += normal;
@@ -451,7 +453,10 @@ namespace dfv::map {
         }
 
         for (int i = 0; i < mesh.vertices.size(); ++i) {
-            mesh.vertices[i].normal.operator/=(vertex_normal_accumulator[i]);
+            if (vertex_normal_accumulator[i] > 0) {
+                mesh.vertices[i].normal /= static_cast<float>(vertex_normal_accumulator[i]);
+                mesh.vertices[i].normal = glm::normalize(mesh.vertices[i].normal); // Ensure the normal is unit length
+            }
         }
 
         return mesh;
