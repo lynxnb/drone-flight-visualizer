@@ -143,6 +143,10 @@ namespace dfv {
         // Update scene parameters
         const float framed = static_cast<float>(frameNumber) / 120.f;
         sceneParameters.ambientColor = {sin(framed), 0, cos(framed), 1};
+        sceneParameters.eyePos = camera.position;
+        sceneParameters.sunlightDirection = glm::vec3(cos(glm::radians(135.0f)) * cos(glm::radians(210.0f)), sin(glm::radians(135.0f)), cos(glm::radians(135.0f)) * sin(glm::radians(210.0f)));
+        //white sunlight color white
+        sceneParameters.sunlightColor = {1, 1, 1, 1};
 
         std::byte *sceneBuffer;
         vmaMapMemory(allocator, sceneParametersBuffer.allocation, reinterpret_cast<void **>(&sceneBuffer));

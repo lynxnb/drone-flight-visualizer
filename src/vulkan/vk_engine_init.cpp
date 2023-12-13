@@ -451,13 +451,13 @@ namespace dfv {
         pipelineBuilder.pipelineLayout = meshPipelineLayout;
 
         // Compile mesh vertex shader
-        auto meshVertShader = loadShaderModule("shaders/default.vert.spv");
+        auto meshVertShader = loadShaderModule("shaders/drone.vert.spv");
         if (!meshVertShader)
             std::cout << "Error when building the triangle vertex shader module" << std::endl;
         else
             std::cout << "Mesh Triangle vertex shader successfully loaded" << std::endl;
 
-        auto colorMeshShader = loadShaderModule("shaders/default_lit.frag.spv");
+        auto colorMeshShader = loadShaderModule("shaders/drone_lighting.frag.spv");
         if (!colorMeshShader)
             std::cout << "Error when building the colored mesh shader" << std::endl;
         else
