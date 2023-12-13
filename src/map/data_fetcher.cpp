@@ -5,7 +5,8 @@
 #include <chrono>
 #include <cpr/cpr.h>
 #include <iostream>
-#include <math.h>
+#include <cmath>
+#include <glm/geometric.hpp>
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>

@@ -9,13 +9,18 @@ set(DFV_SOURCE_COMMON
         vulkan/vk_engine_init.cpp
 )
 
+set(DFV_SOURCE_MAP
+        map/data_fetcher.cpp
+        map/map_manager.cpp
+)
+
 
 # drone_flight_visualizer executable
 add_executable(drone_flight_visualizer
         ${DFV_SOURCE_COMMON}
+        ${DFV_SOURCE_MAP}
         glfw/glfw_surface.cpp
         flight_data/drone_flight_data.cpp
-        map/data_fetcher.cpp
         drone_entrypoint.cpp
 )
 
@@ -58,9 +63,9 @@ add_dependencies(mock_visualizer Assets)
 # mesh visualizer
 add_executable(mesh_visualizer
         ${DFV_SOURCE_COMMON}
+        ${DFV_SOURCE_MAP}
         glfw/glfw_surface.cpp
         flight_data/mock_flight_data.cpp
-        map/data_fetcher.cpp
         mesh_entrypoint.cpp
 )
 target_include_directories(mesh_visualizer PRIVATE ".")
