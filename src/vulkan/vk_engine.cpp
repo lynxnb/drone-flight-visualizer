@@ -59,33 +59,29 @@ namespace dfv {
         VK_CHECK(vkResetCommandBuffer(frame.mainCommandBuffer, 0));
 
         // Begin the command buffer recording. We will use this command buffer exactly once, so we want to let Vulkan know that
-        VkCommandBufferBeginInfo cmdBeginInfo = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-                                                 .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
+        constexpr VkCommandBufferBeginInfo cmdBeginInfo = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                                                           .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
 
         VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
         // Allocate memory for the clear values
-        std::array<VkClearValue, 2> clearValues = {};
 
-        // Make a clear-color from frame number. This will flash with a 120*pi frame period.
-        VkClearValue &colorClear = clearValues[0];
-        float flash = abs(sin(static_cast<float>(frameNumber) / 120.f));
-        colorClear.color = {
-                {0.0f, 0.0f, flash, 1.0f}
-        };
+        // Clear color to sky blue
+        constexpr VkClearValue colorClear = {.color = {{0.39f, 0.58f, 0.93f, 1.0f}}};
 
         // Clear depth
-        VkClearValue &depthClear = clearValues[1];
-        depthClear.depthStencil.depth = 1.0f;
+        constexpr VkClearValue depthClear = {.depthStencil = {.depth = 1.0f}};
+
+        std::array clearValues = {colorClear, depthClear};
 
         // Start the main renderpass
         // We will use the clear color from above, and the framebuffer of the index the swapchain gave us
-        VkRenderPassBeginInfo rpInfo = {.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-                                        .renderPass = renderPass,
-                                        .framebuffer = framebuffers[swapchainImageIndex],
-                                        .renderArea = {.extent = windowExtent},
-                                        .clearValueCount = clearValues.size(),
-                                        .pClearValues = clearValues.data()};
+        const VkRenderPassBeginInfo rpInfo = {.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+                                              .renderPass = renderPass,
+                                              .framebuffer = framebuffers[swapchainImageIndex],
+                                              .renderArea = {.extent = windowExtent},
+                                              .clearValueCount = clearValues.size(),
+                                              .pClearValues = clearValues.data()};
 
         vkCmdBeginRenderPass(cmd, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -101,14 +97,14 @@ namespace dfv {
         // Prepare the submission to the queue
         // We want to wait on the presentSemaphore, as that semaphore is signaled when the swapchain is ready
         // We will signal the renderSemaphore, to signal that rendering has finished
-        VkSubmitInfo submit = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                               .waitSemaphoreCount = 1,
-                               .pWaitSemaphores = &frame.presentSemaphore,
-                               .pWaitDstStageMask = &waitStage,
-                               .commandBufferCount = 1,
-                               .pCommandBuffers = &cmd,
-                               .signalSemaphoreCount = 1,
-                               .pSignalSemaphores = &frame.renderSemaphore};
+        const VkSubmitInfo submit = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                                     .waitSemaphoreCount = 1,
+                                     .pWaitSemaphores = &frame.presentSemaphore,
+                                     .pWaitDstStageMask = &waitStage,
+                                     .commandBufferCount = 1,
+                                     .pCommandBuffers = &cmd,
+                                     .signalSemaphoreCount = 1,
+                                     .pSignalSemaphores = &frame.renderSemaphore};
 
         // Submit command buffer to the queue and execute it
         // renderFence will now block until the graphic commands finish execution
@@ -117,12 +113,12 @@ namespace dfv {
         // This will put the image we just rendered into the visible window
         // We want to wait on the renderSemaphore for that,
         // as it's necessary that drawing commands have finished before the image is displayed to the user
-        VkPresentInfoKHR presentInfo = {.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-                                        .waitSemaphoreCount = 1,
-                                        .pWaitSemaphores = &frame.renderSemaphore,
-                                        .swapchainCount = 1,
-                                        .pSwapchains = &swapchain,
-                                        .pImageIndices = &swapchainImageIndex};
+        const VkPresentInfoKHR presentInfo = {.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+                                              .waitSemaphoreCount = 1,
+                                              .pWaitSemaphores = &frame.renderSemaphore,
+                                              .swapchainCount = 1,
+                                              .pSwapchains = &swapchain,
+                                              .pImageIndices = &swapchainImageIndex};
 
         VK_CHECK(vkQueuePresentKHR(graphicsQueue, &presentInfo));
 
@@ -131,37 +127,37 @@ namespace dfv {
     }
 
     void VulkanEngine::drawObjects(VkCommandBuffer cmdBuf) {
-        auto &frame = getCurrentFrame();
+        const auto &frame = getCurrentFrame();
 
         // Camera view
-        glm::mat4 view = glm::lookAt(camera.position, camera.position + camera.front, camera.up);
+        const glm::mat4 view = glm::lookAt(camera.position, camera.position + camera.front, camera.up);
         // Camera projection
         glm::mat4 projection = glm::perspective(camera.fov,
-                                                (float) windowExtent.width / (float) windowExtent.height,
+                                                static_cast<float>(windowExtent.width) / static_cast<float>(windowExtent.height),
                                                 camera.nearPlane, camera.farPlane);
         projection[1][1] *= -1; // Flip projection matrix from GL to Vulkan orientation (y-axis)
 
         // Precompute the view-projection matrix
-        glm::mat4 viewProj = projection * view;
+        const glm::mat4 viewProj = projection * view;
 
         // Update scene parameters
-        float framed = static_cast<float>(frameNumber) / 120.f;
+        const float framed = static_cast<float>(frameNumber) / 120.f;
         sceneParameters.ambientColor = {sin(framed), 0, cos(framed), 1};
 
         std::byte *sceneBuffer;
         vmaMapMemory(allocator, sceneParametersBuffer.allocation, reinterpret_cast<void **>(&sceneBuffer));
 
-        unsigned int frameIndex = frameNumber % MaxFramesInFlight;
+        const unsigned int frameIndex = frameNumber % MaxFramesInFlight;
         sceneBuffer += uniformBufferSizeAlignUp(sizeof(uniform::SceneData)) * frameIndex;
         std::memcpy(sceneBuffer, &sceneParameters, sizeof(uniform::SceneData));
 
         vmaUnmapMemory(allocator, sceneParametersBuffer.allocation);
 
         // Keep track of the last used mesh and material to avoid unnecessary binding
-        Mesh *lastMesh = nullptr;
-        Material *lastMaterial = nullptr;
+        const Mesh *lastMesh = nullptr;
+        const Material *lastMaterial = nullptr;
         for (auto &object : renderObjects) {
-            uint32_t objectIndex{static_cast<uint32_t>(std::distance(renderObjects.data(), &object))};
+            const uint32_t objectIndex{static_cast<uint32_t>(std::distance(renderObjects.data(), &object))};
 
             // Bind the pipeline if it doesn't match with the already bound one
             if (object.material != lastMaterial) {
@@ -202,7 +198,7 @@ namespace dfv {
             return;
 
         std::array<VkFence, MaxFramesInFlight> fences = {};
-        std::transform(frames.begin(), frames.end(), fences.begin(), [](auto &frame) {
+        std::ranges::transform(frames, fences.begin(), [](auto &frame) {
             return frame.renderFence;
         });
         vkWaitForFences(device, fences.size(), fences.data(), true, 1000000000);
