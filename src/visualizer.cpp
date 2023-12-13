@@ -31,16 +31,16 @@ namespace dfv {
         onStart();
     }
 
-    void Visualizer::drawFrame(dfv::seconds_f deltaTime) {
+    void Visualizer::drawFrame(const seconds_f deltaTime) {
         // Update entities
-        auto updateStart = dfv::clock::now();
+        const auto updateStart = clock::now();
         update(deltaTime);
-        stats.updateTotalTime += dfv::clock::now() - updateStart;
+        stats.updateTotalTime += clock::now() - updateStart;
 
         // Draw frame
-        auto drawStart = dfv::clock::now();
+        const auto drawStart = clock::now();
         engine.draw();
-        stats.drawTotalTime += dfv::clock::now() - drawStart;
+        stats.drawTotalTime += clock::now() - drawStart;
     }
 
     Visualizer::Stats Visualizer::getStats() {
@@ -49,7 +49,7 @@ namespace dfv {
     }
 
     void Visualizer::setObjectTransform(const glm::vec3 &position, const glm::vec3 &attitude) {
-        auto ufo = engine.getRenderObject(objectRenderHandle);
+        const auto ufo = engine.getRenderObject(objectRenderHandle);
         ufo->transform = glm::translate(position) *
                          glm::rotate(attitude.x, glm::vec3{0.f, 1.f, 0.f}) * // yaw
                          glm::rotate(attitude.y, glm::vec3{1.f, 0.f, 0.f}) * // pitch
@@ -74,8 +74,8 @@ namespace dfv {
 
     void Visualizer::recenterCamera() {
         if (cameraMode == CameraMode::Free) {
-            auto point = flightData.getPoint(time);
-            auto direction = glm::normalize(glm::vec3{point.x, point.y, point.z} - engine.camera.position);
+            const auto point = flightData.getPoint(time);
+            const auto direction = glm::normalize(glm::vec3{point.x, point.y, point.z} - engine.camera.position);
 
             engine.camera.orientation = {std::atan2(direction.z, direction.x),
                                          std::asin(direction.y),
@@ -84,7 +84,7 @@ namespace dfv {
         }
     }
 
-    void Visualizer::setCameraMode(CameraMode mode) {
+    void Visualizer::setCameraMode(const CameraMode mode) {
         cameraMode = mode;
     }
 
@@ -92,7 +92,7 @@ namespace dfv {
         if (!is_regular_file(objectModelPath))
             throw std::runtime_error("Invalid object model file provided");
 
-        auto firstDataPoint = flightData.getPoint(flightData.getStartTime());
+        const auto firstDataPoint = flightData.getPoint(flightData.getStartTime());
 
         // Set the initial camera position and direction
         engine.camera.position = glm::vec3{firstDataPoint.x, firstDataPoint.y, firstDataPoint.z} +
@@ -101,8 +101,8 @@ namespace dfv {
         engine.camera.updateFront();
         engine.camera.up = {0.f, 1.f, 0.f};
 
-        auto ufoMesh = engine.createMesh("ufo", objectModelPath);
-        auto defaultMat = engine.getMaterial("defaultmesh");
+        const auto ufoMesh = engine.createMesh("ufo", objectModelPath);
+        const auto defaultMat = engine.getMaterial("defaultmesh");
 
         auto [ufo, ufoHandle] = engine.allocateRenderObject();
         *ufo = {.mesh = ufoMesh,
@@ -119,7 +119,7 @@ namespace dfv {
                       .transform = glm::mat4{1.f}};
     }
 
-    void Visualizer::update(seconds_f deltaTime) {
+    void Visualizer::update(const seconds_f deltaTime) {
         time += deltaTime * droneTimeMultiplier;
 
         auto point = flightData.getPoint(time);

@@ -56,7 +56,7 @@ namespace dfv {
          */
         explicit Visualizer(const VisualizerCreateInfo &createInfo);
 
-        ~Visualizer();
+        virtual ~Visualizer();
 
         /**
          * @brief Initializes the visualizer by loading the data source, initializing the engine and creating the scene.
