@@ -4,14 +4,14 @@
 vec3 droneColor = vec3(0.3225f, 0.3322f, 0.3453f); // Pantone gray 10 C
 
 //shader input
-layout(location = 0) in vec3 fragPos;
-layout(location = 1) in vec3 fragNorm;
+layout(location = 0) in vec3 fragNorm;
+layout(location = 1) in vec3 fragPos;
 
 //output write
 layout (location = 0) out vec4 outFragColor;
 
 
-layout (set = 0, binding = 1) uniform SceneData {
+layout (set = 0, binding = 0) uniform SceneData {
     vec4 ambientColor;
     vec3 sunlightDirection; //w for sun power
     vec4 sunlightColor;

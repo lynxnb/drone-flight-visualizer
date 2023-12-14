@@ -104,15 +104,17 @@ namespace dfv {
         const auto ufoMesh = engine.createMesh("ufo", objectModelPath);
         const auto defaultMat = engine.getMaterial("defaultmesh");
 
+        // adds the drone to the scene setting material and position
         auto [ufo, ufoHandle] = engine.allocateRenderObject();
         *ufo = {.mesh = ufoMesh,
-                .material = defaultMat,
+                .material = engine.getMaterial("drone"),
                 .transform = glm::mat4{1.f}};
 
         objectRenderHandle = ufoHandle;
 
         MapManager mapRenderer = {};
 
+        // adds the map to the scene setting material and position
         auto [mapObject, mapHandle] = engine.allocateRenderObject();
         *mapObject = {.mesh = engine.insertMesh("map", mapRenderer.initialize(flightData.getPath())),
                       .material = defaultMat,
