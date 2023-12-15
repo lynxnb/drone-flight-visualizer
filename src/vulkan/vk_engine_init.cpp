@@ -483,8 +483,6 @@ namespace dfv {
         // Add the pipelines to the deletion queue
         mainDeletionQueue.pushFunction([=, this]() {
             vkDestroyPipeline(device, meshPipeline, nullptr);
-
-            vkDestroyPipelineLayout(device, meshPipelineLayout, nullptr);
         });
 
         pipelineBuilder.shaderStages.clear();

@@ -21,8 +21,9 @@ namespace dfv {
      * A structure containing per-frame data used by the engine.
      */
     struct FrameData {
-        VkSemaphore presentSemaphore, renderSemaphore;
-        VkFence renderFence;
+        VkSemaphore presentSemaphore; //!< Semaphore that is signaled when the frame has been presented to the screen
+        VkSemaphore renderSemaphore; //!< Semaphore that is signaled when rendering has finished
+        VkFence renderFence; //!< Fence that is signaled when the frame has finished rendering
 
         VkCommandPool commandPool;
         VkCommandBuffer mainCommandBuffer;
