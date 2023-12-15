@@ -1,17 +1,25 @@
 #pragma once
 
-#include <flight_data/flight_data.h>
-#include <vector>
+#include <future>
+#include <optional>
 
-#include <structs/data_structs.h>
+#include <flight_data/flight_data.h>
 #include <vulkan/vk_mesh.h>
 
 namespace dfv {
     class MapManager {
       public:
-        Mesh initialize(FlightData &flightData);
+        /**
+         * @brief Starts loading the map in the background.
+         */
+        void startLoad(FlightData &flightData);
+
+        /**
+         * @brief Returns the map mesh if it is ready, or an empty optional otherwise.
+         */
+        std::optional<Mesh> getMapMesh();
 
       private:
-        std::vector<structs::Node> drone_path = {};
+        std::future<Mesh> mapMeshFuture;
     };
 } // namespace dfv

@@ -3,9 +3,11 @@
 #include <filesystem>
 
 #include "flight_data/flight_data.h"
-#include "utils/time_types.h"
+#include <utils/time_types.h>
 #include "vulkan/surface_wrapper.h"
 #include "vulkan/vk_engine.h"
+
+#include <map/map_manager.h>
 
 namespace dfv {
     /**
@@ -146,6 +148,7 @@ namespace dfv {
 
         SurfaceWrapper &surface; //!< The surface to render to
         VulkanEngine engine; //!< The engine that handles rendering
+        MapManager mapManager; //!< The class that handles map loading
 
         CameraMode cameraMode{CameraMode::Free}; //!< The current camera mode
         float cameraMovementSpeed{5.f}; //!< The speed of the camera movement in m/s

@@ -22,9 +22,8 @@ namespace dfv {
         // Start the visualization at the start time of the flight data
         time = flightData.getStartTime();
 
-        // Load initial map chunks
-        FlightBoundingBox bbox = flightData.getBoundingBox();
-        // TODO: Load map chunks semi-synchronously (first few chunks synchronously, rest with std::async)
+        // Tell the map manager to start loading the map
+        mapManager.startLoad(flightData);
 
         engine.init(surface);
         createScene();
@@ -119,14 +118,6 @@ namespace dfv {
                 .transform = glm::mat4{1.f}};
 
         objectRenderHandle = ufoHandle;
-
-        MapManager mapRenderer = {};
-
-        // adds the map to the scene setting material and position
-        auto [mapObject, mapHandle] = engine.allocateRenderObject();
-        *mapObject = {.mesh = engine.insertMesh("map", mapRenderer.initialize(flightData)),
-                      .material = defaultMat,
-                      .transform = glm::mat4{1.f}};
     }
 
     void Visualizer::update(const seconds_f deltaTime) {
@@ -135,6 +126,15 @@ namespace dfv {
         auto point = flightData.getPoint(time);
         setObjectTransform(glm::vec3{point.x, point.y, point.z},
                            glm::vec3{point.yaw, point.pitch, point.roll});
+
+        // Try to add the map to the engine if it's ready
+        auto meshOpt = mapManager.getMapMesh();
+        if (meshOpt) {
+            auto [mapObject, mapHandle] = engine.allocateRenderObject();
+            *mapObject = {.mesh = engine.insertMesh("map", std::move(*meshOpt)),
+                          .material = engine.getMaterial("drone"),
+                          .transform = glm::mat4{1.f}};
+        }
 
         // Update camera
         updateCamera(deltaTime, point);

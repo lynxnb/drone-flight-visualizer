@@ -136,7 +136,7 @@ namespace dfv::map {
     /// \param drone_path Vector of dots where the drone has been. The PATH on the edge of the box is ignored.
     /// \param box_size Size of the chunk. All boxes are squares so the last one might be discarded
     /// \return Node matrix
-    std::vector<std::vector<structs::DiscreteBoxInfo>> createGrid(structs::DiscreteBox box, std::vector<structs::Node> &drone_path, double sparsity, double box_size, double node_density_coefficient) {
+    auto createGrid(structs::DiscreteBox box, std::vector<structs::Node> &drone_path, double sparsity, double box_size, double node_density_coefficient) -> std::vector<std::vector<structs::DiscreteBoxInfo>> {
         // Calculate the number of boxes in latitude and longitude
         int latBoxes = floor((box.urLat - box.llLat) / box_size);
         int lonBoxes = floor((box.urLon - box.llLon) / box_size);
@@ -326,7 +326,7 @@ namespace dfv::map {
                     for (int e = 0; e < box->dots[0].size() - 1; ++e) {
                         if (box->dots[i][e].game_node == nullptr) {
                             box->dots[i][e].game_node = new GameNode();
-                            box->dots[i][e].game_node->x =(box->dots[i][e].lat - initialPosition.lat) * SCALING_FACTOR;
+                            box->dots[i][e].game_node->x = (box->dots[i][e].lat - initialPosition.lat) * SCALING_FACTOR;
                             box->dots[i][e].game_node->z = (box->dots[i][e].lon - initialPosition.lon) * SCALING_FACTOR;
                             box->dots[i][e].game_node->y = box->dots[i][e].elev * elevation_scale;
                             mesh.vertices.push_back({

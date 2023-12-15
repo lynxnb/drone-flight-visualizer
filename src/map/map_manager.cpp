@@ -3,44 +3,48 @@
 #include "map/data_fetcher.h"
 
 namespace dfv {
-    Mesh MapManager::initialize(FlightData &flightData) {
-        const auto &drone_path = flightData.getPath();
+    void MapManager::startLoad(FlightData &flightData) {
+        const auto &dronePath = flightData.getPath();
 
-        auto bbox = flightData.getBoundingBox();
-        auto initialPos = flightData.getInitialPosition();
+        const auto bbox = flightData.getBoundingBox();
+        const auto initialPos = flightData.getInitialPosition();
+        constexpr double BOX_OFFSET = 0.01;
 
-        dfv::structs::DiscreteBox box = {.llLat = bbox.llLat,
-                                         .llLon = bbox.llLon,
-                                         .urLat = bbox.urLat,
-                                         .urLon = bbox.urLon,
-                                         .spacingMeters = 0};
-
-        for (const auto &point : drone_path) {
-            this->drone_path.emplace_back(static_cast<double>(point.z) / SCALING_FACTOR + initialPos.lat,
-                                          static_cast<double>(point.x) / SCALING_FACTOR + initialPos.lon,
-                                          static_cast<double>(point.y));
+        const dfv::structs::DiscreteBox box = {.llLat = bbox.llLat - BOX_OFFSET,
+                                               .llLon = bbox.llLon - BOX_OFFSET,
+                                               .urLat = bbox.urLat + BOX_OFFSET,
+                                               .urLon = bbox.urLon + BOX_OFFSET,
+                                               .spacingMeters = 0};
+        std::vector<structs::Node> pathNodes;
+        pathNodes.reserve(dronePath.size());
+        for (const auto &point : dronePath) {
+            pathNodes.emplace_back(static_cast<double>(point.z) / SCALING_FACTOR + initialPos.lat,
+                                   static_cast<double>(point.x) / SCALING_FACTOR + initialPos.lon,
+                                   static_cast<double>(point.y));
         }
 
-        box.llLat -= 0.01;
-        box.llLon -= 0.01;
-        box.urLat += 0.01;
-        box.urLon += 0.01;
+        mapMeshFuture = std::async(std::launch::async, [box, initialPos, pathNodes = std::move(pathNodes)]() mutable {
+            constexpr double sparsity = 4; // Example density
+            constexpr double box_size = 0.002; // Example box size
+            constexpr double node_density_coefficient = 0.8; // Example coefficient
 
-        // Call the createGrid method with some debug values
-        double sparsity = 4; // Example density
-        double box_size = 0.002; // Example box size
-        double node_density_coefficient = 0.8; // Example coefficient
+            auto boxMatrix = dfv::map::createGrid(box, pathNodes, sparsity, box_size, node_density_coefficient);
 
-        std::vector<std::vector<dfv::structs::DiscreteBoxInfo>> box_matrix = dfv::map::createGrid(box, this->drone_path, sparsity, box_size, node_density_coefficient);
-
-        double lrLatBound = box_matrix.back().back().dots.back().back().lat;
-        double lrLonBound = box_matrix.back().back().dots.back().back().lon;
-        auto mesh_array = dfv::map::createMeshArray(box_matrix,
-                                                    box_matrix[0][0].dots[0][0].lat,
-                                                    box_matrix[0][0].dots[0][0].lon,
-                                                    lrLatBound,
-                                                    lrLonBound, flightData.getInitialPosition());
-        return mesh_array;
+            const double lrLatBound = boxMatrix.back().back().dots.back().back().lat;
+            const double lrLonBound = boxMatrix.back().back().dots.back().back().lon;
+            return dfv::map::createMeshArray(boxMatrix,
+                                             boxMatrix[0][0].dots[0][0].lat,
+                                             boxMatrix[0][0].dots[0][0].lon,
+                                             lrLatBound,
+                                             lrLonBound, initialPos);
+        });
     }
 
+    std::optional<Mesh> MapManager::getMapMesh() {
+        using namespace std::chrono_literals;
+        if (mapMeshFuture.valid() && mapMeshFuture.wait_for(0ms) == std::future_status::ready)
+            return mapMeshFuture.get();
+
+        return std::nullopt;
+    }
 } // namespace dfv
