@@ -4,7 +4,7 @@
 
 namespace dfv {
     Mesh MapManager::initialize(FlightData &flightData) {
-        auto drone_path = flightData.getPath();
+        const auto &drone_path = flightData.getPath();
         dfv::structs::DiscreteBox box = {}; // Example values
         for (const auto &point : drone_path) {
             if (point.z == 0 || point.x == 0) {

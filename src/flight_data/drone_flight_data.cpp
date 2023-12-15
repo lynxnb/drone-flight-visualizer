@@ -25,7 +25,7 @@ namespace dfv {
         return initialPosition ? initialPosition.value() : Coordinate{};
     }
 
-    std::vector<FlightDataPoint> DroneFlightData::getPath(){
+    std::vector<FlightDataPoint> &DroneFlightData::getPath(){
         return flightDataPoints;
     }
 

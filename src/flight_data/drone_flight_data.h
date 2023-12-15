@@ -19,7 +19,7 @@ namespace dfv {
         seconds_f getEndTime() override;
 
         FlightBoundingBox getBoundingBox() override;
-        std::vector<FlightDataPoint> getPath() override;
+        std::vector<FlightDataPoint> &getPath() override;
 
 
       private:
