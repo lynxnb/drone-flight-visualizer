@@ -476,6 +476,19 @@ namespace dfv {
 
         createMaterial("defaultmesh", meshPipeline, meshPipelineLayout);
 
+        // Delete all the vulkan shaders
+        vkDestroyShaderModule(device, *meshVertShader, nullptr);
+        vkDestroyShaderModule(device, *colorMeshShader, nullptr);
+
+        // Add the pipelines to the deletion queue
+        mainDeletionQueue.pushFunction([=, this]() {
+            vkDestroyPipeline(device, meshPipeline, nullptr);
+
+            vkDestroyPipelineLayout(device, meshPipelineLayout, nullptr);
+        });
+
+        pipelineBuilder.shaderStages.clear();
+
         // Compile mesh vertex shader for drone
         meshVertShader = loadShaderModule("shaders/drone.vert.spv");
         if (!meshVertShader)

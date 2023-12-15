@@ -11,9 +11,7 @@ namespace dfv::uniform {
         glm::vec3 sunlightDirection; //w for sun power
         glm::vec4 sunlightColor;
         glm::vec3 eyePos;
-        float time;
     };
-
 
     /**
      * Uniform buffer object for per-object data.
