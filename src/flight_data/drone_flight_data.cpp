@@ -25,7 +25,7 @@ namespace dfv {
         return initialPosition ? initialPosition.value() : Coordinate{};
     }
 
-    std::vector<FlightDataPoint> &DroneFlightData::getPath(){
+    std::vector<FlightDataPoint> &DroneFlightData::getPath() {
         return flightDataPoints;
     }
 
@@ -83,7 +83,7 @@ namespace dfv {
     }
 
     FlightBoundingBox DroneFlightData::getBoundingBox() {
-        return {};
+        return boundingBox;
     }
 
     std::vector<FlightDataPoint> DroneFlightData::loadFlightData(const std::string &csvPath) {
@@ -100,10 +100,20 @@ namespace dfv {
             double altitude = row["OSD.altitude [ft]"].get<double>() * feetToMeter;
 
             // set initial position if not set yet
-            if (!initialPosition)
+            if (!initialPosition) {
                 initialPosition = Coordinate{coords.x,
                                              coords.y,
                                              altitude};
+                boundingBox.llLat = coords.y;
+                boundingBox.llLon = coords.x;
+                boundingBox.urLat = coords.y;
+                boundingBox.urLon = coords.x;
+            }
+
+            boundingBox.llLat = std::min(boundingBox.llLat, coords.y);
+            boundingBox.llLon = std::min(boundingBox.llLon, coords.x);
+            boundingBox.urLat = std::max(boundingBox.urLat, coords.y);
+            boundingBox.urLon = std::max(boundingBox.urLon, coords.x);
 
             // calculate position in relation to initial position
             auto position = calculateRelativePosition(coords,
@@ -112,7 +122,7 @@ namespace dfv {
             flightData.emplace_back(
                     row["OSD.flyTime [s]"].get<float>(),
                     position.x,
-                    0,//static_cast<float>(altitude),
+                    static_cast<float>(altitude),
                     position.y,
                     glm::radians(row["OSD.yaw"].get<float>()),
                     glm::radians(row["OSD.pitch"].get<float>()),
