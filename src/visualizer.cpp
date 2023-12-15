@@ -116,7 +116,7 @@ namespace dfv {
 
         // adds the map to the scene setting material and position
         auto [mapObject, mapHandle] = engine.allocateRenderObject();
-        *mapObject = {.mesh = engine.insertMesh("map", mapRenderer.initialize(flightData.getPath())),
+        *mapObject = {.mesh = engine.insertMesh("map", mapRenderer.initialize(flightData)),
                       .material = defaultMat,
                       .transform = glm::mat4{1.f}};
     }

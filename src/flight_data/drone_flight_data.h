@@ -21,6 +21,7 @@ namespace dfv {
         FlightBoundingBox getBoundingBox() override;
         std::vector<FlightDataPoint> getPath() override;
 
+
       private:
         std::vector<FlightDataPoint> loadFlightData(const std::string &csvPath);
 

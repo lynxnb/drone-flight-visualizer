@@ -9,7 +9,7 @@
 namespace dfv {
     class MapManager {
       public:
-        Mesh initialize(std::vector<FlightDataPoint> drone_path);
+        Mesh initialize(FlightData &flightData);
 
       private:
         std::vector<structs::Node> drone_path = {};

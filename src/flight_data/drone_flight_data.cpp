@@ -86,16 +86,6 @@ namespace dfv {
         return {};
     }
 
-    static glm::vec2 calculateRelativePosition(glm::dvec2 position, glm::dvec2 inRelationTo) {
-        return {position.x, position.y}; //testing
-        const auto scale = 100000; //  0.00001 = 1.11 meter
-
-        auto x = (position.x - inRelationTo.x) * scale;
-        auto y = (position.y - inRelationTo.y) * scale;
-
-        return {x, y};
-    }
-
     std::vector<FlightDataPoint> DroneFlightData::loadFlightData(const std::string &csvPath) {
         const double feetToMeter = 0.3048;
         using namespace csv;

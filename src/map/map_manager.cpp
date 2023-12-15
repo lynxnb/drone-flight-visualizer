@@ -3,7 +3,8 @@
 #include "map/data_fetcher.h"
 
 namespace dfv {
-    Mesh MapManager::initialize(std::vector<FlightDataPoint> drone_path) {
+    Mesh MapManager::initialize(FlightData &flightData) {
+        auto drone_path = flightData.getPath();
         dfv::structs::DiscreteBox box = {}; // Example values
         for (const auto &point : drone_path) {
             if (point.z == 0 || point.x == 0) {
@@ -38,7 +39,7 @@ namespace dfv {
                                                     box_matrix[0][0].dots[0][0].lat,
                                                     box_matrix[0][0].dots[0][0].lon,
                                                     lrLatBound,
-                                                    lrLonBound);
+                                                    lrLonBound, flightData.getInitialPosition());
         return mesh_array;
     }
 
