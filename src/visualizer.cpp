@@ -1,3 +1,5 @@
+#include <chrono>
+
 #include "visualizer.h"
 #include <map/map_manager.h>
 
@@ -32,9 +34,15 @@ namespace dfv {
     }
 
     void Visualizer::drawFrame(const seconds_f deltaTime) {
+        using namespace std::chrono_literals;
+
         // Update entities
         const auto updateStart = clock::now();
         update(deltaTime);
+
+        // Spin loop so that update time is at least 0.5ms, fixes stuttering caused by low update times
+        while (clock::now() - updateStart < 0.5ms)
+            ;
         stats.updateTotalTime += clock::now() - updateStart;
 
         // Draw frame
