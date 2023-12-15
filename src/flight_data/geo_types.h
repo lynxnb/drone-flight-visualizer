@@ -12,7 +12,7 @@ namespace dfv {
         double alt; //!< Altitude in meters
     };
 
-    constexpr auto SCALING_FACTOR = 100000; //  0.00001 = 1.11 meter
+    constexpr double SCALING_FACTOR = 100000.0; //  0.00001 = 1.11 meter
 
     inline glm::vec2 calculateRelativePosition(glm::dvec2 position, glm::dvec2 inRelationTo) {
 

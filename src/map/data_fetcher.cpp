@@ -157,8 +157,7 @@ namespace dfv::map {
                 boxInfo.box = {minLat, minLon, maxLat, maxLon, box.spacingMeters};
 
                 boxInfo.is_on_path = false;
-                for (const auto &relNode : drone_path) {
-                    Node node = {relNode.lat / SCALING_FACTOR, relNode.lon / SCALING_FACTOR, 0};
+                for (const auto &node : drone_path) {
                     if (node.lat >= minLat && node.lat <= maxLat &&
                         node.lon >= minLon && node.lon <= maxLon) {
                         boxInfo.is_on_path = true;
@@ -238,7 +237,7 @@ namespace dfv::map {
                                 iter_changes = true;
                             }
                         }
-                        if (j + a < box_matrix.size()) {
+                        if (j + a < box_matrix[i].size()) {
                             if (box_matrix[i][j + a].distance < closest) {
                                 closest = box_matrix[i][j + a].distance + a;
                                 iter_changes = true;
@@ -311,16 +310,16 @@ namespace dfv::map {
         return glm::normalize(normal);
     }
 
-    Mesh createMeshArray(std::vector<std::vector<structs::DiscreteBoxInfo>> *box_matrix, double llLatBound, double llLonBound, double urLatBound, double urLonBound, Coordinate initialPosition) {
+    Mesh createMeshArray(std::vector<std::vector<structs::DiscreteBoxInfo>> &box_matrix, double llLatBound, double llLonBound, double urLatBound, double urLonBound, Coordinate initialPosition) {
         double totalLatWorldLatSpan = urLatBound - llLatBound;
         double totalLonWorldLatSpan = urLonBound - llLonBound;
         Mesh mesh = {};
         std::vector<structs::Triangle> triangles;
         float elevation_scale = 1;
 
-        for (int ii = 0; ii < box_matrix->size(); ++ii) {
-            for (int ie = 0; ie < box_matrix[0].size(); ++ie) {
-                structs::DiscreteBoxInfo *box = &(*box_matrix)[ii][ie];
+        for (int ii = 0; ii < box_matrix.size(); ++ii) {
+            for (int ie = 0; ie < box_matrix[ii].size(); ++ie) {
+                structs::DiscreteBoxInfo *box = &box_matrix[ii][ie];
 
                 //create inner box mash
                 for (int i = 0; i < box->dots.size() - 1; ++i) {
@@ -393,22 +392,22 @@ namespace dfv::map {
                 if (ie > 0) {
                     std::vector<Node> commonNodes;
                     std::vector<Node> sparseNodes;
-                    commonNodes.reserve((*box_matrix)[ii][ie].dots[0].size() + (*box_matrix)[ii][ie - 1].dots[0].size());
-                    for (auto &row : (*box_matrix)[ii][ie].dots) {
+                    commonNodes.reserve((box_matrix)[ii][ie].dots[0].size() + (box_matrix)[ii][ie - 1].dots[0].size());
+                    for (auto &row : (box_matrix)[ii][ie].dots) {
                         commonNodes.push_back(row[0]);
                     }
-                    for (auto &row : (*box_matrix)[ii][ie - 1].dots) {
+                    for (auto &row : (box_matrix)[ii][ie - 1].dots) {
                         commonNodes.push_back(row.back());
                     }
                     std::sort(commonNodes.begin(), commonNodes.end(), [](structs::Node &a, structs::Node &b) {
                         return a.lon > b.lon;
                     });
-                    if ((*box_matrix)[ii][ie].sparsity > (*box_matrix)[ii][ie - 1].sparsity) {
-                        for (auto &row : (*box_matrix)[ii][ie].dots) {
+                    if ((box_matrix)[ii][ie].sparsity > (box_matrix)[ii][ie - 1].sparsity) {
+                        for (auto &row : (box_matrix)[ii][ie].dots) {
                             sparseNodes.push_back(row[1]);
                         }
                     } else {
-                        for (auto &row : (*box_matrix)[ii][ie - 1].dots) {
+                        for (auto &row : (box_matrix)[ii][ie - 1].dots) {
                             sparseNodes.push_back(row.rbegin()[1]);
                         }
                     }
@@ -420,17 +419,17 @@ namespace dfv::map {
                 if (ii != 0) {
                     std::vector<Node> commonNodes;
                     std::vector<Node> sparseNodes;
-                    commonNodes.reserve((*box_matrix)[ii][ie].dots[0].size() + (*box_matrix)[ii - 1][ie].dots[0].size());
-                    commonNodes.insert(commonNodes.end(), (*box_matrix)[ii][ie].dots[0].begin(), (*box_matrix)[ii][ie].dots[0].end());
-                    commonNodes.insert(commonNodes.end(), (*box_matrix)[ii - 1][ie].dots[0].begin(), (*box_matrix)[ii - 1][ie].dots[0].end());
+                    commonNodes.reserve((box_matrix)[ii][ie].dots[0].size() + (box_matrix)[ii - 1][ie].dots[0].size());
+                    commonNodes.insert(commonNodes.end(), (box_matrix)[ii][ie].dots[0].begin(), (box_matrix)[ii][ie].dots[0].end());
+                    commonNodes.insert(commonNodes.end(), (box_matrix)[ii - 1][ie].dots[0].begin(), (box_matrix)[ii - 1][ie].dots[0].end());
                     std::sort(commonNodes.begin(), commonNodes.end(), [](structs::Node &a, structs::Node &b) {
                         return a.lon > b.lon;
                     });
 
-                    if ((*box_matrix)[ii][ie].sparsity > (*box_matrix)[ii - 1][ie].sparsity) {
-                        sparseNodes.insert(sparseNodes.begin(), (*box_matrix)[ii][ie].dots[0].begin(), (*box_matrix)[ii][ie].dots[0].end());
+                    if ((box_matrix)[ii][ie].sparsity > (box_matrix)[ii - 1][ie].sparsity) {
+                        sparseNodes.insert(sparseNodes.begin(), (box_matrix)[ii][ie].dots[0].begin(), (box_matrix)[ii][ie].dots[0].end());
                     } else {
-                        sparseNodes.insert(sparseNodes.begin(), (*box_matrix)[ii - 1][ie].dots.back().begin(), (*box_matrix)[ii - 1][ie].dots.back().end());
+                        sparseNodes.insert(sparseNodes.begin(), (box_matrix)[ii - 1][ie].dots.back().begin(), (box_matrix)[ii - 1][ie].dots.back().end());
                     }
 
                     //std::vector<structs::Triangle> T = sewBoxesSlave(&commonNodes, &sparseNodes);

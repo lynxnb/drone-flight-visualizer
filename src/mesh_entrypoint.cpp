@@ -1,18 +1,17 @@
-#include <iostream>
-#include <vulkan/vulkan.h>
 #include "config/config.h"
 #include "flight_data/drone_flight_data.h"
 #include "glfw/glfw.h"
 #include "glfw/glfw_surface.h"
 #include "map/data_fetcher.h"
 #include "structs/data_structs.h"
+#include <iostream>
 #include <vector>
+#include <vulkan/vulkan.h>
 
 struct VulkanVertex {
     double x, y, z; // Position
     // Add other attributes as needed
 };
-
 
 int main(int argc, char **argv) {
     dfv::structs::DiscreteBox box = {0, 0, 10, 10}; // Example values
@@ -33,12 +32,6 @@ int main(int argc, char **argv) {
 
     double lrLatBound = box_matrix.back().back().dots.back().back().lat;
     double lrLonBound = box_matrix.back().back().dots.back().back().lon;
-    std::vector<dfv::structs::Triangle> mesh_array = dfv::map::createMeshArray(&box_matrix,
-                                                                               box_matrix[0][0].dots[0][0].lat,
-                                                                               box_matrix[0][0].dots[0][0].lon,
-                                                                               lrLatBound,
-                                                                               lrLonBound);
 
     return 0;
-
 }
