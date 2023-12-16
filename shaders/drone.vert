@@ -10,6 +10,8 @@ layout (location = 2) in vec2 vUV;
 
 layout (location = 0) out vec3 outColor;
 layout (location = 1) out vec3 outPos;
+layout (location = 2) out flat int outId;
+
 
 layout (push_constant) uniform constants {
     mat4 modelTransform;
@@ -20,4 +22,5 @@ void main() {
     gl_Position = pushConstants.worldTransform * vec4(vPosition, 1.0f);
     outPos = (pushConstants.modelTransform * vec4(vPosition, 1.0f)).xyz;
     outColor = vNormal;
+    outId = gl_VertexIndex;
 }
