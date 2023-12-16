@@ -11,14 +11,16 @@
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
+#include <cstdlib> // Include for getenv
 
 namespace dfv::map {
     namespace {
-        constexpr int BATCH_SIZE = 20000;
+        constexpr int BATCH_SIZE = 500;
     }
 
     using namespace dfv::structs;
     using namespace rapidjson;
+
 
     void PopulateBatchWithElevation(std::vector<std::reference_wrapper<structs::Node *>> &nodes) {
         int max_iter = 100;
@@ -89,17 +91,81 @@ namespace dfv::map {
         }
     }
 
+        void PopulateBatchWithElevationGoogle(std::vector<std::reference_wrapper<structs::Node *>> &nodes) {
+            char *googleApiKey = nullptr;
+            size_t len = 0;
+            errno_t err = _dupenv_s(&googleApiKey, &len, "GOOGLE_API_KEY");
+
+            if (!googleApiKey) {
+                std::cerr << "Error: GOOGLE_API_KEY environment variable not set." << std::endl;
+                return;
+            }
+
+            int max_iter = 100;
+            int i = 0;
+            while (i < max_iter) {
+                // Construct locations string for Google Elevation API
+                std::string locationsParam;
+                for (const auto &node : nodes) {
+                    if (!locationsParam.empty()) locationsParam += "|";
+                    locationsParam += std::to_string(node.get()->lat) + "," + std::to_string(node.get()->lon);
+                }
+
+                // Send request to Google Elevation API
+                auto startTime = std::chrono::high_resolution_clock::now();
+                std::string requestUrl = "https://maps.googleapis.com/maps/api/elevation/json?locations=" + locationsParam + "&key=" + std::string(googleApiKey);
+                cpr::Response r = cpr::Get(cpr::Url{requestUrl}, cpr::Header{{"Accept", "application/json"}});
+
+                if (r.status_code == 429) {
+                    i++;
+                    std::cerr << "Received Too Many Requests from API, waiting " << i * 100 << "ms" << std::endl;
+                    std::chrono::milliseconds(i * 100);
+                    continue;
+                }
+                if (r.status_code != 200)
+                    throw std::runtime_error(
+                            "Error in response while fetching elevation data with code " + std::to_string(r.status_code));
+                std::string text = r.text;
+
+                auto endTime = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+
+                // Parse response and return elevations
+                Document responseData;
+                responseData.Parse(text.c_str());
+                if (!responseData.IsObject() || !responseData.HasMember("results")) {
+                    std::cerr << "Invalid JSON format or missing results." << std::endl;
+                    return;
+                }
+
+                const Value &results = responseData["results"];
+
+                for (SizeType j = 0; j < results.Size(); ++j) {
+                    const Value &result = results[j];
+                    if (!result.HasMember("elevation")) {
+                        std::cerr << "Missing elevation data in result #" << j << std::endl;
+                        nodes[j].get()->elev = 0;
+                        continue;
+                    }
+                    nodes[j].get()->elev = result["elevation"].GetDouble();
+                }
+                return;
+            }
+        }
+
     void populateElevation(std::vector<structs::Node *> *nodes) {
         auto startTime = std::chrono::high_resolution_clock::now();
         std::cout << "Fetching " << nodes->size() << " Nodes Elevation"  << std::endl;
+        int e = 0;
         for (int i = 0; i < nodes->size(); i += BATCH_SIZE) {
             auto startIter = nodes->begin() + i;
             auto endIter = nodes->begin() + (nodes->size() > i + BATCH_SIZE ? i + BATCH_SIZE : nodes->size());
 
             std::vector<std::reference_wrapper<structs::Node *>> batch(startIter, endIter);
-            PopulateBatchWithElevation(batch); // Ensure PopulateBatchWithElevation is compatible with this change.
+            PopulateBatchWithElevationGoogle(batch); // Ensure PopulateBatchWithElevation is compatible with this change.
             std::chrono::milliseconds(10);
-            std::cout << "Batch " << i + 1 << "/" << (nodes->size() / BATCH_SIZE ) + 1 << " of Elevation Data Fetched" << std::endl;
+            std::cout << "Batch " << e << "/" << (nodes->size() / BATCH_SIZE ) + 1 << " of Elevation Data Fetched" << std::endl;
+            e++;
         }
         auto endTime = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
@@ -112,13 +178,15 @@ namespace dfv::map {
     /// \param mesh
     /// \param orientation 0 for vertical, 1 for horizontal
     void sewBoxesSlave(std::vector<Node> &commonNodes, std::vector<Node> &sparseNodes, Mesh &mesh, int orientation) {
-
         int sparseIndex = 0;
         for (int k = 0; k < commonNodes.size() - 1; ++k) {
+            if(sparseIndex + 2 > sparseNodes.size()) {
+                break;
+            }
             Node commonNode = commonNodes[k];
             Node sparseNode = sparseNodes[sparseIndex];
-            Node nextCommonNode = commonNodes[k];
-            Node nextSparseNode = sparseNodes[sparseIndex];
+            Node nextCommonNode = commonNodes[k + 1];
+            Node nextSparseNode = sparseNodes[sparseIndex + 1];
             if(commonNode.lat == nextCommonNode.lat && commonNode.lon == nextCommonNode.lon) {
                 continue;
             }
@@ -316,6 +384,8 @@ namespace dfv::map {
                 for (auto &irow : ibox.dots) {
                     for (auto &inode : irow) {
                         nodes.push_back(&inode);
+
+                        inode.elev = 1600;
                     }
                 }
 
@@ -430,7 +500,7 @@ namespace dfv::map {
                         commonNodes.push_back(row.back());
                     }
                     std::sort(commonNodes.begin(), commonNodes.end(), [](structs::Node &a, structs::Node &b) {
-                        return a.lat > b.lat;
+                        return a.lat < b.lat;
                     });
                     for (auto &row : (box_matrix)[ii][ie].dots) {
                         aNodes.push_back(row[1]);
@@ -447,11 +517,13 @@ namespace dfv::map {
                     std::vector<Node> commonNodes;
                     std::vector<Node> aNodes;
                     std::vector<Node> bNodes;
-                    commonNodes.reserve((box_matrix)[ii][ie].dots[0].size() + (box_matrix)[ii - 1][ie].dots[0].size());
+
+                    //commonNodes.reserve((box_matrix)[ii][ie].dots[0].size() + (box_matrix)[ii - 1][ie].dots[0].size());
                     commonNodes.insert(commonNodes.end(), (box_matrix)[ii][ie].dots[0].begin(), (box_matrix)[ii][ie].dots[0].end());
-                    commonNodes.insert(commonNodes.end(), (box_matrix)[ii - 1][ie].dots[0].begin(), (box_matrix)[ii - 1][ie].dots[0].end());
+                    commonNodes.insert(commonNodes.end(), (box_matrix)[ii - 1][ie].dots.back().begin(), (box_matrix)[ii - 1][ie].dots.back().end());
+
                     std::sort(commonNodes.begin(), commonNodes.end(), [](structs::Node &a, structs::Node &b) {
-                        return a.lon > b.lon;
+                        return a.lon < b.lon;
                     });
 
                     aNodes.insert(aNodes.begin(), (box_matrix)[ii][ie].dots[0].begin(), (box_matrix)[ii][ie].dots[0].end());
@@ -563,8 +635,8 @@ namespace dfv::map {
         std::vector<std::vector<structs::Node>> nodes;
 
         // Calculate the number of inner nodes (not including corners)
-        double latInnerNodes = std::max(0.0, std::floor(( 200000 * (urLat - llLat)) / sparsity) - 1);
-        double lonInnerNodes = std::max(0.0, std::floor(( 200000 * (urLon - llLon)) / sparsity) - 1);
+        double latInnerNodes = std::max(0.0, std::floor(( 100000 * (urLat - llLat)) / sparsity) - 1);
+        double lonInnerNodes = std::max(0.0, std::floor(( 100000 * (urLon - llLon)) / sparsity) - 1);
 
         // Total nodes including corners
         double latTotalNodes = latInnerNodes + 2;
