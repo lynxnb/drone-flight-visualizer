@@ -91,6 +91,7 @@ namespace dfv::map {
 
     void populateElevation(std::vector<structs::Node *> *nodes) {
         auto startTime = std::chrono::high_resolution_clock::now();
+        std::cout << "Fetching " << nodes->size() << " Nodes Elevation"  << std::endl;
         for (int i = 0; i < nodes->size(); i += BATCH_SIZE) {
             auto startIter = nodes->begin() + i;
             auto endIter = nodes->begin() + (nodes->size() > i + BATCH_SIZE ? i + BATCH_SIZE : nodes->size());
@@ -98,37 +99,61 @@ namespace dfv::map {
             std::vector<std::reference_wrapper<structs::Node *>> batch(startIter, endIter);
             PopulateBatchWithElevation(batch); // Ensure PopulateBatchWithElevation is compatible with this change.
             std::chrono::milliseconds(10);
+            std::cout << "Batch " << i + 1 << "/" << (nodes->size() / BATCH_SIZE ) + 1 << " of Elevation Data Fetched" << std::endl;
         }
         auto endTime = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
-        // std::cout << "Elevation data fetched in " << duration.count() << "ms" << std::endl;
+        std::cout << "Elevation data fetched in " << duration.count() << "ms" << std::endl;
     }
 
-    std::vector<structs::Triangle> sewBoxesSlave(std::vector<Node> *commonNodes, std::vector<Node> *sparseNodes) {
-        std::vector<structs::Triangle> triangles;
+    ///
+    /// \param commonNodes
+    /// \param sparseNodes
+    /// \param mesh
+    /// \param orientation 0 for vertical, 1 for horizontal
+    void sewBoxesSlave(std::vector<Node> &commonNodes, std::vector<Node> &sparseNodes, Mesh &mesh, int orientation) {
+
         int sparseIndex = 0;
-        for (int k = 0; k < commonNodes->size(); ++k) {
-            if (k == commonNodes->size() - 1) {
-                structs::GameNode *l = (*commonNodes)[k].game_node;
-                structs::GameNode *m = (*commonNodes)[sparseIndex].game_node;
-                structs::GameNode *n = (*sparseNodes)[sparseIndex + 1].game_node;
-                sparseIndex++;
+        for (int k = 0; k < commonNodes.size() - 1; ++k) {
+            Node commonNode = commonNodes[k];
+            Node sparseNode = sparseNodes[sparseIndex];
+            Node nextCommonNode = commonNodes[k];
+            Node nextSparseNode = sparseNodes[sparseIndex];
+            if(commonNode.lat == nextCommonNode.lat && commonNode.lon == nextCommonNode.lon) {
                 continue;
             }
-            structs::GameNode *a = (*commonNodes)[k].game_node;
-            structs::GameNode *b = (*commonNodes)[k + 1].game_node;
-            structs::GameNode *c = (*sparseNodes)[sparseIndex].game_node;
-            if (sparseIndex + 1 < sparseNodes->size() - 1 && (*sparseNodes)[sparseIndex + 1].game_node->y <= a->y) {
-                structs::GameNode *n = (*sparseNodes)[sparseIndex + 1].game_node;
-                structs::Triangle triangle(a, c, n);
-                triangles.push_back(triangle);
-                sparseIndex++;
-                c = (*sparseNodes)[sparseIndex].game_node;
+            if(orientation == 1) {
+                if(nextCommonNode.lat == nextSparseNode.lat){
+                    if(commonNode.lat == sparseNode.lat){
+                        sparseIndex++;
+                        continue;
+                    }
+                    mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                    mesh.indices.push_back(commonNode.game_node->vertex_index);
+                    mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                    sparseIndex++;
+                }
+                mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                mesh.indices.push_back(commonNode.game_node->vertex_index);
+                mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
             }
-            structs::Triangle triangle(a, b, c);
-            triangles.push_back(triangle);
+            if(orientation == 0) {
+                if(nextCommonNode.lon == nextSparseNode.lon){
+                    if(commonNode.lon == sparseNode.lon){
+                        sparseIndex++;
+                        continue;
+                    }
+                    mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                    mesh.indices.push_back(commonNode.game_node->vertex_index);
+                    mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                    sparseIndex++;
+                }
+                mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                mesh.indices.push_back(commonNode.game_node->vertex_index);
+                mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+            }
         }
-        return triangles;
+        //return triangles;
     }
 
     /// Create a complex grid around the drone flight path. Creates a 3 blocks wide dense area around the drone and decreases the density of dots by density/(node_density_coefficient^block_distance)
@@ -257,6 +282,8 @@ namespace dfv::map {
             iter++;
         }
 
+        std::cout << "Distance Matrix for each chunk. Lower means closer to drone path" << std::endl;
+
         for (int i = 0; i < box_matrix.size(); i++) {
             for (int j = 0; j < box_matrix[0].size(); j++) {
                 std::cout << box_matrix[i][j].distance << ",";
@@ -271,29 +298,31 @@ namespace dfv::map {
             }
         }
 
+        std::cout << "Sparsity Matrix (1 / Density) for each chunk. Lower means higher density" << std::endl;
+
         for (int i = 0; i < box_matrix.size(); i++) {
             for (int j = 0; j < box_matrix[0].size(); j++) {
                 std::cout << box_matrix[i][j].sparsity << ",";
             }
-            std::cout << std::endl; // New line at the end of each row
+            std::cout << ";" << std::endl; // New line at the end of each row
         }
 
-        int i = 1;
+
         // Fill the boxes with nodes
+        std::vector<structs::Node *> nodes;
         for (auto &row : box_matrix) {
             for (auto &ibox : row) {
                 ibox.dots = createGridSlave(ibox.box.llLat, ibox.box.llLon, ibox.box.urLat, ibox.box.urLon, ibox.sparsity);
-                std::vector<structs::Node *> nodes;
                 for (auto &irow : ibox.dots) {
                     for (auto &inode : irow) {
                         nodes.push_back(&inode);
                     }
                 }
-                populateElevation(&nodes);
+
             }
-            std::cout << "Fetched elevation for box: " << i << "/" << box_matrix.size() << "," << std::endl;
-            i++;
         }
+
+        populateElevation(&nodes);
 
         return box_matrix;
     }
@@ -391,7 +420,8 @@ namespace dfv::map {
                 //sew left box
                 if (ie > 0) {
                     std::vector<Node> commonNodes;
-                    std::vector<Node> sparseNodes;
+                    std::vector<Node> aNodes;
+                    std::vector<Node> bNodes;
                     commonNodes.reserve((box_matrix)[ii][ie].dots[0].size() + (box_matrix)[ii][ie - 1].dots[0].size());
                     for (auto &row : (box_matrix)[ii][ie].dots) {
                         commonNodes.push_back(row[0]);
@@ -400,25 +430,23 @@ namespace dfv::map {
                         commonNodes.push_back(row.back());
                     }
                     std::sort(commonNodes.begin(), commonNodes.end(), [](structs::Node &a, structs::Node &b) {
-                        return a.lon > b.lon;
+                        return a.lat > b.lat;
                     });
-                    if ((box_matrix)[ii][ie].sparsity > (box_matrix)[ii][ie - 1].sparsity) {
-                        for (auto &row : (box_matrix)[ii][ie].dots) {
-                            sparseNodes.push_back(row[1]);
-                        }
-                    } else {
-                        for (auto &row : (box_matrix)[ii][ie - 1].dots) {
-                            sparseNodes.push_back(row.rbegin()[1]);
-                        }
+                    for (auto &row : (box_matrix)[ii][ie].dots) {
+                        aNodes.push_back(row[1]);
+                    }
+                    for (auto &row : (box_matrix)[ii][ie - 1].dots) {
+                        bNodes.push_back(row.rbegin()[1]);
                     }
 
-                    //std::vector<structs::Triangle> T = sewBoxesSlave(&commonNodes, &sparseNodes);
-                    //triangles.insert(triangles.end(), T.begin(), T.end());
+                    sewBoxesSlave(commonNodes, aNodes, mesh, 1);
+                    sewBoxesSlave(commonNodes, bNodes, mesh, 1);
                 }
                 //sew top box
                 if (ii != 0) {
                     std::vector<Node> commonNodes;
-                    std::vector<Node> sparseNodes;
+                    std::vector<Node> aNodes;
+                    std::vector<Node> bNodes;
                     commonNodes.reserve((box_matrix)[ii][ie].dots[0].size() + (box_matrix)[ii - 1][ie].dots[0].size());
                     commonNodes.insert(commonNodes.end(), (box_matrix)[ii][ie].dots[0].begin(), (box_matrix)[ii][ie].dots[0].end());
                     commonNodes.insert(commonNodes.end(), (box_matrix)[ii - 1][ie].dots[0].begin(), (box_matrix)[ii - 1][ie].dots[0].end());
@@ -426,14 +454,11 @@ namespace dfv::map {
                         return a.lon > b.lon;
                     });
 
-                    if ((box_matrix)[ii][ie].sparsity > (box_matrix)[ii - 1][ie].sparsity) {
-                        sparseNodes.insert(sparseNodes.begin(), (box_matrix)[ii][ie].dots[0].begin(), (box_matrix)[ii][ie].dots[0].end());
-                    } else {
-                        sparseNodes.insert(sparseNodes.begin(), (box_matrix)[ii - 1][ie].dots.back().begin(), (box_matrix)[ii - 1][ie].dots.back().end());
-                    }
+                    aNodes.insert(aNodes.begin(), (box_matrix)[ii][ie].dots[0].begin(), (box_matrix)[ii][ie].dots[0].end());
+                    bNodes.insert(bNodes.begin(), (box_matrix)[ii - 1][ie].dots.back().begin(), (box_matrix)[ii - 1][ie].dots.back().end());
 
-                    //std::vector<structs::Triangle> T = sewBoxesSlave(&commonNodes, &sparseNodes);
-                    //triangles.insert(triangles.end(), T.begin(), T.end());
+                    sewBoxesSlave(commonNodes, aNodes, mesh, 0);
+                    sewBoxesSlave(commonNodes, bNodes, mesh, 0);
                 }
             }
         }
@@ -538,8 +563,8 @@ namespace dfv::map {
         std::vector<std::vector<structs::Node>> nodes;
 
         // Calculate the number of inner nodes (not including corners)
-        double latInnerNodes = std::max(0.0, std::floor((urLat - llLat) / sparsity) - 1);
-        double lonInnerNodes = std::max(0.0, std::floor((urLon - llLon) / sparsity) - 1);
+        double latInnerNodes = std::max(0.0, std::floor(( 200000 * (urLat - llLat)) / sparsity) - 1);
+        double lonInnerNodes = std::max(0.0, std::floor(( 200000 * (urLon - llLon)) / sparsity) - 1);
 
         // Total nodes including corners
         double latTotalNodes = latInnerNodes + 2;

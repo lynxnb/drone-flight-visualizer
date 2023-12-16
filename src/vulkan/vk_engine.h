@@ -126,7 +126,7 @@ namespace dfv {
 
             float fov{glm::radians(70.f)}; //!< Field of view in radians
             float nearPlane{0.1f}; //!< Near plane distance
-            float farPlane{200.f}; //!< Far plane distance
+            float farPlane{2000000.f}; //!< Far plane distance
 
             /**
              * @brief Updates the front vector based on the current orientation.

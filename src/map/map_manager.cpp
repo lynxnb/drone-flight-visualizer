@@ -24,9 +24,9 @@ namespace dfv {
         }
 
         mapMeshFuture = std::async(std::launch::async, [box, initialPos, pathNodes = std::move(pathNodes)]() mutable {
-            constexpr double sparsity = 4; // Example density
+            constexpr double sparsity = 50;
             constexpr double box_size = 0.002; // Example box size
-            constexpr double node_density_coefficient = 0.8; // Example coefficient
+            constexpr double node_density_coefficient = 0.9; // Example coefficient
 
             auto boxMatrix = dfv::map::createGrid(box, pathNodes, sparsity, box_size, node_density_coefficient);
 
