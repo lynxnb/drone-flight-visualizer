@@ -11,6 +11,7 @@
 #include "surface_wrapper.h"
 #include "uniform_types.h"
 #include "vk_mesh.h"
+#include "vk_pipeline.h"
 #include "vk_traits.h"
 #include "vk_types.h"
 
@@ -257,6 +258,7 @@ namespace dfv {
 
         uniform::SceneData sceneParameters; //!< Scene parameters to use during rendering
         AllocatedBuffer sceneParametersBuffer; //!< Buffer containing the scene parameters
+        void createMeshPipeline(PipelineBuilder &pipelineBuilder, VkPipelineLayout &meshPipelineLayout, const std::string& vertexShaderPath, const std::string& fragmentShaderPath, const std::string& materialName);
     };
 
 } // namespace dfv
