@@ -17,23 +17,6 @@ layout (set = 0, binding = 0) uniform SceneData {
     vec3 eyePos; // position of the camera
 } sceneData;
 
-
-vec3 BRDF(vec3 V, vec3 N, vec3 L, vec3 Md, vec3 Ms, float gamma) {
-    // vec3 V  - direction of the viewer
-    // vec3 N  - normal vector to the surface
-    // vec3 L  - light vector (from the light model)
-    // vec3 Md - main color of the surface
-    // vec3 Ms - specular color of the surface
-    // float gamma - Exponent for power specular term
-    vec3 diffuse = Md * max(dot(L, N),0.0);
-    //vec3 r = 2*(N * dot(L, N)) - L;
-    vec3 r = -reflect(L,N); // glsl has a built in function for this
-
-    vec3 specular = Ms * pow(clamp(dot(V,r),0,1.0f), gamma);
-    return diffuse + specular;
-}
-
-
 void main() {
     // Determine the index of the color based on gl_VertexID
     int colorIndex = int(mod(float(id), 10.0));
@@ -51,21 +34,9 @@ void main() {
     colors[8] = vec3(0.5, 0.5, 0.5);  // Gray
     colors[9] = vec3(0.0, 0.5, 0.5);  // Teal
 
-
     // Select the color based on the colorIndex
     vec3 droneColor = colors[colorIndex];
 
-
-    // phong shading implementation
-    vec3 Norm = normalize(fragNorm);
-    vec3 EyeDir = normalize(sceneData.eyePos - fragPos);
-
-    vec3 lightDir = sceneData.sunlightDirection;
-    vec3 lightColor = sceneData.sunlightColor.rgb;
-
-    vec3 DiffSpec = BRDF(EyeDir, Norm, lightDir, droneColor, lightColor, 100.0f);
-
-    vec3 Ambient = droneColor * 0.05f;
-
-    outFragColor = vec4(clamp(0.95 * (DiffSpec)*lightColor.rgb + Ambient, 0.0, 1.0), 1.0f);
+    vec3 Ambient = droneColor;
+    outFragColor = vec4(Ambient, 1.0f);
 }
