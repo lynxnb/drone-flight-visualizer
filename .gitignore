@@ -54,6 +54,4 @@ bin/
 
 .env
 
-.idea/runConfigurations/drone_flight_visualizer.xml
-
 **google_api_key.txt
