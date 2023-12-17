@@ -12,5 +12,5 @@ layout (set = 0, binding = 0) uniform SceneData {
 } sceneData;
 
 void main() {
-    outFragColor = vec4(inColor + sceneData.ambientColor.xyz, 1.0f);
+    outFragColor = vec4(inColor, 1.0f);
 }

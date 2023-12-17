@@ -25,7 +25,7 @@ namespace dfv {
 
     struct RenderObjectDescriptor {
         RenderObject *object{nullptr};
-        RenderHandle handle{ULONG_LONG_MAX};
+        RenderHandle handle{};
     };
 
 } // namespace dfv

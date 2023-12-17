@@ -5,6 +5,7 @@
 #include "vulkan/vk_mesh.h"
 #include <chrono>
 #include <cmath>
+#include <math.h>
 #include <cpr/cpr.h>
 #include <cstdlib> // Include for getenv
 #include <glm/geometric.hpp>
@@ -226,7 +227,7 @@ namespace dfv::map {
     /// \param sparseNodes
     /// \param mesh
     /// \param orientation 0 for vertical, 1 for horizontal
-    void sewBoxesSlave(std::vector<Node> &commonNodes, std::vector<Node> &sparseNodes, Mesh &mesh, int orientation) {
+    void sewBoxesSlave(std::vector<Node> &commonNodes, std::vector<Node> &sparseNodes, Mesh &mesh, int orientation, bool reverseOrder) {
         int sparseIndex = orientation == 1 ? 1 : 0;
         for (int k = 0; k < commonNodes.size() - 1; ++k) {
             if(orientation == 1 && commonNodes[k].lat < sparseNodes[sparseIndex].lat){
@@ -248,20 +249,36 @@ namespace dfv::map {
                 continue;
             }
             if (orientation == 1) {
-                if (nextCommonNode.lat != nextSparseNode.lat) {
-                    mesh.indices.push_back(sparseNode.game_node->vertex_index);
-                    mesh.indices.push_back(commonNode.game_node->vertex_index);
-                    mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
-                } else {
-                    mesh.indices.push_back(sparseNode.game_node->vertex_index);
-                    mesh.indices.push_back(commonNode.game_node->vertex_index);
-                    mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
-
-                    mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
-                    mesh.indices.push_back(nextSparseNode.game_node->vertex_index);
-                    mesh.indices.push_back(sparseNode.game_node->vertex_index);
-
+                if (nextCommonNode.lat == nextSparseNode.lat) {
+                    if (!reverseOrder) {
+                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                        mesh.indices.push_back(commonNode.game_node->vertex_index);
+                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                    } else {
+                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                        mesh.indices.push_back(commonNode.game_node->vertex_index);
+                    }
+                    if (!reverseOrder) {
+                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                        mesh.indices.push_back(nextSparseNode.game_node->vertex_index);
+                    } else {
+                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                        mesh.indices.push_back(nextSparseNode.game_node->vertex_index);
+                    }
                     sparseIndex++;
+                } else {
+                    if (!reverseOrder) {
+                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                        mesh.indices.push_back(commonNode.game_node->vertex_index);
+                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                    } else {
+                        mesh.indices.push_back(commonNode.game_node->vertex_index);
+                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                    }
                 }
             }
             if (orientation == 0) {
@@ -545,9 +562,9 @@ namespace dfv::map {
                         structs::Triangle triangle(box->dots[i + 1][e].game_node, box->dots[i + 1][e + 1].game_node, box->dots[i][e + 1].game_node);
                         triangles.push_back(triangle);
                         if (i != 0 && i != box->dots.size() - 2 && e != 0 && e != box->dots[0].size() - 2) {
-                            mesh.indices.push_back(box->dots[i + 1][e].game_node->vertex_index);
-                            mesh.indices.push_back(box->dots[i + 1][e + 1].game_node->vertex_index);
                             mesh.indices.push_back(box->dots[i][e + 1].game_node->vertex_index);
+                            mesh.indices.push_back(box->dots[i + 1][e + 1].game_node->vertex_index);
+                            mesh.indices.push_back(box->dots[i + 1][e].game_node->vertex_index);
                         }
                     }
                 }
@@ -574,8 +591,8 @@ namespace dfv::map {
                         bNodes.push_back(row.rbegin()[1]);
                     }
 
-                    sewBoxesSlave(commonNodes, aNodes, mesh, 1);
-                    sewBoxesSlave(commonNodes, bNodes, mesh, 1);
+                    sewBoxesSlave(commonNodes, aNodes, mesh, 1, false);
+                    sewBoxesSlave(commonNodes, bNodes, mesh, 1, true);
                 }
                 //sew top box
                 if (ii != 0) {
@@ -594,8 +611,8 @@ namespace dfv::map {
                     aNodes.insert(aNodes.begin(), (box_matrix)[ii][ie].dots[1].begin(), (box_matrix)[ii][ie].dots[1].end());
                     bNodes.insert(bNodes.begin(), (box_matrix)[ii - 1][ie].dots.rbegin()[1].begin(), (box_matrix)[ii - 1][ie].dots.rbegin()[1].end());
 
-                    sewBoxesSlave(commonNodes, aNodes, mesh, 0);
-                    sewBoxesSlave(commonNodes, bNodes, mesh, 0);
+                    sewBoxesSlave(commonNodes, aNodes, mesh, 0, false);
+                    sewBoxesSlave(commonNodes, bNodes, mesh, 0, true);
                 }
             }
         }
@@ -607,10 +624,11 @@ namespace dfv::map {
             Vertex &v2 = mesh.vertices[mesh.indices[i + 1]];
             Vertex &v3 = mesh.vertices[mesh.indices[i + 2]];
 
-            auto normal = calculateTriangleNormal(v1, v2, v3);
+            if(v1.position == v2.position && v2.position == v3.position){
+                continue;
+            }
 
-            if (normal.y < 0)
-                normal.y *= -1;
+            auto normal = calculateTriangleNormal(v1, v2, v3);
 
             v1.normal += normal;
             vertex_normal_accumulator[mesh.indices[i]]++;
@@ -621,12 +639,14 @@ namespace dfv::map {
         }
 
         for (int i = 0; i < mesh.vertices.size(); ++i) {
-            if (vertex_normal_accumulator[i] > 0) {
+            if(vertex_normal_accumulator[i] != 0){
                 mesh.vertices[i].normal /= static_cast<float>(vertex_normal_accumulator[i]);
-                mesh.vertices[i].normal = glm::normalize(mesh.vertices[i].normal); // Ensure the normal is unit length
+            }
+            mesh.vertices[i].normal = glm::normalize(mesh.vertices[i].normal);
+            if(isnan(mesh.vertices[i].normal.y)){
+                mesh.vertices[i].normal = {0, 1, 0};
             }
         }
-
         return mesh;
     }
 
