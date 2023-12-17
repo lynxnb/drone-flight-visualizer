@@ -15,8 +15,8 @@ layout (set = 0, binding = 0) uniform SceneData {
     vec3 eyePos; // position of the camera
 } sceneData;
 
-vec3 droneColor = vec3(0.3225f, 0.3322f, 0.3453f); // Pantone gray 10 C
-
+// Map color: grass green #29a415
+vec3 droneColor = vec3(0.16, 0.64, 0.08);
 
 vec3 BRDF(vec3 V, vec3 N, vec3 L, vec3 Md, vec3 Ms, float gamma) {
     // vec3 V  - direction of the viewer
