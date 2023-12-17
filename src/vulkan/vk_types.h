@@ -8,13 +8,13 @@
 namespace dfv {
 
     struct AllocatedBuffer {
-        VkBuffer buffer;
-        VmaAllocation allocation;
+        VkBuffer buffer{VK_NULL_HANDLE};
+        VmaAllocation allocation{VK_NULL_HANDLE};
     };
 
     struct AllocatedImage {
-        VkImage image;
-        VmaAllocation allocation;
+        VkImage image{VK_NULL_HANDLE};
+        VmaAllocation allocation{VK_NULL_HANDLE};
     };
 
 } // namespace dfv

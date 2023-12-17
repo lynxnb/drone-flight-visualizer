@@ -17,15 +17,15 @@ namespace dfv {
     using RenderHandle = size_t; //!< The handle type for render objects
 
     struct RenderObject {
-        Mesh *mesh;
-        Material *material;
+        Mesh *mesh{nullptr};
+        Material *material{nullptr};
 
-        glm::mat4 transform;
+        glm::mat4 transform{};
     };
 
     struct RenderObjectDescriptor {
-        RenderObject *object;
-        RenderHandle handle;
+        RenderObject *object{nullptr};
+        RenderHandle handle{ULONG_LONG_MAX};
     };
 
 } // namespace dfv
