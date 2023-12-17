@@ -17,9 +17,19 @@ layout (set = 0, binding = 0) uniform SceneData {
     vec3 eyePos; // position of the camera
 } sceneData;
 
+uint lowbias32(uint x)
+{
+    x ^= x >> 16;
+    x *= 0x7feb352dU;
+    x ^= x >> 15;
+    x *= 0x846ca68bU;
+    x ^= x >> 16;
+    return x;
+}
+
 void main() {
     // Determine the index of the color based on gl_VertexID
-    int colorIndex = int(mod(float(id), 10.0));
+    int colorIndex = id %10;
 
     // Define an array of 10 colors
     vec3 colors[10];

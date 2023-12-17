@@ -451,27 +451,32 @@ namespace dfv {
         pipelineBuilder.pipelineLayout = meshPipelineLayout;
 
         // Create the default mesh pipeline
-        createMeshPipeline(pipelineBuilder, meshPipelineLayout, "shaders/default.vert.spv", "shaders/default_lit.frag.spv", "defaultmesh");
+        createMaterial(pipelineBuilder, meshPipelineLayout, "shaders/default.vert.spv", "shaders/default_lit.frag.spv", "defaultmesh");
         // Create the drone mesh pipeline
-        createMeshPipeline(pipelineBuilder, meshPipelineLayout, "shaders/drone.vert.spv", "shaders/drone_lighting.frag.spv", "drone");
+        createMaterial(pipelineBuilder, meshPipelineLayout, "shaders/drone.vert.spv", "shaders/drone_lighting.frag.spv", "drone");
         // Create the map mesh pipeline
-        createMeshPipeline(pipelineBuilder, meshPipelineLayout, "shaders/map.vert.spv", "shaders/map_lighting.frag.spv", "map");
+        createMaterial(pipelineBuilder, meshPipelineLayout, "shaders/map.vert.spv", "shaders/map_lighting.frag.spv", "map");
+        // Create the triangle tester mesh pipeline
+        createMaterial(pipelineBuilder, meshPipelineLayout, "shaders/triangle_tester.vert.spv", "shaders/triangle_tester.frag.spv", "triangle_tester");
 
+        mainDeletionQueue.pushFunction([=, this]() {
+            vkDestroyPipelineLayout(device, meshPipelineLayout, nullptr);
+        });
     }
 
-    void VulkanEngine::createMeshPipeline(PipelineBuilder &pipelineBuilder, VkPipelineLayout &meshPipelineLayout, const std::string& vertexShaderPath, const std::string& fragmentShaderPath, const std::string& materialName) {
+    void VulkanEngine::createMaterial(PipelineBuilder &pipelineBuilder, VkPipelineLayout &meshPipelineLayout, const std::string &vertexShaderPath, const std::string &fragmentShaderPath, const std::string &materialName) {
         // Compile default mesh vertex shader
         auto meshVertShader = loadShaderModule(vertexShaderPath);
         if (!meshVertShader)
-            std::cout << "Error when building the mesh vertex shader module: " << materialName << std::endl;
+            std::cout << "Error when building the mesh vertex shader module: " << vertexShaderPath << std::endl;
         else
-            std::cout << "Mesh vertex shader: " << materialName << " successfully loaded" << std::endl;
+            std::cout << "Mesh vertex shader: " << vertexShaderPath << " successfully loaded" << std::endl;
 
         auto fragmentShader = loadShaderModule(fragmentShaderPath);
         if (!fragmentShader)
-            std::cout << "Error when building the fragment shader: "<< materialName << std::endl;
+            std::cout << "Error when building the fragment shader: "<< fragmentShaderPath << std::endl;
         else
-            std::cout << "Fragment shader: "<< materialName <<" successfully loaded" << std::endl;
+            std::cout << "Fragment shader: "<< fragmentShaderPath <<" successfully loaded" << std::endl;
 
         // Add the shader to the pipeline
         pipelineBuilder.shaderStages.push_back(

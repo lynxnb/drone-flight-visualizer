@@ -258,7 +258,7 @@ namespace dfv {
 
         uniform::SceneData sceneParameters; //!< Scene parameters to use during rendering
         AllocatedBuffer sceneParametersBuffer; //!< Buffer containing the scene parameters
-        void createMeshPipeline(PipelineBuilder &pipelineBuilder, VkPipelineLayout &meshPipelineLayout, const std::string& vertexShaderPath, const std::string& fragmentShaderPath, const std::string& materialName);
+        void createMaterial(PipelineBuilder &pipelineBuilder, VkPipelineLayout &meshPipelineLayout, const std::string &vertexShaderPath, const std::string &fragmentShaderPath, const std::string &materialName);
     };
 
 } // namespace dfv

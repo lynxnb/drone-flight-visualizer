@@ -132,7 +132,7 @@ namespace dfv {
         if (meshOpt) {
             auto [mapObject, mapHandle] = engine.allocateRenderObject();
             *mapObject = {.mesh = engine.insertMesh("map", std::move(*meshOpt)),
-                          .material = engine.getMaterial("drone"),
+                          .material = engine.getMaterial("triangle_tester"),
                           .transform = glm::mat4{1.f}};
         }
 
