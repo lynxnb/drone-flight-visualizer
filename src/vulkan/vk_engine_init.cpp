@@ -450,35 +450,43 @@ namespace dfv {
         // Use the push constants layout
         pipelineBuilder.pipelineLayout = meshPipelineLayout;
 
+        // Create the default mesh pipeline
+        createMeshPipeline(pipelineBuilder, meshPipelineLayout, "shaders/default.vert.spv", "shaders/default_lit.frag.spv", "defaultmesh");
+        // Create the drone mesh pipeline
+        createMeshPipeline(pipelineBuilder, meshPipelineLayout, "shaders/drone.vert.spv", "shaders/drone_lighting.frag.spv", "drone");
+        // Create the map mesh pipeline
+        createMeshPipeline(pipelineBuilder, meshPipelineLayout, "shaders/map.vert.spv", "shaders/map_lighting.frag.spv", "map");
+
+    }
+
+    void VulkanEngine::createMeshPipeline(PipelineBuilder &pipelineBuilder, VkPipelineLayout &meshPipelineLayout, const std::string& vertexShaderPath, const std::string& fragmentShaderPath, const std::string& materialName) {
         // Compile default mesh vertex shader
-        auto meshVertShader = loadShaderModule("shaders/default.vert.spv");
+        auto meshVertShader = loadShaderModule(vertexShaderPath);
         if (!meshVertShader)
-            std::cout << "Error when building the triangle vertex shader module" << std::endl;
+            std::cout << "Error when building the mesh vertex shader module: " << materialName << std::endl;
         else
-            std::cout << "Mesh Triangle vertex shader successfully loaded" << std::endl;
+            std::cout << "Mesh vertex shader: " << materialName << " successfully loaded" << std::endl;
 
-        auto colorMeshShader = loadShaderModule("shaders/default_lit.frag.spv");
-        if (!colorMeshShader)
-            std::cout << "Error when building the colored mesh shader" << std::endl;
+        auto fragmentShader = loadShaderModule(fragmentShaderPath);
+        if (!fragmentShader)
+            std::cout << "Error when building the fragment shader: "<< materialName << std::endl;
         else
-            std::cout << "Colored mesh shader successfully loaded" << std::endl;
+            std::cout << "Fragment shader: "<< materialName <<" successfully loaded" << std::endl;
 
-        // Add the other shaders
+        // Add the shader to the pipeline
         pipelineBuilder.shaderStages.push_back(
                 vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, *meshVertShader));
-
-        // Use default_lit shader
         pipelineBuilder.shaderStages.push_back(
-                vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, *colorMeshShader));
+                vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, *fragmentShader));
 
         // Build the mesh triangle pipeline
         VkPipeline meshPipeline = pipelineBuilder.buildPipeline(device, renderPass);
 
-        createMaterial("defaultmesh", meshPipeline, meshPipelineLayout);
+        createMaterial(materialName, meshPipeline, meshPipelineLayout);
 
         // Delete all the vulkan shaders
         vkDestroyShaderModule(device, *meshVertShader, nullptr);
-        vkDestroyShaderModule(device, *colorMeshShader, nullptr);
+        vkDestroyShaderModule(device, *fragmentShader, nullptr);
 
         // Add the pipelines to the deletion queue
         mainDeletionQueue.pushFunction([=, this]() {
@@ -486,44 +494,6 @@ namespace dfv {
         });
 
         pipelineBuilder.shaderStages.clear();
-
-        // Compile mesh vertex shader for drone
-        meshVertShader = loadShaderModule("shaders/drone.vert.spv");
-        if (!meshVertShader)
-            std::cout << "Error when building the triangle vertex shader module" << std::endl;
-        else
-            std::cout << "Mesh Triangle vertex shader successfully loaded" << std::endl;
-
-        colorMeshShader = loadShaderModule("shaders/drone_lighting.frag.spv");
-        if (!colorMeshShader)
-            std::cout << "Error when building the colored mesh shader" << std::endl;
-        else
-            std::cout << "Colored mesh shader successfully loaded" << std::endl;
-
-        // Add the other shaders
-        pipelineBuilder.shaderStages.push_back(
-                vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, *meshVertShader));
-
-        // Use default_lit shader
-        pipelineBuilder.shaderStages.push_back(
-                vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, *colorMeshShader));
-
-        // Build the mesh triangle pipeline
-        meshPipeline = pipelineBuilder.buildPipeline(device, renderPass);
-
-        createMaterial("drone", meshPipeline, meshPipelineLayout);
-
-
-        // Delete all the vulkan shaders
-        vkDestroyShaderModule(device, *meshVertShader, nullptr);
-        vkDestroyShaderModule(device, *colorMeshShader, nullptr);
-
-        // Add the pipelines to the deletion queue
-        mainDeletionQueue.pushFunction([=, this]() {
-            vkDestroyPipeline(device, meshPipeline, nullptr);
-
-            vkDestroyPipelineLayout(device, meshPipelineLayout, nullptr);
-        });
     }
 
 } // namespace dfv

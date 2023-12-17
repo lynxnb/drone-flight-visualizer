@@ -2,14 +2,16 @@
 
 #include <array>
 #include <filesystem>
-#include <span>
 #include <vector>
+
+#include <vk_mem_alloc.h>
 
 #include "deletion_queue.h"
 #include "render_object.h"
 #include "surface_wrapper.h"
 #include "uniform_types.h"
 #include "vk_mesh.h"
+#include "vk_pipeline.h"
 #include "vk_traits.h"
 #include "vk_types.h"
 
@@ -21,26 +23,26 @@ namespace dfv {
      * A structure containing per-frame data used by the engine.
      */
     struct FrameData {
-        VkSemaphore presentSemaphore; //!< Semaphore that is signaled when the frame has been presented to the screen
-        VkSemaphore renderSemaphore; //!< Semaphore that is signaled when rendering has finished
-        VkFence renderFence; //!< Fence that is signaled when the frame has finished rendering
+        VkSemaphore presentSemaphore{VK_NULL_HANDLE}; //!< Semaphore that is signaled when the frame has been presented to the screen
+        VkSemaphore renderSemaphore{VK_NULL_HANDLE}; //!< Semaphore that is signaled when rendering has finished
+        VkFence renderFence{VK_NULL_HANDLE}; //!< Fence that is signaled when the frame has finished rendering
 
-        VkCommandPool commandPool;
-        VkCommandBuffer mainCommandBuffer;
+        VkCommandPool commandPool{VK_NULL_HANDLE};
+        VkCommandBuffer mainCommandBuffer{VK_NULL_HANDLE};
 
-        VkDescriptorSet globalDescriptor; //!< Global descriptor set for the frame.
+        VkDescriptorSet globalDescriptor{VK_NULL_HANDLE}; //!< Global descriptor set for the frame.
 
         AllocatedBuffer objectBuffer;
-        VkDescriptorSet objectDescriptor;
+        VkDescriptorSet objectDescriptor{VK_NULL_HANDLE};
     };
 
     /**
      * A structure containing data used for GPU upload commands.
      */
     struct UploadContext {
-        VkFence uploadFence;
-        VkCommandPool commandPool;
-        VkCommandBuffer commandBuffer;
+        VkFence uploadFence{VK_NULL_HANDLE};
+        VkCommandPool commandPool{VK_NULL_HANDLE};
+        VkCommandBuffer commandBuffer{VK_NULL_HANDLE};
     };
 
     class VulkanEngine {
@@ -114,6 +116,9 @@ namespace dfv {
          */
         RenderObject *getRenderObject(RenderHandle handle);
 
+        /**
+         * @brief Returns the current frame number.
+         */
         uint32_t getFrameNumber() const {
             return frameNumber;
         }
@@ -132,9 +137,9 @@ namespace dfv {
              * @brief Updates the front vector based on the current orientation.
              */
             void updateFront() {
-                glm::vec3 direction = {std::cos(orientation.x) * std::cos(orientation.y),
-                                       std::sin(orientation.y),
-                                       std::sin(orientation.x) * std::cos(orientation.y)};
+                const glm::vec3 direction = {std::cos(orientation.x) * std::cos(orientation.y),
+                                             std::sin(orientation.y),
+                                             std::sin(orientation.x) * std::cos(orientation.y)};
 
                 front = glm::normalize(direction);
             }
@@ -169,8 +174,7 @@ namespace dfv {
         /**
          * Load a shader module from the given file path.
          * @param filePath The path to the shader module.
-         * @param outShaderModule A pointer to the shader module to write to.
-         * @return True if the shader module was loaded successfully, false otherwise.
+         * @return The loaded shader module, or std::nullopt if loading failed.
          */
         std::optional<VkShaderModule> loadShaderModule(const std::filesystem::path &filePath) const;
 
@@ -212,39 +216,40 @@ namespace dfv {
 
         VulkanTraits traits; //!< Vulkan traits of the current device
 
-        VmaAllocator allocator; //!< Vulkan Memory Allocator library handle
+        VmaAllocator allocator{VK_NULL_HANDLE}; //!< Vulkan Memory Allocator library handle
         DeletionQueue mainDeletionQueue; //!< A queue containing Vulkan objects to be deleted when the engine is shut down
+        DeletionQueue swapchainDeletionQueue; //!< A queue for swapchain-related Vulkan objects to be deleted when the swapchain is recreated
 
-        VkExtent2D windowExtent; //!< The size of the window
+        VkExtent2D windowExtent{}; //!< The size of the window
 
-        VkInstance instance; //!< Vulkan library handle
-        VkDebugUtilsMessengerEXT debugMessenger; //!< Vulkan debug output handle
-        VkPhysicalDevice chosenGPU; //!< GPU chosen as the default device
-        VkDevice device; //!< Vulkan device for commands
-        VkSurfaceKHR surface; //!< Vulkan window surface
+        VkInstance instance{VK_NULL_HANDLE}; //!< Vulkan library handle
+        VkDebugUtilsMessengerEXT debugMessenger{VK_NULL_HANDLE}; //!< Vulkan debug output handle
+        VkPhysicalDevice chosenGPU{VK_NULL_HANDLE}; //!< GPU chosen as the default device
+        VkDevice device{VK_NULL_HANDLE}; //!< Vulkan device for commands
+        VkSurfaceKHR surface{VK_NULL_HANDLE}; //!< Vulkan window surface
 
-        VkSwapchainKHR swapchain; // Swapchain to present images to the screen
-        VkFormat swapchainImageFormat; // Image format expected by the windowing system
+        VkSwapchainKHR swapchain{VK_NULL_HANDLE}; // Swapchain to present images to the screen
+        VkFormat swapchainImageFormat{VK_FORMAT_UNDEFINED}; // Image format expected by the windowing system
         std::vector<VkImage> swapchainImages; // Array of images from the swapchain
         std::vector<VkImageView> swapchainImageViews; // Array of image-views from the swapchain
 
-        VkQueue graphicsQueue; //!< The queue command buffers will be submitted to
-        uint32_t graphicsQueueFamily; //!< The family of the queue
+        VkQueue graphicsQueue{VK_NULL_HANDLE}; //!< The queue command buffers will be submitted to
+        uint32_t graphicsQueueFamily{}; //!< The family of the queue
 
-        VkRenderPass renderPass; //!< Default renderpass for the engine
+        VkRenderPass renderPass{VK_NULL_HANDLE}; //!< Default renderpass for the engine
         std::vector<VkFramebuffer> framebuffers;
 
         std::array<FrameData, MaxFramesInFlight> frames; //!< Per-frame data
 
         UploadContext uploadContext; //!< Data for GPU upload commands
 
-        VkImageView depthImageView;
+        VkImageView depthImageView{VK_NULL_HANDLE};
         AllocatedImage depthImage;
-        VkFormat depthFormat;
+        VkFormat depthFormat{VK_FORMAT_UNDEFINED};
 
-        VkDescriptorSetLayout globalSetLayout; //!< The layout for the global descriptor set
-        VkDescriptorSetLayout objectSetLayout; //!< The layout for the object descriptor set
-        VkDescriptorPool descriptorPool; //!< Global descriptor pool
+        VkDescriptorSetLayout globalSetLayout{VK_NULL_HANDLE}; //!< The layout for the global descriptor set
+        VkDescriptorSetLayout objectSetLayout{VK_NULL_HANDLE}; //!< The layout for the object descriptor set
+        VkDescriptorPool descriptorPool{VK_NULL_HANDLE}; //!< Global descriptor pool
 
         std::vector<RenderObject> renderObjects; //!< The objects to render
 
@@ -253,6 +258,7 @@ namespace dfv {
 
         uniform::SceneData sceneParameters; //!< Scene parameters to use during rendering
         AllocatedBuffer sceneParametersBuffer; //!< Buffer containing the scene parameters
+        void createMeshPipeline(PipelineBuilder &pipelineBuilder, VkPipelineLayout &meshPipelineLayout, const std::string& vertexShaderPath, const std::string& fragmentShaderPath, const std::string& materialName);
     };
 
 } // namespace dfv
