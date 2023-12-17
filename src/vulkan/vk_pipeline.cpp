@@ -4,47 +4,46 @@
 
 namespace dfv {
 
-    VkPipeline PipelineBuilder::buildPipeline(VkDevice device, VkRenderPass pass) {
-        //make viewport state from our stored viewport and scissor.
-        //at the moment we won't support multiple viewports or scissors
-        VkPipelineViewportStateCreateInfo viewportState = {};
-        viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-        viewportState.pNext = nullptr;
+    VkPipeline PipelineBuilder::buildPipeline(VkDevice device, VkRenderPass pass) const {
+        // Dynamic state declaration
+        const std::vector dynamicState = {VK_DYNAMIC_STATE_VIEWPORT,
+                                          VK_DYNAMIC_STATE_SCISSOR};
 
-        viewportState.viewportCount = 1;
-        viewportState.pViewports = &viewport;
-        viewportState.scissorCount = 1;
-        viewportState.pScissors = &scissor;
+        // No static viewports or scissors
+        const VkPipelineViewportStateCreateInfo viewportState = {.viewportCount = 0,
+                                                                 .scissorCount = 0};
+
+        // Set the state as being dynamic
+        const VkPipelineDynamicStateCreateInfo dynamicStateInfo = {.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+                                                                   .dynamicStateCount = static_cast<uint32_t>(dynamicState.size()),
+                                                                   .pDynamicStates = dynamicState.data()};
 
         // Setup dummy color blending. We aren't using transparent objects yet
         // The blending is just "no blend", but we do write to the color attachment
-        VkPipelineColorBlendStateCreateInfo colorBlending = {};
-        colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        colorBlending.pNext = nullptr;
-
-        colorBlending.logicOpEnable = VK_FALSE;
-        colorBlending.logicOp = VK_LOGIC_OP_COPY;
-        colorBlending.attachmentCount = 1;
-        colorBlending.pAttachments = &colorBlendAttachment;
+        VkPipelineColorBlendStateCreateInfo colorBlending = {.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+                                                             .pNext = nullptr,
+                                                             .logicOpEnable = VK_FALSE,
+                                                             .logicOp = VK_LOGIC_OP_COPY,
+                                                             .attachmentCount = 1,
+                                                             .pAttachments = &colorBlendAttachment};
 
         // Build the pipeline
-        VkGraphicsPipelineCreateInfo pipelineInfo = {};
-        pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        pipelineInfo.pNext = nullptr;
-
-        pipelineInfo.stageCount = shaderStages.size();
-        pipelineInfo.pStages = shaderStages.data();
-        pipelineInfo.pVertexInputState = &vertexInputInfo;
-        pipelineInfo.pInputAssemblyState = &inputAssembly;
-        pipelineInfo.pViewportState = &viewportState;
-        pipelineInfo.pRasterizationState = &rasterizer;
-        pipelineInfo.pMultisampleState = &multisampling;
-        pipelineInfo.pColorBlendState = &colorBlending;
-        pipelineInfo.pDepthStencilState = &depthStencil;
-        pipelineInfo.layout = pipelineLayout;
-        pipelineInfo.renderPass = pass;
-        pipelineInfo.subpass = 0;
-        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+        const VkGraphicsPipelineCreateInfo pipelineInfo = {.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+                                                           .pNext = nullptr,
+                                                           .stageCount = static_cast<uint32_t>(shaderStages.size()),
+                                                           .pStages = shaderStages.data(),
+                                                           .pVertexInputState = &vertexInputInfo,
+                                                           .pInputAssemblyState = &inputAssembly,
+                                                           .pViewportState = &viewportState,
+                                                           .pRasterizationState = &rasterizer,
+                                                           .pMultisampleState = &multisampling,
+                                                           .pDepthStencilState = &depthStencil,
+                                                           .pColorBlendState = &colorBlending,
+                                                           .pDynamicState = &dynamicStateInfo,
+                                                           .layout = pipelineLayout,
+                                                           .renderPass = pass,
+                                                           .subpass = 0,
+                                                           .basePipelineHandle = VK_NULL_HANDLE};
 
         VkPipeline newPipeline;
         if (vkCreateGraphicsPipelines(

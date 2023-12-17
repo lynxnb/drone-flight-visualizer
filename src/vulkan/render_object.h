@@ -1,11 +1,8 @@
 #pragma once
 
-#include <functional>
-
 #include <glm/mat4x4.hpp>
 
 #include "vk_mesh.h"
-#include <utils/time_types.h>
 
 namespace dfv {
 
@@ -15,6 +12,7 @@ namespace dfv {
     };
 
     using RenderHandle = size_t; //!< The handle type for render objects
+    constexpr RenderHandle NullHandle = -1; //!< The null handle value
 
     struct RenderObject {
         Mesh *mesh{nullptr};
@@ -25,7 +23,7 @@ namespace dfv {
 
     struct RenderObjectDescriptor {
         RenderObject *object{nullptr};
-        RenderHandle handle{ULONG_LONG_MAX};
+        RenderHandle handle{NullHandle};
     };
 
 } // namespace dfv

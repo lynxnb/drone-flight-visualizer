@@ -11,15 +11,13 @@ namespace dfv {
         std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
         VkPipelineVertexInputStateCreateInfo vertexInputInfo;
         VkPipelineInputAssemblyStateCreateInfo inputAssembly;
-        VkViewport viewport;
-        VkRect2D scissor;
         VkPipelineRasterizationStateCreateInfo rasterizer;
         VkPipelineColorBlendAttachmentState colorBlendAttachment;
         VkPipelineDepthStencilStateCreateInfo depthStencil;
         VkPipelineMultisampleStateCreateInfo multisampling;
         VkPipelineLayout pipelineLayout;
 
-        VkPipeline buildPipeline(VkDevice device, VkRenderPass pass);
+        VkPipeline buildPipeline(VkDevice device, VkRenderPass pass) const;
     };
 
 } // namespace dfv
