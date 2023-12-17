@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
     // Call the createGrid method with some debug values
     double sparsity = 0.5; // Example density
     double box_size = 2; // Example box size
-    double node_density_coefficient = 0.8; // Example coefficient
+    double node_density_coefficient = 0.56234; // Example coefficient
 
     std::vector<std::vector<dfv::structs::DiscreteBoxInfo>> box_matrix = dfv::map::createGrid(box, drone_path, sparsity, box_size, node_density_coefficient);
 
