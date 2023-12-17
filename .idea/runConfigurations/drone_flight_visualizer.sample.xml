@@ -1,8 +1,5 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="drone_flight_visualizer" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="assets/data/flight_data.csv" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="drone_flight_visualizer" TARGET_NAME="drone_flight_visualizer" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="drone_flight_visualizer" RUN_TARGET_NAME="drone_flight_visualizer">
-    <envs>
-      <env name="GOOGLE_API_KEY" value="YOUR_KEY_HERE" />
-    </envs>
     <method v="2">
       <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
     </method>

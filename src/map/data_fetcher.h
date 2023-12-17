@@ -20,4 +20,8 @@ namespace dfv::map {
     void populateElevation(std::vector<structs::Node> &nodes);
 
     Mesh createMeshArray(std::vector<std::vector<structs::DiscreteBoxInfo>> &box_matrix, double llLatBound, double llLonBound, double urLatBound, double urLonBound, Coordinate initialPosition);
+
+    void PopulateBatchWithElevationOpenElevation(std::vector<std::reference_wrapper<structs::Node *>> &nodes);
+
+    void PopulateBatchWithElevationGoogle(std::vector<std::reference_wrapper<structs::Node *>> &nodes, std::string &googleApiKey);
 } // namespace dfv::map
