@@ -15,7 +15,8 @@
 
 namespace dfv::map {
     namespace {
-        constexpr int BATCH_SIZE = 500;
+        constexpr int BATCH_SIZE_GOOGLE = 500;
+        constexpr int BATCH_SIZE = 5000;
     }
 
     using namespace dfv::structs;
@@ -47,28 +48,6 @@ namespace dfv::map {
             std::cerr << "Unable to open file: " << filePath << std::endl;
         }
         return apiKey;
-    }
-
-    void PopulateBatchWithElevation(std::vector<std::reference_wrapper<structs::Node *>> &nodes) {
-        std::string execPath = GetExecutablePath();
-        std::string directory;
-        const size_t last_slash_idx = execPath.rfind('\\');
-        if (std::string::npos != last_slash_idx) {
-            directory = execPath.substr(0, last_slash_idx);
-        }
-
-        std::string apiKeyFilePath = directory + "/google_api_key.txt"; // Assuming the file is named 'google_api_key.txt'
-        std::string googleApiKey = ReadApiKeyFromFile(apiKeyFilePath);
-
-        if (googleApiKey.empty()) {
-            std::cout << "Google API Key not found in file." << std::endl;
-            PopulateBatchWithElevationOpenElevation(nodes);
-            return;
-        }
-
-        std::cout << "Google API Key found" << std::endl;
-
-        PopulateBatchWithElevationGoogle(nodes, googleApiKey);
     }
 
 
@@ -200,16 +179,41 @@ namespace dfv::map {
 
     void populateElevation(std::vector<structs::Node *> *nodes) {
         auto startTime = std::chrono::high_resolution_clock::now();
+
+        std::string execPath = GetExecutablePath();
+        std::string directory;
+        const size_t last_slash_idx = execPath.rfind('\\');
+        if (std::string::npos != last_slash_idx) {
+            directory = execPath.substr(0, last_slash_idx);
+        }
+
+        std::string apiKeyFilePath = directory + "/google_api_key.txt"; // Assuming the file is named 'google_api_key.txt'
+        std::string googleApiKey = ReadApiKeyFromFile(apiKeyFilePath);
+
         std::cout << "Fetching " << nodes->size() << " Nodes Elevation" << std::endl;
+        int batch_size = 0;
+        if (googleApiKey.empty()) {
+            batch_size = BATCH_SIZE;
+        } else {
+            batch_size = BATCH_SIZE_GOOGLE;
+        }
+
         int e = 0;
-        for (int i = 0; i < nodes->size(); i += BATCH_SIZE) {
+        for (int i = 0; i < nodes->size(); i += batch_size) {
             auto startIter = nodes->begin() + i;
-            auto endIter = nodes->begin() + (nodes->size() > i + BATCH_SIZE ? i + BATCH_SIZE : nodes->size());
+            auto endIter = nodes->begin() + (nodes->size() > i + batch_size ? i + batch_size : nodes->size());
 
             std::vector<std::reference_wrapper<structs::Node *>> batch(startIter, endIter);
-            PopulateBatchWithElevation(batch); // Ensure PopulateBatchWithElevation is compatible with this change.
+
+            if (googleApiKey.empty()) {
+                PopulateBatchWithElevationOpenElevation(batch);
+            } else {
+                PopulateBatchWithElevationGoogle(batch, googleApiKey);
+            }
+
+             // Ensure PopulateBatchWithElevation is compatible with this change.
             std::chrono::milliseconds(10);
-            std::cout << "Batch " << e << "/" << (nodes->size() / BATCH_SIZE) + 1 << " of Elevation Data Fetched" << std::endl;
+            std::cout << "Batch " << e << "/" << (nodes->size() / batch_size) + 1 << " of Elevation Data Fetched" << std::endl;
             e++;
         }
         auto endTime = std::chrono::high_resolution_clock::now();
@@ -223,11 +227,19 @@ namespace dfv::map {
     /// \param mesh
     /// \param orientation 0 for vertical, 1 for horizontal
     void sewBoxesSlave(std::vector<Node> &commonNodes, std::vector<Node> &sparseNodes, Mesh &mesh, int orientation) {
-        int sparseIndex = 0;
+        int sparseIndex = orientation == 1 ? 1 : 0;
         for (int k = 0; k < commonNodes.size() - 1; ++k) {
+            if(orientation == 1 && commonNodes[k].lat < sparseNodes[sparseIndex].lat){
+                continue;
+            }
             if (sparseIndex + 2 > sparseNodes.size()) {
                 break;
             }
+
+            if (orientation == 1 && sparseIndex + 3 > sparseNodes.size()) {
+                break;
+            }
+
             Node commonNode = commonNodes[k];
             Node sparseNode = sparseNodes[sparseIndex];
             Node nextCommonNode = commonNodes[k + 1];
@@ -236,34 +248,38 @@ namespace dfv::map {
                 continue;
             }
             if (orientation == 1) {
-                if (nextCommonNode.lat == nextSparseNode.lat) {
-                    if (commonNode.lat == sparseNode.lat) {
-                        sparseIndex++;
-                        continue;
-                    }
+                if (nextCommonNode.lat != nextSparseNode.lat) {
                     mesh.indices.push_back(sparseNode.game_node->vertex_index);
                     mesh.indices.push_back(commonNode.game_node->vertex_index);
                     mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                } else {
+                    mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                    mesh.indices.push_back(commonNode.game_node->vertex_index);
+                    mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+
+                    mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                    mesh.indices.push_back(nextSparseNode.game_node->vertex_index);
+                    mesh.indices.push_back(sparseNode.game_node->vertex_index);
+
                     sparseIndex++;
                 }
-                mesh.indices.push_back(sparseNode.game_node->vertex_index);
-                mesh.indices.push_back(commonNode.game_node->vertex_index);
-                mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
             }
             if (orientation == 0) {
-                if (nextCommonNode.lon == nextSparseNode.lon) {
-                    if (commonNode.lon == sparseNode.lon) {
-                        sparseIndex++;
-                        continue;
-                    }
+                if (nextCommonNode.lon != nextSparseNode.lon) {
                     mesh.indices.push_back(sparseNode.game_node->vertex_index);
                     mesh.indices.push_back(commonNode.game_node->vertex_index);
                     mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                } else {
+                    mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                    mesh.indices.push_back(commonNode.game_node->vertex_index);
+                    mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+
+                    mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                    mesh.indices.push_back(nextSparseNode.game_node->vertex_index);
+                    mesh.indices.push_back(sparseNode.game_node->vertex_index);
+
                     sparseIndex++;
                 }
-                mesh.indices.push_back(sparseNode.game_node->vertex_index);
-                mesh.indices.push_back(commonNode.game_node->vertex_index);
-                mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
             }
         }
         //return triangles;
@@ -407,7 +423,9 @@ namespace dfv::map {
         // Set the sparsity for each box
         for (auto &row : box_matrix) {
             for (auto &inode : row) {
+                inode.distance = inode.distance > 100 ? 100 : inode.distance;
                 inode.sparsity = sparsity / (pow(node_density_coefficient, inode.distance));
+                //inode.sparsity = sparsity * inode.distance;
             }
         }
 
@@ -505,9 +523,11 @@ namespace dfv::map {
 
                         structs::Triangle triangle(box->dots[i][e].game_node, box->dots[i][e + 1].game_node, box->dots[i + 1][e].game_node);
                         triangles.push_back(triangle);
-                        mesh.indices.push_back(box->dots[i][e].game_node->vertex_index);
-                        mesh.indices.push_back(box->dots[i][e + 1].game_node->vertex_index);
-                        mesh.indices.push_back(box->dots[i + 1][e].game_node->vertex_index);
+                        if (i != 0 && i != box->dots.size() - 2 && e != 0 && e != box->dots[0].size() - 2) {
+                            mesh.indices.push_back(box->dots[i][e].game_node->vertex_index);
+                            mesh.indices.push_back(box->dots[i][e + 1].game_node->vertex_index);
+                            mesh.indices.push_back(box->dots[i + 1][e].game_node->vertex_index);
+                        }
                     }
                     for (int e = 0; e < box->dots[0].size() - 1; ++e) {
                         if (box->dots[i + 1][e + 1].game_node == nullptr) {
@@ -524,9 +544,11 @@ namespace dfv::map {
                         }
                         structs::Triangle triangle(box->dots[i + 1][e].game_node, box->dots[i + 1][e + 1].game_node, box->dots[i][e + 1].game_node);
                         triangles.push_back(triangle);
-                        mesh.indices.push_back(box->dots[i + 1][e].game_node->vertex_index);
-                        mesh.indices.push_back(box->dots[i + 1][e + 1].game_node->vertex_index);
-                        mesh.indices.push_back(box->dots[i][e + 1].game_node->vertex_index);
+                        if (i != 0 && i != box->dots.size() - 2 && e != 0 && e != box->dots[0].size() - 2) {
+                            mesh.indices.push_back(box->dots[i + 1][e].game_node->vertex_index);
+                            mesh.indices.push_back(box->dots[i + 1][e + 1].game_node->vertex_index);
+                            mesh.indices.push_back(box->dots[i][e + 1].game_node->vertex_index);
+                        }
                     }
                 }
 
@@ -569,8 +591,8 @@ namespace dfv::map {
                         return a.lon < b.lon;
                     });
 
-                    aNodes.insert(aNodes.begin(), (box_matrix)[ii][ie].dots[0].begin(), (box_matrix)[ii][ie].dots[0].end());
-                    bNodes.insert(bNodes.begin(), (box_matrix)[ii - 1][ie].dots.back().begin(), (box_matrix)[ii - 1][ie].dots.back().end());
+                    aNodes.insert(aNodes.begin(), (box_matrix)[ii][ie].dots[1].begin(), (box_matrix)[ii][ie].dots[1].end());
+                    bNodes.insert(bNodes.begin(), (box_matrix)[ii - 1][ie].dots.rbegin()[1].begin(), (box_matrix)[ii - 1][ie].dots.rbegin()[1].end());
 
                     sewBoxesSlave(commonNodes, aNodes, mesh, 0);
                     sewBoxesSlave(commonNodes, bNodes, mesh, 0);
@@ -677,9 +699,12 @@ namespace dfv::map {
     std::vector<std::vector<structs::Node>> createGridSlave(double llLat, double llLon, double urLat, double urLon, double sparsity) {
         std::vector<std::vector<structs::Node>> nodes;
 
-        // Calculate the number of inner nodes (not including corners)
-        double latInnerNodes = std::max(0.0, std::floor((100000 * (urLat - llLat)) / sparsity) - 1);
-        double lonInnerNodes = std::max(0.0, std::floor((100000 * (urLon - llLon)) / sparsity) - 1);
+        const double baseDensity = 1.0;
+        double densityScale = std::sqrt(10000.0 / sparsity);
+
+        double latInnerNodes = std::max(0.0, std::floor(baseDensity * densityScale) - 1);
+        double lonInnerNodes = std::max(0.0, std::floor(baseDensity * densityScale) - 1);
+
 
         // Total nodes including corners
         double latTotalNodes = latInnerNodes + 2;
