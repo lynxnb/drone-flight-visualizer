@@ -11,10 +11,10 @@ namespace dfv {
         constexpr double BOX_OFFSET = 0.05;
 
         dfv::structs::DiscreteBox box = {.llLat = bbox.llLat - BOX_OFFSET,
-                                               .llLon = bbox.llLon - BOX_OFFSET,
-                                               .urLat = bbox.urLat + BOX_OFFSET,
-                                               .urLon = bbox.urLon + BOX_OFFSET,
-                                               .spacingMeters = 0};
+                                         .llLon = bbox.llLon - BOX_OFFSET,
+                                         .urLat = bbox.urLat + BOX_OFFSET,
+                                         .urLon = bbox.urLon + BOX_OFFSET,
+                                         .spacingMeters = 0};
         std::vector<structs::Node> pathNodes;
         pathNodes.reserve(dronePath.size());
         for (const auto &point : dronePath) {
@@ -22,7 +22,6 @@ namespace dfv {
                                    static_cast<double>(point.x) / SCALING_FACTOR + initialPos.lon,
                                    static_cast<double>(point.y));
         }
-
 
         pathNodes = {};
         pathNodes.reserve(dronePath.size());
@@ -32,7 +31,6 @@ namespace dfv {
         box.llLon = -0.012 + 9.73403023222216;
         box.urLat = +0.012 + 46.1949826657642;
         box.urLon = +0.012 + 9.73403023222216;
-
 
         mapMeshFuture = std::async(std::launch::async, [box, initialPos, pathNodes = std::move(pathNodes)]() mutable {
             constexpr double sparsity = 1;
@@ -53,8 +51,13 @@ namespace dfv {
 
     std::optional<Mesh> MapManager::getMapMesh() {
         using namespace std::chrono_literals;
-        if (mapMeshFuture.valid() && mapMeshFuture.wait_for(0ms) == std::future_status::ready)
-            return mapMeshFuture.get();
+        if (mapMeshFuture.valid() && mapMeshFuture.wait_for(0ms) == std::future_status::ready) {
+            try {
+                return mapMeshFuture.get();
+            } catch (const std::exception &e) {
+                std::cout << "Map loading encountered an exception: " << e.what() << std::endl;
+            }
+        }
 
         return std::nullopt;
     }
