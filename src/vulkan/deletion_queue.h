@@ -12,10 +12,6 @@ namespace dfv {
          */
         typedef std::function<void()> DeletionFunc;
 
-      private:
-        std::deque<DeletionFunc> deletors;
-
-      public:
         /**
          * Pushes a function to the deletion queue
          * @param function Function to push
@@ -27,15 +23,22 @@ namespace dfv {
          */
         void flush();
 
+        /**
+         * Resets the deletion queue, without executing any deletors
+         */
+        void reset();
+
         DeletionQueue() = default;
 
-        // Dissallow copying but allow moving
+        // Dissallow copying
         DeletionQueue(const DeletionQueue &) = delete;
+        DeletionQueue &operator=(const DeletionQueue &) = delete;
+        // Allow moving
         DeletionQueue(DeletionQueue &&) noexcept = default;
+        DeletionQueue &operator=(DeletionQueue &&) = default;
 
-        // Disallow reassignment
-        void operator=(const DeletionQueue &) = delete;
-        void operator=(DeletionQueue &&) = delete;
+      private:
+        std::deque<DeletionFunc> deletors;
     };
 
 } // namespace dfv
