@@ -9,7 +9,6 @@
 
 #include "vk_initializers.h"
 #include "vk_pipeline.h"
-#include <config/config.h>
 
 #define SOURCE_LOCATION __builtin_FILE() << ":" << __builtin_LINE() << " (" << __builtin_FUNCTION() << ")"
 
@@ -28,7 +27,7 @@ namespace dfv {
         vkb::InstanceBuilder builder;
 
         // Make the Vulkan instance with basic debug features
-        auto instanceResult = builder.set_app_name(window_config::WindowTitle)
+        auto instanceResult = builder.set_app_name("Vulkan Flight Visualizer")
                                       .request_validation_layers(true)
                                       .require_api_version(1, 1, 0)
                                       .use_default_debug_messenger()

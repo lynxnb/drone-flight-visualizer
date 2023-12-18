@@ -4,59 +4,75 @@
 
 namespace dfv::raii {
     /**
-     * @brief Refcounted RAII wrapper for GLFW with support for copy and move semantics.
+     * @brief RAII wrapper for GLFW.
      */
     class Glfw {
       public:
-        Glfw(const int width, const int height, const char *title) {
+        explicit Glfw(const char *title) {
             glfwInit();
-            glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+            const GLFWvidmode *mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
 
-            using namespace dfv::window_config;
-            window = glfwCreateWindow(width, height, title, nullptr, nullptr);
-            ++instanceCount;
+            // Set the window size to 2/3 of the screen size, or 1920x1080 for big screens
+            windowedWidth = std::min(mode->width * 2 / 3, 1920);
+            windowedHeight = std::min(mode->height * 2 / 3, 1080);
+            refreshRate = mode->refreshRate;
+
+            windowedXpos = mode->width / 6;
+            windowedYpos = mode->height / 6;
+
+            glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+            glfwWindowHint(GLFW_RED_BITS, mode->redBits);
+            glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
+            glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
+            glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
+
+            // Start as windowed
+            windowHandle = glfwCreateWindow(windowedWidth, windowedHeight, title, nullptr, nullptr);
+            glfwSetWindowPos(windowHandle, windowedXpos, windowedYpos);
         }
 
         ~Glfw() {
-            if (--instanceCount == 0) {
-                glfwDestroyWindow(window);
-                glfwTerminate();
-            }
+            glfwDestroyWindow(windowHandle);
+            glfwTerminate();
         }
 
-        Glfw(const Glfw &other) noexcept
-            : window(other.window) {
-            ++instanceCount;
+        GLFWwindow *window() const {
+            return windowHandle;
         }
 
-        Glfw(Glfw &&other) noexcept
-            : window(other.window) {
-            other.window = nullptr;
+        void enterFullscreen() {
+            const GLFWvidmode *mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+            glfwSetWindowMonitor(windowHandle, glfwGetPrimaryMonitor(), 0, 0, mode->width, mode->height, refreshRate);
+            fullscreen = true;
         }
 
-        Glfw &operator=(const Glfw &other) noexcept {
-            if (this != &other) {
-                window = other.window;
-                ++instanceCount;
-            }
-            return *this;
+        void exitFullscreen() {
+            glfwSetWindowMonitor(windowHandle, nullptr, windowedXpos, windowedYpos, windowedWidth, windowedHeight, refreshRate);
+            fullscreen = false;
         }
 
-        Glfw &operator=(Glfw &&other) noexcept {
-            if (this != &other) {
-                window = other.window;
-                other.window = nullptr;
-            }
-            return *this;
+        void toggleFullscreen() {
+            if (!fullscreen)
+                enterFullscreen();
+            else
+                exitFullscreen();
         }
 
-        GLFWwindow *getWindow() const {
-            return window;
-        }
+        Glfw(const Glfw &other) = delete;
+        Glfw(Glfw &&other) = delete;
+        Glfw &operator=(const Glfw &other) = delete;
+        Glfw &operator=(Glfw &&other) = delete;
 
       private:
-        GLFWwindow *window = nullptr;
+        GLFWwindow *windowHandle = nullptr;
 
-        static inline int instanceCount{0}; //!< The number of instances of Glfw
+        bool fullscreen = false;
+
+        int windowedWidth = 0;
+        int windowedHeight = 0;
+        int refreshRate = 0;
+
+        int windowedXpos = 0;
+        int windowedYpos = 0;
     };
 } // namespace dfv::raii
