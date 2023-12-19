@@ -10,8 +10,9 @@ namespace dfv {
                                           VK_DYNAMIC_STATE_SCISSOR};
 
         // No static viewports or scissors
-        const VkPipelineViewportStateCreateInfo viewportState = {.viewportCount = 0,
-                                                                 .scissorCount = 0};
+        const VkPipelineViewportStateCreateInfo viewportState = {.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+                                                                 .viewportCount = 1,
+                                                                 .scissorCount = 1};
 
         // Set the state as being dynamic
         const VkPipelineDynamicStateCreateInfo dynamicStateInfo = {.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,

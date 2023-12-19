@@ -9,7 +9,6 @@
 
 #include "vk_initializers.h"
 #include "vk_pipeline.h"
-#include <config/config.h>
 
 #define SOURCE_LOCATION __builtin_FILE() << ":" << __builtin_LINE() << " (" << __builtin_FUNCTION() << ")"
 
@@ -28,7 +27,7 @@ namespace dfv {
         vkb::InstanceBuilder builder;
 
         // Make the Vulkan instance with basic debug features
-        auto instanceResult = builder.set_app_name(window_config::WindowTitle)
+        auto instanceResult = builder.set_app_name("Vulkan Flight Visualizer")
                                       .request_validation_layers(true)
                                       .require_api_version(1, 1, 0)
                                       .use_default_debug_messenger()
@@ -87,7 +86,11 @@ namespace dfv {
     }
 
     void VulkanEngine::recreateSwapchain() {
-        // Flush old swapchain-related Vulkan objects
+        std::array<VkFence, MaxFramesInFlight> fences = {};
+        std::ranges::transform(frames, fences.begin(), [](auto &frame) {
+            return frame.renderFence;
+        });
+        vkWaitForFences(device, fences.size(), fences.data(), true, 1000000000);
         swapchainDeletionQueue.flush();
 
         initSwapchain();
@@ -417,9 +420,9 @@ namespace dfv {
 
         auto fragmentShader = loadShaderModule(fragmentShaderPath);
         if (!fragmentShader)
-            std::cout << "Error when building the fragment shader: "<< fragmentShaderPath << std::endl;
+            std::cout << "Error when building the fragment shader: " << fragmentShaderPath << std::endl;
         else
-            std::cout << "Fragment shader: "<< fragmentShaderPath <<" successfully loaded" << std::endl;
+            std::cout << "Fragment shader: " << fragmentShaderPath << " successfully loaded" << std::endl;
 
         // Add the shader to the pipeline
         pipelineBuilder.shaderStages.push_back(

@@ -12,6 +12,10 @@ namespace dfv {
         // Reverse iterate the deletion queue to execute all the functions
         for (auto &deletor : std::ranges::reverse_view(deletors))
             deletor();
+        reset();
+    }
+
+    void DeletionQueue::reset() {
         deletors.clear();
     }
 

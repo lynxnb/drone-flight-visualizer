@@ -1,12 +1,11 @@
 #include <iostream>
 
-#include "config/config.h"
 #include "flight_data/drone_flight_data.h"
 #include "glfw/glfw.h"
 #include "glfw/glfw_surface.h"
 #include "visualizer.h"
 
-void setupInput(const dfv::raii::Glfw &glfw, dfv::Visualizer &visualizer);
+void setupInput(dfv::raii::Glfw &glfw, dfv::Visualizer &visualizer);
 
 /*
  * The main entrypoint of the drone flight visualizer.
@@ -34,10 +33,9 @@ int main(const int argc, char **argv) {
     // Initialize the flight data object
     dfv::DroneFlightData data{path};
 
-    using namespace dfv::window_config;
     // GLFW initialization
-    const dfv::raii::Glfw glfw{WindowWidth, WindowHeight, WindowTitle};
-    dfv::GlfwSurface surface{glfw.getWindow()};
+    dfv::raii::Glfw glfw{"Drone Flight Visualizer"};
+    dfv::GlfwSurface surface{glfw.window()};
 
     const dfv::VisualizerCreateInfo createInfo{.surface = surface,
                                                .flightData = data,
@@ -50,7 +48,7 @@ int main(const int argc, char **argv) {
 
     auto lastFrameStart = dfv::clock::now();
 
-    while (!glfwWindowShouldClose(glfw.getWindow())) {
+    while (!glfwWindowShouldClose(glfw.window())) {
         // Poll input events
         glfwPollEvents();
 
@@ -75,12 +73,13 @@ int main(const int argc, char **argv) {
     return 0;
 }
 
-void setupInput(const dfv::raii::Glfw &glfw, dfv::Visualizer &visualizer) {
+void setupInput(dfv::raii::Glfw &glfw, dfv::Visualizer &visualizer) {
     static dfv::Visualizer &visualizerRef = visualizer;
+    static dfv::raii::Glfw &glfwRef = glfw;
 
     static dfv::CameraMovement movement{};
 
-    glfwSetKeyCallback(glfw.getWindow(), [](GLFWwindow *window, const int key, int /*scancode*/, const int action, int /*mods*/) {
+    glfwSetKeyCallback(glfw.window(), [](GLFWwindow *window, const int key, int /*scancode*/, const int action, int mods) {
         if (action == GLFW_REPEAT) {
             return;
         }
@@ -119,6 +118,10 @@ void setupInput(const dfv::raii::Glfw &glfw, dfv::Visualizer &visualizer) {
             case GLFW_KEY_R:
                 visualizerRef.recenterCamera();
                 break;
+            case GLFW_KEY_ENTER:
+                if (action == GLFW_PRESS && mods == GLFW_MOD_ALT)
+                    glfwRef.toggleFullscreen();
+                break;
             default:
                 break;
         }
@@ -141,11 +144,11 @@ void setupInput(const dfv::raii::Glfw &glfw, dfv::Visualizer &visualizer) {
         visualizerRef.turnCamera({xoffset, yoffset, 0.f});
     };
 
-    glfwSetInputMode(glfw.getWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(glfw.window(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     // We set the callback once to get the initial cursor position, to avoid a camera jump when the cursor first enters the window
     // We then set the callback to the actual callback
-    glfwSetCursorPosCallback(glfw.getWindow(), [](GLFWwindow *window, const double xpos, const double ypos) {
+    glfwSetCursorPosCallback(glfw.window(), [](GLFWwindow *window, const double xpos, const double ypos) {
         lastCursorX = xpos;
         lastCursorY = ypos;
         glfwSetCursorPosCallback(window, cursorPosCallback);
