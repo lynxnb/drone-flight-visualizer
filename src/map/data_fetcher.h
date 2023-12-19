@@ -11,15 +11,15 @@ namespace dfv::map {
 
     structs::OsmData fetchOsmData(const std::string &bbox);
 
-    std::vector<std::vector<structs::Node>> createGridSlave(double llLat, double llLon, double urLat, double urLon, double sparsity);
+    std::vector<std::vector<structs::Node>> createGridSlave(float llLat, float llLon, float urLat, float urLon, float sparsity);
 
-    std::vector<std::vector<structs::Node>> createGridSlaveMock(double llLat, double llLon, double urLat, double urLon, double spacingMeters);
+    std::vector<std::vector<structs::Node>> createGridSlaveMock(float llLat, float llLon, float urLat, float urLon, float spacingMeters);
 
-    auto createGrid(structs::DiscreteBox box, std::vector<structs::Node> &drone_path, double sparsity, double box_size, double node_density_coefficient) -> std::vector<std::vector<structs::DiscreteBoxInfo>>;
+    auto createGrid(structs::DiscreteBox box, std::vector<structs::Node> &drone_path, float sparsity, float box_size, float node_density_coefficient) -> std::vector<std::vector<structs::DiscreteBoxInfo>>;
 
     void populateElevation(std::vector<structs::Node> &nodes);
 
-    Mesh createMeshArray(std::vector<std::vector<structs::DiscreteBoxInfo>> &box_matrix, double llLatBound, double llLonBound, double urLatBound, double urLonBound, Coordinate initialPosition);
+    Mesh createMeshArray(std::vector<std::vector<structs::DiscreteBoxInfo>> &box_matrix, float llLatBound, float llLonBound, float urLatBound, float urLonBound, Coordinate initialPosition);
 
     void PopulateBatchWithElevationOpenElevation(std::vector<std::reference_wrapper<structs::Node *>> &nodes);
 

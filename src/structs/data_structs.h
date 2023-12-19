@@ -1,31 +1,36 @@
 #pragma once
 #include <iostream>
 #include <map>
+#include <sstream>
 #include <string>
 #include <vector>
 
 namespace dfv::structs {
     struct GameNode {
-        double x;
-        double y;
-        double z = 0;
+        float x;
+        float y;
+        float z = 0;
         unsigned long long vertex_index = -1;
+
+        std::string toString() const {
+            return ("x: " + std::to_string(x) + " y: " + std::to_string(y) + "z: " + std::to_string(z) + " index: " + std::to_string(vertex_index));
+        }
     };
 
 
     struct Node {
         std::string type;
         int64_t id;
-        double lat;
-        double lon;
-        double elev = 0;
+        float lat;
+        float lon;
+        float elev = 0;
         GameNode *game_node = nullptr;
         std::map<std::string, std::string> tags;
 
-        Node(double lat, double lon, double elev) :
+        Node(float lat, float lon, float elev) :
               id(0), lat(lat), lon(lon), elev(elev) {}
 
-        Node(std::string type, int64_t id, double lat, double lon, std::map<std::string, std::string> tags) :
+        Node(std::string type, int64_t id, float lat, float lon, std::map<std::string, std::string> tags) :
                 type(std::move(type)), id(id), lat(lat), lon(lon), tags(std::move(tags)) {}
 
         void display() const {
@@ -48,17 +53,17 @@ namespace dfv::structs {
     };
 
     struct DiscreteBox {
-        double llLat = 10000;
-        double llLon = 10000;
-        double urLat = -10000;
-        double urLon = -10000;
-        double spacingMeters;
+        float llLat = 10000;
+        float llLon = 10000;
+        float urLat = -10000;
+        float urLon = -10000;
+        float spacingMeters;
     };
 
     struct DiscreteBoxInfo {
         DiscreteBox box;
         bool is_on_path;
-        double sparsity = 0;
+        float sparsity = 0;
         int distance = INT_MAX;
         std::vector<std::vector<structs::Node>> dots;
     };

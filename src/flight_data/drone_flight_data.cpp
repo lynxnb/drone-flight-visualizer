@@ -95,7 +95,7 @@ namespace dfv {
         std::vector<FlightDataPoint> flightData;
 
         for (CSVRow &row : reader) {
-            glm::dvec2 coords = {row["OSD.latitude"].get<double>(),
+            glm::vec2 coords = {row["OSD.latitude"].get<double>(),
                                  row["OSD.longitude"].get<double>()};
             double altitude = row["OSD.altitude [ft]"].get<double>() * feetToMeter;
 

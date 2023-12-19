@@ -222,12 +222,7 @@ namespace dfv::map {
         std::cout << "Elevation data fetched in " << duration.count() << "ms" << std::endl;
     }
 
-    ///
-    /// \param commonNodes
-    /// \param sparseNodes
-    /// \param mesh
-    /// \param orientation 0 for vertical, 1 for horizontal
-    void sewBoxesSlave(std::vector<Node> &commonNodes, std::vector<Node> &sparseNodes, Mesh &mesh, int orientation, bool reverseOrder) {
+    void sewBoxesSlave(std::vector<Node> &commonNodes, std::vector<Node> &sparseNodes, Mesh &mesh, int orientation) {
         int sparseIndex = orientation == 1 ? 1 : 0;
         for (int k = 0; k < commonNodes.size() - 1; ++k) {
             if(orientation == 1 && commonNodes[k].lat < sparseNodes[sparseIndex].lat){
@@ -248,37 +243,27 @@ namespace dfv::map {
             if (commonNode.lat == nextCommonNode.lat && commonNode.lon == nextCommonNode.lon) {
                 continue;
             }
+            if(orientation == 1 && commonNode.lon == sparseNode.lon) {
+                break;
+            }
+            if(orientation == 0 && commonNode.lat == sparseNode.lat) {
+                break;
+            }
             if (orientation == 1) {
-                if (nextCommonNode.lat == nextSparseNode.lat) {
-                    if (!reverseOrder) {
-                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
-                        mesh.indices.push_back(commonNode.game_node->vertex_index);
-                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
-                    } else {
-                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
-                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
-                        mesh.indices.push_back(commonNode.game_node->vertex_index);
-                    }
-                    if (!reverseOrder) {
-                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
-                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
-                        mesh.indices.push_back(nextSparseNode.game_node->vertex_index);
-                    } else {
-                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
-                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
-                        mesh.indices.push_back(nextSparseNode.game_node->vertex_index);
-                    }
-                    sparseIndex++;
+                if (nextCommonNode.lat != nextSparseNode.lat) {
+                    mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                    mesh.indices.push_back(commonNode.game_node->vertex_index);
+                    mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
                 } else {
-                    if (!reverseOrder) {
-                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
-                        mesh.indices.push_back(commonNode.game_node->vertex_index);
-                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
-                    } else {
-                        mesh.indices.push_back(commonNode.game_node->vertex_index);
-                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
-                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
-                    }
+                    mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                    mesh.indices.push_back(commonNode.game_node->vertex_index);
+                    mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+
+                    mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                    mesh.indices.push_back(nextSparseNode.game_node->vertex_index);
+                    mesh.indices.push_back(sparseNode.game_node->vertex_index);
+
+                    sparseIndex++;
                 }
             }
             if (orientation == 0) {
@@ -299,7 +284,6 @@ namespace dfv::map {
                 }
             }
         }
-        //return triangles;
     }
 
     /// Create a complex grid around the drone flight path. Creates a 3 blocks wide dense area around the drone and decreases the density of dots by density/(node_density_coefficient^block_distance)
@@ -307,7 +291,7 @@ namespace dfv::map {
     /// \param drone_path Vector of dots where the drone has been. The PATH on the edge of the box is ignored.
     /// \param box_size Size of the chunk. All boxes are squares so the last one might be discarded
     /// \return Node matrix
-    auto createGrid(structs::DiscreteBox box, std::vector<structs::Node> &drone_path, double sparsity, double box_size, double node_density_coefficient) -> std::vector<std::vector<structs::DiscreteBoxInfo>> {
+    auto createGrid(structs::DiscreteBox box, std::vector<structs::Node> &drone_path, float sparsity, float box_size, float node_density_coefficient) -> std::vector<std::vector<structs::DiscreteBoxInfo>> {
         // Calculate the number of boxes in latitude and longitude
         int latBoxes = floor((box.urLat - box.llLat) / box_size);
         int lonBoxes = floor((box.urLon - box.llLon) / box_size);
@@ -318,10 +302,10 @@ namespace dfv::map {
         for (int i = 0; i < latBoxes; i++) {
             for (int j = 0; j < lonBoxes; j++) {
                 // Calculate the bounds of the box
-                double minLat = box.llLat + i * box_size;
-                double maxLat = minLat + box_size;
-                double minLon = box.llLon + j * box_size;
-                double maxLon = minLon + box_size;
+                float minLat = box.llLat + i * box_size;
+                float maxLat = minLat + box_size;
+                float minLon = box.llLon + j * box_size;
+                float maxLon = minLon + box_size;
 
                 // Create the box and fill in the information
                 structs::DiscreteBoxInfo boxInfo{};
@@ -487,7 +471,7 @@ namespace dfv::map {
         return glm::normalize(normal);
     }
 
-    Mesh createMeshArray(std::vector<std::vector<structs::DiscreteBoxInfo>> &box_matrix, double llLatBound, double llLonBound, double urLatBound, double urLonBound, Coordinate initialPosition) {
+    Mesh createMeshArray(std::vector<std::vector<structs::DiscreteBoxInfo>> &box_matrix, float llLatBound, float llLonBound, float urLatBound, float urLonBound, Coordinate initialPosition) {
         double totalLatWorldLatSpan = urLatBound - llLatBound;
         double totalLonWorldLatSpan = urLonBound - llLonBound;
         Mesh mesh = {};
@@ -591,8 +575,15 @@ namespace dfv::map {
                         bNodes.push_back(row.rbegin()[1]);
                     }
 
-                    sewBoxesSlave(commonNodes, aNodes, mesh, 1, false);
-                    sewBoxesSlave(commonNodes, bNodes, mesh, 1, true);
+                    if(aNodes[0].lon == commonNodes[0].lon){
+                        break;
+                    }
+                    if(bNodes[0].lon == commonNodes[0].lon){
+                        break;
+                    }
+
+                    sewBoxesSlave(commonNodes, aNodes, mesh, 1);
+                    sewBoxesSlave(commonNodes, bNodes, mesh, 1);
                 }
                 //sew top box
                 if (ii != 0) {
@@ -611,24 +602,43 @@ namespace dfv::map {
                     aNodes.insert(aNodes.begin(), (box_matrix)[ii][ie].dots[1].begin(), (box_matrix)[ii][ie].dots[1].end());
                     bNodes.insert(bNodes.begin(), (box_matrix)[ii - 1][ie].dots.rbegin()[1].begin(), (box_matrix)[ii - 1][ie].dots.rbegin()[1].end());
 
-                    sewBoxesSlave(commonNodes, aNodes, mesh, 0, false);
-                    sewBoxesSlave(commonNodes, bNodes, mesh, 0, true);
+                    if(aNodes[0].lat == commonNodes[0].lat){
+                        break;
+                    }
+                    if(bNodes[0].lat == commonNodes[0].lat){
+                        break;
+                    }
+
+                    sewBoxesSlave(commonNodes, aNodes, mesh, 0);
+                    sewBoxesSlave(commonNodes, bNodes, mesh, 0);
                 }
             }
         }
 
         std::vector<uint32_t> vertex_normal_accumulator(mesh.vertices.size(), 0);
 
+        std::cout << "Nodes : " << mesh.vertices.size() << " Triangles: " << mesh.indices.size() / 3 << std::endl;
+
         for (int i = 0; i < mesh.indices.size(); i += 3) {
             Vertex &v1 = mesh.vertices[mesh.indices[i]];
             Vertex &v2 = mesh.vertices[mesh.indices[i + 1]];
             Vertex &v3 = mesh.vertices[mesh.indices[i + 2]];
 
-            if(v1.position == v2.position && v2.position == v3.position){
-                continue;
-            }
-
             auto normal = calculateTriangleNormal(v1, v2, v3);
+//            if(isnan(normal).x || isnan(normal).y || isnan(normal).z){
+//                if(v1.normal != glm::vec3{0,0,0}){
+//                    normal = v1.normal;
+//                } else if (v2.normal != glm::vec3{0,0,0}) {
+//                    normal = v2.normal;
+//                }
+//                else if(v3.normal != glm::vec3{0,0,0}){
+//                    normal = v3.normal;
+//                }
+//                else {
+//                    normal = {0, 1, 0};
+//                }
+//            }
+
 
             v1.normal += normal;
             vertex_normal_accumulator[mesh.indices[i]]++;
@@ -636,17 +646,21 @@ namespace dfv::map {
             vertex_normal_accumulator[mesh.indices[i + 1]]++;
             v3.normal += normal;
             vertex_normal_accumulator[mesh.indices[i + 2]]++;
+            if(v1.normal == glm::vec3{0,0,0} || v2.normal == glm::vec3{0,0,0} || v3.normal == glm::vec3{0,0,0} || isnan(v1.normal).x || isnan(v1.normal).z){
+                std::cout << "error";
+            }
+        }
+
+        for (int i = 0; i < mesh.indices.size(); i += 1) {
+            if(mesh.vertices[mesh.indices[i]].normal == glm::vec3{0,0,0}){
+                std::cout << "error";
+            }
         }
 
         for (int i = 0; i < mesh.vertices.size(); ++i) {
-            if(vertex_normal_accumulator[i] != 0){
-                mesh.vertices[i].normal /= static_cast<float>(vertex_normal_accumulator[i]);
-            }
-            mesh.vertices[i].normal = glm::normalize(mesh.vertices[i].normal);
-            if(isnan(mesh.vertices[i].normal.y)){
-                mesh.vertices[i].normal = {0, 1, 0};
-            }
+            mesh.vertices[i].normal /= static_cast<float>(vertex_normal_accumulator[i]);
         }
+
         return mesh;
     }
 
@@ -716,7 +730,7 @@ namespace dfv::map {
         return nodesBox;
     }
 
-    std::vector<std::vector<structs::Node>> createGridSlave(double llLat, double llLon, double urLat, double urLon, double sparsity) {
+    std::vector<std::vector<structs::Node>> createGridSlave(float llLat, float llLon, float urLat, float urLon, float sparsity) {
         std::vector<std::vector<structs::Node>> nodes;
 
         const double baseDensity = 1.0;
@@ -737,9 +751,9 @@ namespace dfv::map {
         for (int i = 0; i < latTotalNodes; i++) {
             std::vector<structs::Node> row;
             for (int j = 0; j < lonTotalNodes; j++) {
-                double lat = (i == 0) ? llLat : (i == latTotalNodes - 1) ? urLat
+                float lat = (i == 0) ? llLat : (i == latTotalNodes - 1) ? urLat
                                                                          : llLat + i * latStep;
-                double lon = (j == 0) ? llLon : (j == lonTotalNodes - 1) ? urLon
+                float lon = (j == 0) ? llLon : (j == lonTotalNodes - 1) ? urLon
                                                                          : llLon + j * lonStep;
 
                 // Create a node and add it to the row
@@ -755,7 +769,7 @@ namespace dfv::map {
         return nodes;
     }
 
-    std::vector<std::vector<structs::Node>> createGridSlaveMock(double llLat, double llLon, double urLat, double urLon, double spacingMeters) {
+    std::vector<std::vector<structs::Node>> createGridSlaveMock(float llLat, float llLon, float urLat, float urLon, float spacingMeters) {
         std::vector<std::vector<structs::Node>> nodes;
 
         // Calculate the middle latitude and longitude
@@ -845,8 +859,8 @@ namespace dfv::map {
 
             if (element["type"] == "node") {
                 osmData.nodes.emplace_back(element["type"].GetString(), element["id"].GetInt64(),
-                                           element["lat"].GetDouble(),
-                                           element["lon"].GetDouble(), tagMap);
+                                           element["lat"].GetFloat(),
+                                           element["lon"].GetFloat(), tagMap);
             } else if (element["type"] == "way") {
                 if (element["nodes"].IsArray()) {
                     std::vector<int64_t> nodes;

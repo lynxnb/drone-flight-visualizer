@@ -8,7 +8,7 @@ namespace dfv {
 
         const auto bbox = flightData.getBoundingBox();
         const auto initialPos = flightData.getInitialPosition();
-        constexpr double BOX_OFFSET = 0.05;
+        constexpr float BOX_OFFSET = 0.05;
 
         dfv::structs::DiscreteBox box = {.llLat = bbox.llLat - BOX_OFFSET,
                                          .llLon = bbox.llLon - BOX_OFFSET,
@@ -27,15 +27,15 @@ namespace dfv {
         pathNodes.reserve(dronePath.size());
         pathNodes.emplace_back(0.001 + 46.1949826657642, 0.001 + 9.73403023222216, 10);
 
-        box.llLat = -0.012 + 46.1949826657642;
-        box.llLon = -0.012 + 9.73403023222216;
-        box.urLat = +0.012 + 46.1949826657642;
-        box.urLon = +0.012 + 9.73403023222216;
+        box.llLat = -0.008 + 46.1949826657642;
+        box.llLon = -0.008 + 9.73403023222216;
+        box.urLat = +0.016 + 46.1949826657642;
+        box.urLon = +0.016 + 9.73403023222216;
 
         mapMeshFuture = std::async(std::launch::async, [box, initialPos, pathNodes = std::move(pathNodes)]() mutable {
-            constexpr double sparsity = 1;
+            constexpr double sparsity = 100;
             constexpr double box_size = 0.008; // Example box size
-            constexpr double node_density_coefficient = 0.1; // Example coefficient
+            constexpr double node_density_coefficient = 0.5; // Example coefficient
 
             auto boxMatrix = dfv::map::createGrid(box, pathNodes, sparsity, box_size, node_density_coefficient);
 
