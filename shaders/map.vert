@@ -1,41 +1,24 @@
-#version 460
+/*
+Drone vertex shader
+*/
+
+#version 450
 
 layout (location = 0) in vec3 vPosition;
 layout (location = 1) in vec3 vNormal;
-layout (location = 3) in vec2 vUV;
+layout (location = 2) in vec2 vUV;
+
+layout (location = 0) out vec3 outColor;
+layout (location = 1) out vec3 outPos;
 
 
-layout (location = 0) out vec3 outPos;
-layout (location = 1) out vec3 outNorm;
-layout (location = 3) out vec2 outUV;
-
-
-layout (set = 0, binding = 0) uniform CameraBuffer {
-    mat4 view;
-    mat4 proj;
-    mat4 viewproj;
-} cameraData;
-
-struct ObjectData{
-    mat4 model;
-};
-
-layout (std140, set = 1, binding = 0) readonly buffer ObjectBuffer {
-    ObjectData objects[];
-} objectBuffer;
-
-// Push constants block
 layout (push_constant) uniform constants {
-    vec4 data;
-    mat4 renderMatrix;
-} PushConstants;
+    mat4 modelTransform;
+    mat4 worldTransform;
+} pushConstants;
 
 void main() {
-    // Index into the object buffer using vkCmdDraw `firstInstance` parameter
-    mat4 modelMatrix = objectBuffer.objects[gl_BaseInstance].model;
-    mat4 transformMatrix = (cameraData.viewproj * modelMatrix);
-    gl_Position = transformMatrix * vec4(vPosition, 1.0f);
-    outPos = (modelMatrix * vec4(vPosition, 1.0f)).xyz;
-    outNorm = vNormal;
-    outUV = vUV;
+    gl_Position = pushConstants.worldTransform * vec4(vPosition, 1.0f);
+    outPos = (pushConstants.modelTransform * vec4(vPosition, 1.0f)).xyz;
+    outColor = vNormal;
 }

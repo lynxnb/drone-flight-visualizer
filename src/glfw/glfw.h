@@ -8,10 +8,9 @@ namespace dfv::raii {
      */
     class Glfw {
       public:
-        Glfw(int width, int height, const char *title) {
+        Glfw(const int width, const int height, const char *title) {
             glfwInit();
             glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-            glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); // Remove once swapchain recreation is implemented
 
             using namespace dfv::window_config;
             window = glfwCreateWindow(width, height, title, nullptr, nullptr);
@@ -51,7 +50,7 @@ namespace dfv::raii {
             return *this;
         }
 
-        GLFWwindow *getWindow() {
+        GLFWwindow *getWindow() const {
             return window;
         }
 

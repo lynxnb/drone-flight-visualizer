@@ -7,7 +7,7 @@
 
 namespace dfv {
     Visualizer::Visualizer(const VisualizerCreateInfo &createInfo)
-        : flightData(createInfo.flightData), surface(createInfo.surface), engine(),
+        : flightData(createInfo.flightData), surface(createInfo.surface), engine(createInfo.surface),
           objectModelPath(createInfo.objectModelPath), objectScale(createInfo.objectScale) {}
 
     Visualizer::~Visualizer() {
@@ -25,7 +25,7 @@ namespace dfv {
         // Tell the map manager to start loading the map
         mapManager.startLoad(flightData);
 
-        engine.init(surface);
+        engine.init();
         createScene();
 
         // Run user-defined start-up operations
@@ -132,7 +132,7 @@ namespace dfv {
         if (meshOpt) {
             auto [mapObject, mapHandle] = engine.allocateRenderObject();
             *mapObject = {.mesh = engine.insertMesh("map", std::move(*meshOpt)),
-                          .material = engine.getMaterial("defaultmesh"),
+                          .material = engine.getMaterial("map"),
                           .transform = glm::mat4{1.f}};
         }
 
@@ -220,7 +220,7 @@ namespace dfv {
         }
     }
 
-    void Visualizer::changeTimeMultiplier(float multiplier) {
+    void Visualizer::changeTimeMultiplier(const float multiplier) {
         droneTimeMultiplier = multiplier;
     }
 

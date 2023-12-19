@@ -6,7 +6,7 @@
 #include "glfw/glfw_surface.h"
 #include "visualizer.h"
 
-void setupInput(dfv::raii::Glfw &glfw, dfv::Visualizer &visualizer);
+void setupInput(const dfv::raii::Glfw &glfw, dfv::Visualizer &visualizer);
 
 /*
  * The main entrypoint of the drone flight visualizer.
@@ -14,7 +14,7 @@ void setupInput(dfv::raii::Glfw &glfw, dfv::Visualizer &visualizer);
  * Command line usage: drone_flight_visualizer $1
  * $1: Drone CSV flight_data
  */
-int main(int argc, char **argv) {
+int main(const int argc, char **argv) {
     std::filesystem::path path;
     if (argc > 1) {
         path = argv[1];
@@ -36,13 +36,13 @@ int main(int argc, char **argv) {
 
     using namespace dfv::window_config;
     // GLFW initialization
-    dfv::raii::Glfw glfw{WindowWidth, WindowHeight, WindowTitle};
+    const dfv::raii::Glfw glfw{WindowWidth, WindowHeight, WindowTitle};
     dfv::GlfwSurface surface{glfw.getWindow()};
 
-    dfv::VisualizerCreateInfo createInfo{.surface = surface,
-                                         .flightData = data,
-                                         .objectModelPath = "assets/models/model.obj",
-                                         .objectScale = 0.04f};
+    const dfv::VisualizerCreateInfo createInfo{.surface = surface,
+                                               .flightData = data,
+                                               .objectModelPath = "assets/models/model.obj",
+                                               .objectScale = 0.04f};
 
     dfv::Visualizer visualizer{createInfo};
     visualizer.start();
@@ -61,11 +61,11 @@ int main(int argc, char **argv) {
         visualizer.drawFrame(deltaTime);
     }
 
-    auto stats = visualizer.getStats();
-    auto updateTimeAvg = duration_cast<dfv::milliseconds_f>(stats.updateTotalTime / stats.frameCount);
-    auto drawTimeAvg = duration_cast<dfv::milliseconds_f>(stats.drawTotalTime / stats.frameCount);
-    auto frameTimeAvg = duration_cast<dfv::milliseconds_f>((stats.updateTotalTime + stats.drawTotalTime) / stats.frameCount);
-    auto fpsAvg = 1000.0f / frameTimeAvg.count();
+    const auto stats = visualizer.getStats();
+    const auto updateTimeAvg = duration_cast<dfv::milliseconds_f>(stats.updateTotalTime / stats.frameCount);
+    const auto drawTimeAvg = duration_cast<dfv::milliseconds_f>(stats.drawTotalTime / stats.frameCount);
+    const auto frameTimeAvg = duration_cast<dfv::milliseconds_f>((stats.updateTotalTime + stats.drawTotalTime) / stats.frameCount);
+    const auto fpsAvg = 1000.0f / frameTimeAvg.count();
 
     std::cout << "Average update time: " << updateTimeAvg << std::endl;
     std::cout << "Average draw time: " << drawTimeAvg << std::endl;
@@ -75,12 +75,12 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-void setupInput(dfv::raii::Glfw &glfw, dfv::Visualizer &visualizer) {
+void setupInput(const dfv::raii::Glfw &glfw, dfv::Visualizer &visualizer) {
     static dfv::Visualizer &visualizerRef = visualizer;
 
     static dfv::CameraMovement movement{};
 
-    glfwSetKeyCallback(glfw.getWindow(), [](GLFWwindow *window, int key, int scancode, int action, int mods) {
+    glfwSetKeyCallback(glfw.getWindow(), [](GLFWwindow *window, const int key, int /*scancode*/, const int action, int /*mods*/) {
         if (action == GLFW_REPEAT) {
             return;
         }
@@ -128,7 +128,7 @@ void setupInput(dfv::raii::Glfw &glfw, dfv::Visualizer &visualizer) {
 
     static double lastCursorX, lastCursorY;
 
-    static auto cursorPosCallback = [](GLFWwindow *window, double xpos, double ypos) {
+    static auto cursorPosCallback = [](GLFWwindow * /*window*/, const double xpos, const double ypos) {
         double xoffset = lastCursorX - xpos; // Reversed since Vulkan used left-handed coordinates
         double yoffset = lastCursorY - ypos; // Reversed since y-coordinates range from bottom to top
         lastCursorX = xpos;
@@ -145,7 +145,7 @@ void setupInput(dfv::raii::Glfw &glfw, dfv::Visualizer &visualizer) {
 
     // We set the callback once to get the initial cursor position, to avoid a camera jump when the cursor first enters the window
     // We then set the callback to the actual callback
-    glfwSetCursorPosCallback(glfw.getWindow(), [](GLFWwindow *window, double xpos, double ypos) {
+    glfwSetCursorPosCallback(glfw.getWindow(), [](GLFWwindow *window, const double xpos, const double ypos) {
         lastCursorX = xpos;
         lastCursorY = ypos;
         glfwSetCursorPosCallback(window, cursorPosCallback);

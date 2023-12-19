@@ -47,12 +47,14 @@ namespace dfv {
 
     class VulkanEngine {
       public:
+        explicit VulkanEngine(const SurfaceWrapper &surfaceWrapper)
+            : surfaceWrap(surfaceWrapper) {}
+
         /**
          * Initializes the engine.
-         * @param surfaceWrap The surface wrapper to use for retrieve the surface.
          * @note This function will throw exceptions if initialization fails.
          */
-        void init(SurfaceWrapper &surfaceWrap);
+        void init();
 
         /**
          * Shuts down the engine
@@ -124,10 +126,10 @@ namespace dfv {
         }
 
         struct {
-            glm::vec3 position; //!< The position of the camera
-            glm::vec3 orientation; //!< The orientation of the camera in radians (yaw, pitch, roll)
-            glm::vec3 front; //!< Normalized vector pointing in the direction the camera is facing
-            glm::vec3 up; //!< The up vector
+            glm::vec3 position{}; //!< The position of the camera
+            glm::vec3 orientation{}; //!< The orientation of the camera in radians (yaw, pitch, roll)
+            glm::vec3 front{}; //!< Normalized vector pointing in the direction the camera is facing
+            glm::vec3 up{}; //!< The up vector
 
             float fov{glm::radians(70.f)}; //!< Field of view in radians
             float nearPlane{0.1f}; //!< Near plane distance
@@ -197,20 +199,23 @@ namespace dfv {
          */
         size_t uniformBufferSizeAlignUp(size_t size) const;
 
-        /**
-         * Loads the core Vulkan structures
-         * @param surfaceWrap The surface wrapper to use for retrieve the surface.
-         */
-        void initVulkan(SurfaceWrapper &surfaceWrap);
+        void initVulkan();
+
         void initSwapchain();
-        void initCommands();
-        void initSyncStructures();
         void initDefaultRenderpass();
         void initFramebuffers();
+
         void initDescriptors();
         void initPipelines();
 
+        void initCommands();
+        void initSyncStructures();
+
+        void recreateSwapchain();
+
       private:
+        const SurfaceWrapper &surfaceWrap; //!< The surface wrapper used to retrieve the surface
+
         bool isInitialized{false};
         uint32_t frameNumber{0};
 
@@ -237,6 +242,7 @@ namespace dfv {
         uint32_t graphicsQueueFamily{}; //!< The family of the queue
 
         VkRenderPass renderPass{VK_NULL_HANDLE}; //!< Default renderpass for the engine
+        VkFormat renderPassColorFormat{VK_FORMAT_UNDEFINED}; //!< Format used by the renderpass color attachment
         std::vector<VkFramebuffer> framebuffers;
 
         std::array<FrameData, MaxFramesInFlight> frames; //!< Per-frame data
@@ -256,7 +262,7 @@ namespace dfv {
         std::unordered_map<std::string, Mesh> meshes; //!< Meshes loaded by the engine
         std::unordered_map<std::string, Material> materials; //!< Materials loaded by the engine
 
-        uniform::SceneData sceneParameters; //!< Scene parameters to use during rendering
+        uniform::SceneData sceneParameters{}; //!< Scene parameters to use during rendering
         AllocatedBuffer sceneParametersBuffer; //!< Buffer containing the scene parameters
         void createMaterial(PipelineBuilder &pipelineBuilder, VkPipelineLayout &meshPipelineLayout, const std::string &vertexShaderPath, const std::string &fragmentShaderPath, const std::string &materialName);
     };

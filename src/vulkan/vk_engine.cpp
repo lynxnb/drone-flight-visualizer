@@ -20,25 +20,27 @@
 
 namespace dfv {
 
-    void VulkanEngine::init(SurfaceWrapper &surfaceWrap) {
-        windowExtent = surfaceWrap.getExtent();
-
+    void VulkanEngine::init() {
         // Load core Vulkan structures
-        initVulkan(surfaceWrap);
+        initVulkan();
+
         // Create the swapchain
         initSwapchain();
-        // Create the command buffers
-        initCommands();
-        // Creates synchronization structures
-        initSyncStructures();
         // Create the default renderpass
         initDefaultRenderpass();
         // Create framebuffers
         initFramebuffers();
+
         // Create descriptors
         initDescriptors();
         // Create pipelines
         initPipelines();
+
+        // Create the command buffers
+        initCommands();
+
+        // Creates synchronization structures
+        initSyncStructures();
 
         isInitialized = true;
     }
@@ -59,22 +61,19 @@ namespace dfv {
         VK_CHECK(vkResetCommandBuffer(frame.mainCommandBuffer, 0));
 
         // Begin the command buffer recording. We will use this command buffer exactly once, so we want to let Vulkan know that
-        constexpr VkCommandBufferBeginInfo cmdBeginInfo = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-                                                           .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
+        const VkCommandBufferBeginInfo cmdBeginInfo = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                                                       .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
 
         VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
-        // Allocate memory for the clear values
-
         // Clear color to sky blue
-        constexpr VkClearValue colorClear = {.color = {{0.39f, 0.58f, 0.93f, 1.0f}}};
+        const VkClearValue colorClear = {.color = {{0.39f, 0.58f, 0.93f, 1.0f}}};
 
         // Clear depth
-        constexpr VkClearValue depthClear = {.depthStencil = {.depth = 1.0f}};
+        const VkClearValue depthClear = {.depthStencil = {.depth = 1.0f}};
 
         std::array clearValues = {colorClear, depthClear};
 
-        // Start the main renderpass
         // We will use the clear color from above, and the framebuffer of the index the swapchain gave us
         const VkRenderPassBeginInfo rpInfo = {.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
                                               .renderPass = renderPass,
@@ -83,18 +82,25 @@ namespace dfv {
                                               .clearValueCount = clearValues.size(),
                                               .pClearValues = clearValues.data()};
 
+        const VkViewport viewport = {.x = 0.0f,
+                                     .y = 0.0f,
+                                     .width = static_cast<float>(windowExtent.width),
+                                     .height = static_cast<float>(windowExtent.height),
+                                     .minDepth = 0.0f,
+                                     .maxDepth = 1.0f};
+
         vkCmdBeginRenderPass(cmd, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdSetViewport(cmd, 0, 1, &viewport);
+        vkCmdSetScissor(cmd, 0, 1, &rpInfo.renderArea);
 
         drawObjects(cmd);
 
-        // Finalize the render pass
         vkCmdEndRenderPass(cmd);
-        // Finalize the command buffer (we can no longer add commands, but it can now be executed)
+
         VK_CHECK(vkEndCommandBuffer(cmd));
 
         VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
-        // Prepare the submission to the queue
         // We want to wait on the presentSemaphore, as that semaphore is signaled when the swapchain is ready
         // We will signal the renderSemaphore, to signal that rendering has finished
         const VkSubmitInfo submit = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -106,12 +112,10 @@ namespace dfv {
                                      .signalSemaphoreCount = 1,
                                      .pSignalSemaphores = &frame.renderSemaphore};
 
-        // Submit command buffer to the queue and execute it
         // renderFence will now block until the graphic commands finish execution
         VK_CHECK(vkQueueSubmit(graphicsQueue, 1, &submit, frame.renderFence));
 
-        // This will put the image we just rendered into the visible window
-        // We want to wait on the renderSemaphore for that,
+        // We want to wait on the renderSemaphore before presentation
         // as it's necessary that drawing commands have finished before the image is displayed to the user
         const VkPresentInfoKHR presentInfo = {.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
                                               .waitSemaphoreCount = 1,
@@ -120,9 +124,12 @@ namespace dfv {
                                               .pSwapchains = &swapchain,
                                               .pImageIndices = &swapchainImageIndex};
 
-        VK_CHECK(vkQueuePresentKHR(graphicsQueue, &presentInfo));
+        const auto result = vkQueuePresentKHR(graphicsQueue, &presentInfo);
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+            recreateSwapchain();
+        else
+            VK_CHECK(result);
 
-        // Increase the number of frames drawn
         frameNumber++;
     }
 
@@ -208,6 +215,7 @@ namespace dfv {
         vkWaitForFences(device, fences.size(), fences.data(), true, 1000000000);
 
         mainDeletionQueue.flush();
+        swapchainDeletionQueue.flush();
 
         vmaDestroyAllocator(allocator);
         vkDestroyDevice(device, nullptr);

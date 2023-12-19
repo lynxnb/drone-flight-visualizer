@@ -9,11 +9,11 @@ namespace dfv {
       public:
         explicit GlfwSurface(GLFWwindow *window);
 
-        std::pair<VkResult, VkSurfaceKHR> getSurface(VkInstance instance) override;
+        std::pair<VkResult, VkSurfaceKHR> getSurface(VkInstance instance) const override;
 
-        VkExtent2D getExtent() override;
+        VkExtent2D getExtent() const override;
 
       private:
-        GLFWwindow *window;
+        GLFWwindow *window{nullptr};
     };
 } // namespace dfv

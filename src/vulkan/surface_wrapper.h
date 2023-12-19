@@ -10,16 +10,17 @@ namespace dfv {
      */
     class SurfaceWrapper {
       public:
+        virtual ~SurfaceWrapper() = default;
         /**
          * @brief Retrieves a surface for use with the given Vulkan instance.
          * @param instance The Vulkan instance.
          * @return A pair containing the result of the operation and the surface if successful.
          */
-        virtual std::pair<VkResult, VkSurfaceKHR> getSurface(VkInstance instance) = 0;
+        virtual std::pair<VkResult, VkSurfaceKHR> getSurface(VkInstance instance) const = 0;
 
         /**
          * @brief Retrieves the extent of the surface.
          */
-        virtual VkExtent2D getExtent() = 0;
+        virtual VkExtent2D getExtent() const = 0;
     };
 } // namespace dfv
