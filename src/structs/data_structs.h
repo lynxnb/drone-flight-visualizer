@@ -53,10 +53,10 @@ namespace dfv::structs {
     };
 
     struct DiscreteBox {
-        float llLat = 10000;
-        float llLon = 10000;
-        float urLat = -10000;
-        float urLon = -10000;
+        double llLat = 10000;
+        double llLon = 10000;
+        double urLat = -10000;
+        double urLon = -10000;
         float spacingMeters;
     };
 

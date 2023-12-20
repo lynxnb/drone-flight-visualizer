@@ -1,18 +1,16 @@
 #pragma once
 
-#include <glm/vec2.hpp>
-
 namespace dfv {
     /**
      * @brief A coordinate in latitude, longitude and altitude.
      */
     struct Coordinate {
-        float lat;
-        float lon;
-        float alt; //!< Altitude in meters
+        double lat;
+        double lon;
+        double alt; //!< Altitude in meters
     };
 
-    constexpr float SCALING_FACTOR = 100000.0; //  0.00001 = 1.11 meter
+    constexpr double SCALING_FACTOR = 100000.0; //  0.00001 = 1.11 meter
 
     /**
      * @brief Calculates the relative position of a coordinate in relation to another coordinate.

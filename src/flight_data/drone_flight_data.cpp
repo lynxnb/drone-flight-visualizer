@@ -87,7 +87,7 @@ namespace dfv {
     }
 
     std::vector<FlightDataPoint> DroneFlightData::loadFlightData(const std::string &csvPath) {
-        const float feetToMeter = 0.3048;
+        const double feetToMeter = 0.3048;
         using namespace csv;
 
         const auto startTime = clock::now();
@@ -99,7 +99,7 @@ namespace dfv {
         for (CSVRow &row : reader) {
             const Coordinate coords = {.lat = row["OSD.latitude"].get<float>(),
                                        .lon = row["OSD.longitude"].get<float>(),
-                                       .alt = row["OSD.altitude [ft]"].get<float>() * feetToMeter};
+                                       .alt = row["OSD.altitude [ft]"].get<double>() * feetToMeter};
 
             // set initial position if not set yet
             if (!initialPosition) {

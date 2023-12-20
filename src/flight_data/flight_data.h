@@ -28,10 +28,10 @@ namespace dfv {
     };
 
     struct FlightBoundingBox {
-        float llLat; //!< Lower left latitude
-        float llLon; //!< Lower left longitude
-        float urLat; //!< Upper right latitude
-        float urLon; //!< Upper right longitude
+        double llLat; //!< Lower left latitude
+        double llLon; //!< Lower left longitude
+        double urLat; //!< Upper right latitude
+        double urLon; //!< Upper right longitude
     };
 
     /**
