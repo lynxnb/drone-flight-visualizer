@@ -95,25 +95,24 @@ namespace dfv {
         std::vector<FlightDataPoint> flightData;
 
         for (CSVRow &row : reader) {
-            glm::dvec2 coords = {row["OSD.latitude"].get<double>(),
-                                 row["OSD.longitude"].get<double>()};
+            glm::dvec2 coords = {row["OSD.longitude"].get<double>(), row["OSD.latitude"].get<double>()};
             double altitude = row["OSD.altitude [ft]"].get<double>() * feetToMeter;
 
             // set initial position if not set yet
             if (!initialPosition) {
-                initialPosition = Coordinate{coords.x,
-                                             coords.y,
+                initialPosition = Coordinate{coords.y,
+                                             coords.x,
                                              altitude};
-                boundingBox.llLat = coords.x;
-                boundingBox.llLon = coords.y;
-                boundingBox.urLat = coords.x;
-                boundingBox.urLon = coords.y;
+                boundingBox.llLon = coords.x;
+                boundingBox.llLat = coords.y;
+                boundingBox.urLon = coords.x;
+                boundingBox.urLat = coords.y;
             }
 
-            boundingBox.llLat = std::min(boundingBox.llLat, coords.x);
-            boundingBox.llLon = std::min(boundingBox.llLon, coords.y);
-            boundingBox.urLat = std::max(boundingBox.urLat, coords.x);
-            boundingBox.urLon = std::max(boundingBox.urLon, coords.y);
+            boundingBox.llLat = std::min(boundingBox.llLat, coords.y);
+            boundingBox.llLon = std::min(boundingBox.llLon, coords.x);
+            boundingBox.urLat = std::max(boundingBox.urLat, coords.y);
+            boundingBox.urLon = std::max(boundingBox.urLon, coords.x);
 
             // calculate position in relation to initial position
             auto position = calculateRelativePosition(coords,

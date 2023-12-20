@@ -7,8 +7,8 @@ namespace dfv {
      * @brief A coordinate in latitude, longitude and altitude.
      */
     struct Coordinate {
-        double lat;
         double lon;
+        double lat;
         double alt; //!< Altitude in meters
     };
 
