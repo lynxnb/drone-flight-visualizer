@@ -178,12 +178,9 @@ namespace dfv {
                                     dataPoint.y,
                                     dataPoint.z};
 
-                // Direction from the camera to the object
-                glm::vec3 direction = glm::normalize(target - engine.camera.position);
-
                 engine.camera.position += positionMask * cameraMovementSpeed * deltaTime.count();
                 // Look in the direction of the object
-                engine.camera.front = direction;
+                engine.camera.front = glm::normalize(target - engine.camera.position);
                 engine.camera.updateOrientation();
             } break;
 
