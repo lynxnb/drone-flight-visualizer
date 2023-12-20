@@ -151,7 +151,7 @@ namespace dfv {
         MapManager mapManager; //!< The class that handles map loading
 
         CameraMode cameraMode{CameraMode::Free}; //!< The current camera mode
-        float cameraMovementSpeed{100.f}; //!< The speed of the camera movement in m/s
+        float cameraMovementSpeed{200.f}; //!< The speed of the camera movement in m/s
         float cameraRotationSpeed{glm::radians(60.f)}; //!< The speed of the camera rotation in radians/s
         CameraMovement cameraMovement{}; //!< The current movement state of the camera
 

@@ -223,16 +223,14 @@ namespace dfv::map {
     }
 
     void sewBoxesSlave(std::vector<Node> &commonNodes, std::vector<Node> &sparseNodes, Mesh &mesh, int orientation) {
-        int sparseIndex = orientation == 1 ? 1 : 0;
-        for (int k = 0; k < commonNodes.size() - 1; ++k) {
+        bool reverseOrientationX = sparseNodes[0].game_node->x > commonNodes[0].game_node->x;
+        bool reverseOrientationZ = sparseNodes[0].game_node->z > commonNodes[0].game_node->z;
+        int sparseIndex = orientation == 0 ? 1 : 0;
+        for (int k = orientation == 0 ? 1 : 0; k < commonNodes.size() - 1; ++k) {
             if(orientation == 1 && commonNodes[k].lat < sparseNodes[sparseIndex].lat){
                 continue;
             }
-            if (sparseIndex + 2 > sparseNodes.size()) {
-                break;
-            }
-
-            if (orientation == 1 && sparseIndex + 3 > sparseNodes.size()) {
+            if (sparseIndex + 2 > sparseNodes.size() || (orientation == 0 && sparseIndex + 3 > sparseNodes.size() )) {
                 break;
             }
 
@@ -244,43 +242,79 @@ namespace dfv::map {
                 continue;
             }
             if(orientation == 1 && (commonNode.lon == sparseNode.lon || nextCommonNode.lon == nextSparseNode.lon || commonNode.lon == nextSparseNode.lon)) {
-                break;
+                throw std::runtime_error("Same lon on horizontal sewing, precondition error");
             }
             if(orientation == 0 && (commonNode.lat == sparseNode.lat || nextCommonNode.lat == nextSparseNode.lat || commonNode.lat == nextSparseNode.lat)) {
-                break;
+                throw std::runtime_error("Same lat on vertical sewing, precondition error");
             }
             if (orientation == 1) {
-                if (nextCommonNode.lat != nextSparseNode.lat) {
-                    mesh.indices.push_back(sparseNode.game_node->vertex_index);
-                    mesh.indices.push_back(commonNode.game_node->vertex_index);
-                    mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                if(reverseOrientationX){
+                    if (nextCommonNode.lat != nextSparseNode.lat) {
+                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                        mesh.indices.push_back(commonNode.game_node->vertex_index);
+                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                    } else {
+                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                        mesh.indices.push_back(commonNode.game_node->vertex_index);
+                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+
+                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                        mesh.indices.push_back(nextSparseNode.game_node->vertex_index);
+                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
+
+                        sparseIndex++;
+                    }
                 } else {
-                    mesh.indices.push_back(sparseNode.game_node->vertex_index);
-                    mesh.indices.push_back(commonNode.game_node->vertex_index);
-                    mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                    if (nextCommonNode.lat != nextSparseNode.lat) {
+                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                        mesh.indices.push_back(commonNode.game_node->vertex_index);
+                    } else {
+                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                        mesh.indices.push_back(commonNode.game_node->vertex_index);
 
-                    mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
-                    mesh.indices.push_back(nextSparseNode.game_node->vertex_index);
-                    mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                        mesh.indices.push_back(nextSparseNode.game_node->vertex_index);
 
-                    sparseIndex++;
+                        sparseIndex++;
+                    }
                 }
             }
             if (orientation == 0) {
-                if (nextCommonNode.lon != nextSparseNode.lon) {
-                    mesh.indices.push_back(sparseNode.game_node->vertex_index);
-                    mesh.indices.push_back(commonNode.game_node->vertex_index);
-                    mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                if(reverseOrientationZ){
+                    if (nextCommonNode.lon != nextSparseNode.lon) {
+                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                        mesh.indices.push_back(commonNode.game_node->vertex_index);
+                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                    } else {
+                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                        mesh.indices.push_back(commonNode.game_node->vertex_index);
+                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+
+                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                        mesh.indices.push_back(nextSparseNode.game_node->vertex_index);
+                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
+
+                        sparseIndex++;
+                    }
                 } else {
-                    mesh.indices.push_back(sparseNode.game_node->vertex_index);
-                    mesh.indices.push_back(commonNode.game_node->vertex_index);
-                    mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                    if (nextCommonNode.lon != nextSparseNode.lon) {
+                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                        mesh.indices.push_back(commonNode.game_node->vertex_index);
+                    } else {
+                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                        mesh.indices.push_back(commonNode.game_node->vertex_index);
 
-                    mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
-                    mesh.indices.push_back(nextSparseNode.game_node->vertex_index);
-                    mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                        mesh.indices.push_back(nextCommonNode.game_node->vertex_index);
+                        mesh.indices.push_back(sparseNode.game_node->vertex_index);
+                        mesh.indices.push_back(nextSparseNode.game_node->vertex_index);
 
-                    sparseIndex++;
+                        sparseIndex++;
+                    }
                 }
             }
 
@@ -499,7 +533,6 @@ namespace dfv::map {
         double totalLatWorldLatSpan = urLatBound - llLatBound;
         double totalLonWorldLatSpan = urLonBound - llLonBound;
         Mesh mesh = {};
-        std::vector<structs::Triangle> triangles;
         float elevation_scale = 1;
 
         for (int ii = 0; ii < box_matrix.size(); ++ii) {
@@ -546,8 +579,6 @@ namespace dfv::map {
                             box->dots[i + 1][e].game_node->vertex_index = mesh.vertices.size() - 1;
                         }
 
-                        structs::Triangle triangle(box->dots[i][e].game_node, box->dots[i][e + 1].game_node, box->dots[i + 1][e].game_node);
-                        triangles.push_back(triangle);
                         if (i != 0 && i != box->dots.size() - 2 && e != 0 && e != box->dots[0].size() - 2) {
                             mesh.indices.push_back(box->dots[i][e].game_node->vertex_index);
                             mesh.indices.push_back(box->dots[i][e + 1].game_node->vertex_index);
@@ -567,8 +598,6 @@ namespace dfv::map {
                             });
                             box->dots[i + 1][e + 1].game_node->vertex_index = mesh.vertices.size() - 1;
                         }
-                        structs::Triangle triangle(box->dots[i + 1][e].game_node, box->dots[i + 1][e + 1].game_node, box->dots[i][e + 1].game_node);
-                        triangles.push_back(triangle);
                         if (i != 0 && i != box->dots.size() - 2 && e != 0 && e != box->dots[0].size() - 2) {
                             mesh.indices.push_back(box->dots[i][e + 1].game_node->vertex_index);
                             mesh.indices.push_back(box->dots[i + 1][e + 1].game_node->vertex_index);
@@ -600,10 +629,10 @@ namespace dfv::map {
                     }
 
                     if(aNodes[0].game_node->x == commonNodes[0].game_node->x){
-                        break;
+                        throw std::runtime_error("aNodes[0].game_node->x == commonNodes[0].game_node->x in sewing");
                     }
                     if(bNodes[0].game_node->x == commonNodes[0].game_node->x){
-                        break;
+                        throw std::runtime_error("aNodes[0].game_node->x == commonNodes[0].game_node->x in sewing");
                     }
 
                     sewBoxesSlave(commonNodes, aNodes, mesh, 1);
@@ -627,14 +656,14 @@ namespace dfv::map {
                     bNodes.insert(bNodes.begin(), (box_matrix)[ii - 1][ie].dots.rbegin()[1].begin(), (box_matrix)[ii - 1][ie].dots.rbegin()[1].end());
 
                     if((box_matrix)[ii][ie].dots[0][0].game_node->z != (box_matrix)[ii - 1][ie].dots.back()[0].game_node->z){
-                        break;
+                        throw std::runtime_error("Detected different starting and ending point for box in sewing");
                     }
 
                     if(aNodes[0].game_node->z == commonNodes[0].game_node->z){
-                        break;
+                        throw std::runtime_error("aNodes[0].game_node->z == commonNodes[0].game_node->z in sewing");
                     }
                     if(bNodes[0].game_node->z == commonNodes[0].game_node->z){
-                        break;
+                        throw std::runtime_error("aNodes[0].game_node->z == commonNodes[0].game_node->z in sewing");
                     }
 
                     sewBoxesSlave(commonNodes, aNodes, mesh, 0);
