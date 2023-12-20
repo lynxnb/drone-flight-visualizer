@@ -132,7 +132,7 @@ namespace dfv {
         if (meshOpt) {
             auto [mapObject, mapHandle] = engine.allocateRenderObject();
             *mapObject = {.mesh = engine.insertMesh("map", std::move(*meshOpt)),
-                          .material = engine.getMaterial("defaultmesh"),
+                          .material = engine.getMaterial("map"),
                           .transform = glm::mat4{1.f}};
         }
 

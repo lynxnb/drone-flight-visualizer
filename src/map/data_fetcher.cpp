@@ -243,10 +243,10 @@ namespace dfv::map {
             if (commonNode.lat == nextCommonNode.lat && commonNode.lon == nextCommonNode.lon) {
                 continue;
             }
-            if(orientation == 1 && commonNode.lon == sparseNode.lon) {
+            if(orientation == 1 && (commonNode.lon == sparseNode.lon || nextCommonNode.lon == nextSparseNode.lon || commonNode.lon == nextSparseNode.lon)) {
                 break;
             }
-            if(orientation == 0 && commonNode.lat == sparseNode.lat) {
+            if(orientation == 0 && (commonNode.lat == sparseNode.lat || nextCommonNode.lat == nextSparseNode.lat || commonNode.lat == nextSparseNode.lat)) {
                 break;
             }
             if (orientation == 1) {
@@ -283,6 +283,21 @@ namespace dfv::map {
                     sparseIndex++;
                 }
             }
+
+//            if(mesh.vertices[mesh.indices.rbegin()[0]].position.x == mesh.vertices[mesh.indices.rbegin()[1]].position.x &&
+//                mesh.vertices[mesh.indices.rbegin()[0]].position.x == mesh.vertices[mesh.indices.rbegin()[2]].position.x) {
+//                auto a = mesh.vertices[mesh.indices.rbegin()[0]];
+//                auto b = mesh.vertices[mesh.indices.rbegin()[1]];
+//                auto c = mesh.vertices[mesh.indices.rbegin()[2]];
+//                break;
+//            }
+//            if(mesh.vertices[mesh.indices.rbegin()[0]].position.z == mesh.vertices[mesh.indices.rbegin()[1]].position.z &&
+//                mesh.vertices[mesh.indices.rbegin()[0]].position.z == mesh.vertices[mesh.indices.rbegin()[2]].position.z) {
+//                auto a = mesh.vertices[mesh.indices.rbegin()[0]];
+//                auto b = mesh.vertices[mesh.indices.rbegin()[1]];
+//                auto c = mesh.vertices[mesh.indices.rbegin()[2]];
+//                break;
+//            }
         }
     }
 
@@ -296,16 +311,25 @@ namespace dfv::map {
         int latBoxes = floor((box.urLat - box.llLat) / box_size);
         int lonBoxes = floor((box.urLon - box.llLon) / box_size);
 
+        std::vector<float> latOptions;
+        std::vector<float> lonOptions;
+
+        for (int i = 0; i < latBoxes + 1; i++) {
+            latOptions.push_back(box.llLat + i * box_size);
+        }
+        for (int j = 0; j < lonBoxes + 1; j++) {
+            lonOptions.push_back(box.llLon + j * box_size);
+        }
+
         std::vector<std::vector<structs::DiscreteBoxInfo>> box_matrix(latBoxes, std::vector<structs::DiscreteBoxInfo>(lonBoxes));
 
         // Iterate over each box in the matrix
         for (int i = 0; i < latBoxes; i++) {
             for (int j = 0; j < lonBoxes; j++) {
-                // Calculate the bounds of the box
-                float minLat = box.llLat + i * box_size;
-                float maxLat = minLat + box_size;
-                float minLon = box.llLon + j * box_size;
-                float maxLon = minLon + box_size;
+                float minLat = latOptions[i];
+                float maxLat = latOptions[i+1];
+                float minLon = lonOptions[j];
+                float maxLon = lonOptions[j+1];
 
                 // Create the box and fill in the information
                 structs::DiscreteBoxInfo boxInfo{};
@@ -479,7 +503,7 @@ namespace dfv::map {
         float elevation_scale = 1;
 
         for (int ii = 0; ii < box_matrix.size(); ++ii) {
-            for (int ie = 0; ie < box_matrix[ii].size(); ++ie) {
+            for (int ie = 0; ie < box_matrix[0].size(); ++ie) {
                 structs::DiscreteBoxInfo *box = &box_matrix[ii][ie];
 
                 //create inner box mash
@@ -487,8 +511,8 @@ namespace dfv::map {
                     for (int e = 0; e < box->dots[0].size() - 1; ++e) {
                         if (box->dots[i][e].game_node == nullptr) {
                             box->dots[i][e].game_node = new GameNode();
-                            box->dots[i][e].game_node->x = (box->dots[i][e].lat - initialPosition.lat) * SCALING_FACTOR;
-                            box->dots[i][e].game_node->z = (box->dots[i][e].lon - initialPosition.lon) * SCALING_FACTOR;
+                            box->dots[i][e].game_node->x = (box->dots[i][e].lon - initialPosition.lon) * SCALING_FACTOR;
+                            box->dots[i][e].game_node->z = (box->dots[i][e].lat - initialPosition.lat) * SCALING_FACTOR;
                             box->dots[i][e].game_node->y = box->dots[i][e].elev * elevation_scale;
                             mesh.vertices.push_back({
                                     {box->dots[i][e].game_node->x, box->dots[i][e].game_node->y, box->dots[i][e].game_node->z},
@@ -499,8 +523,8 @@ namespace dfv::map {
                         }
                         if (box->dots[i][e + 1].game_node == nullptr) {
                             box->dots[i][e + 1].game_node = new GameNode();
-                            box->dots[i][e + 1].game_node->x = (box->dots[i][e + 1].lat - initialPosition.lat) * SCALING_FACTOR;
-                            box->dots[i][e + 1].game_node->z = (box->dots[i][e + 1].lon - initialPosition.lon) * SCALING_FACTOR;
+                            box->dots[i][e + 1].game_node->x = (box->dots[i][e + 1].lon - initialPosition.lon) * SCALING_FACTOR;
+                            box->dots[i][e + 1].game_node->z = (box->dots[i][e + 1].lat - initialPosition.lat) * SCALING_FACTOR;
                             box->dots[i][e + 1].game_node->y = box->dots[i][e + 1].elev * elevation_scale;
                             mesh.vertices.push_back({
                                     {box->dots[i][e + 1].game_node->x, box->dots[i][e + 1].game_node->y, box->dots[i][e + 1].game_node->z},
@@ -511,8 +535,8 @@ namespace dfv::map {
                         }
                         if (box->dots[i + 1][e].game_node == nullptr) {
                             box->dots[i + 1][e].game_node = new GameNode();
-                            box->dots[i + 1][e].game_node->x = (box->dots[i + 1][e].lat - initialPosition.lat) * SCALING_FACTOR;
-                            box->dots[i + 1][e].game_node->z = (box->dots[i + 1][e].lon - initialPosition.lon) * SCALING_FACTOR;
+                            box->dots[i + 1][e].game_node->x = (box->dots[i + 1][e].lon - initialPosition.lon) * SCALING_FACTOR;
+                            box->dots[i + 1][e].game_node->z = (box->dots[i + 1][e].lat - initialPosition.lat) * SCALING_FACTOR;
                             box->dots[i + 1][e].game_node->y = box->dots[i + 1][e].elev * elevation_scale;
                             mesh.vertices.push_back({
                                     {box->dots[i + 1][e].game_node->x, box->dots[i + 1][e].game_node->y, box->dots[i + 1][e].game_node->z},
@@ -533,8 +557,8 @@ namespace dfv::map {
                     for (int e = 0; e < box->dots[0].size() - 1; ++e) {
                         if (box->dots[i + 1][e + 1].game_node == nullptr) {
                             box->dots[i + 1][e + 1].game_node = new GameNode();
-                            box->dots[i + 1][e + 1].game_node->x = (box->dots[i + 1][e + 1].lat - initialPosition.lat) * SCALING_FACTOR;
-                            box->dots[i + 1][e + 1].game_node->z = (box->dots[i + 1][e + 1].lon - initialPosition.lon) * SCALING_FACTOR;
+                            box->dots[i + 1][e + 1].game_node->x = (box->dots[i + 1][e + 1].lon - initialPosition.lon) * SCALING_FACTOR;
+                            box->dots[i + 1][e + 1].game_node->z = (box->dots[i + 1][e + 1].lat - initialPosition.lat) * SCALING_FACTOR;
                             box->dots[i + 1][e + 1].game_node->y = box->dots[i + 1][e + 1].elev * elevation_scale;
                             mesh.vertices.push_back({
                                     {box->dots[i + 1][e + 1].game_node->x, box->dots[i + 1][e + 1].game_node->y, box->dots[i + 1][e + 1].game_node->z},
@@ -566,7 +590,7 @@ namespace dfv::map {
                         commonNodes.push_back(row.back());
                     }
                     std::sort(commonNodes.begin(), commonNodes.end(), [](structs::Node &a, structs::Node &b) {
-                        return a.lat < b.lat;
+                        return a.game_node->z < b.game_node->z;
                     });
                     for (auto &row : (box_matrix)[ii][ie].dots) {
                         aNodes.push_back(row[1]);
@@ -575,10 +599,10 @@ namespace dfv::map {
                         bNodes.push_back(row.rbegin()[1]);
                     }
 
-                    if(aNodes[0].lon == commonNodes[0].lon){
+                    if(aNodes[0].game_node->x == commonNodes[0].game_node->x){
                         break;
                     }
-                    if(bNodes[0].lon == commonNodes[0].lon){
+                    if(bNodes[0].game_node->x == commonNodes[0].game_node->x){
                         break;
                     }
 
@@ -586,26 +610,30 @@ namespace dfv::map {
                     sewBoxesSlave(commonNodes, bNodes, mesh, 1);
                 }
                 //sew top box
-                if (ii != 0) {
+                if (ii > 0) {
                     std::vector<Node> commonNodes;
                     std::vector<Node> aNodes;
                     std::vector<Node> bNodes;
 
-                    //commonNodes.reserve((box_matrix)[ii][ie].dots[0].size() + (box_matrix)[ii - 1][ie].dots[0].size());
+                    commonNodes.reserve((box_matrix)[ii][ie].dots[0].size() + (box_matrix)[ii - 1][ie].dots[0].size());
                     commonNodes.insert(commonNodes.end(), (box_matrix)[ii][ie].dots[0].begin(), (box_matrix)[ii][ie].dots[0].end());
                     commonNodes.insert(commonNodes.end(), (box_matrix)[ii - 1][ie].dots.back().begin(), (box_matrix)[ii - 1][ie].dots.back().end());
 
                     std::sort(commonNodes.begin(), commonNodes.end(), [](structs::Node &a, structs::Node &b) {
-                        return a.lon < b.lon;
+                        return a.game_node->x < b.game_node->x;
                     });
 
                     aNodes.insert(aNodes.begin(), (box_matrix)[ii][ie].dots[1].begin(), (box_matrix)[ii][ie].dots[1].end());
                     bNodes.insert(bNodes.begin(), (box_matrix)[ii - 1][ie].dots.rbegin()[1].begin(), (box_matrix)[ii - 1][ie].dots.rbegin()[1].end());
 
-                    if(aNodes[0].lat == commonNodes[0].lat){
+                    if((box_matrix)[ii][ie].dots[0][0].game_node->z != (box_matrix)[ii - 1][ie].dots.back()[0].game_node->z){
                         break;
                     }
-                    if(bNodes[0].lat == commonNodes[0].lat){
+
+                    if(aNodes[0].game_node->z == commonNodes[0].game_node->z){
+                        break;
+                    }
+                    if(bNodes[0].game_node->z == commonNodes[0].game_node->z){
                         break;
                     }
 
@@ -638,6 +666,10 @@ namespace dfv::map {
 //                    normal = {0, 1, 0};
 //                }
 //            }
+
+            if(normal.y < 0) {
+                normal = normal * -1.f;
+            }
 
 
             v1.normal += normal;
@@ -734,18 +766,18 @@ namespace dfv::map {
         std::vector<std::vector<structs::Node>> nodes;
 
         const double baseDensity = 1.0;
-        double densityScale = std::sqrt(10000.0 / sparsity);
+        float densityScale = std::sqrt(10000.0 / sparsity);
 
-        double latInnerNodes = std::max(0.0, std::floor(baseDensity * densityScale) - 1);
-        double lonInnerNodes = std::max(0.0, std::floor(baseDensity * densityScale) - 1);
+        float latInnerNodes = std::max(0.0, std::floor(baseDensity * densityScale) - 1);
+        float lonInnerNodes = std::max(0.0, std::floor(baseDensity * densityScale) - 1);
 
 
         // Total nodes including corners
-        double latTotalNodes = latInnerNodes + 2;
-        double lonTotalNodes = lonInnerNodes + 2;
+        float latTotalNodes = latInnerNodes + 2;
+        float lonTotalNodes = lonInnerNodes + 2;
 
-        double latStep = (urLon - llLon) / (latTotalNodes - 1);
-        double lonStep = (urLon - llLon) / (lonTotalNodes - 1);
+        float latStep = (urLat - llLat) / (latTotalNodes - 1);
+        float lonStep = (urLon - llLon) / (lonTotalNodes - 1);
 
         // Iterate through each grid point and create nodes
         for (int i = 0; i < latTotalNodes; i++) {

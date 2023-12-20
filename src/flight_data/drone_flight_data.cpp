@@ -100,8 +100,8 @@ namespace dfv {
 
             // set initial position if not set yet
             if (!initialPosition) {
-                initialPosition = Coordinate{coords.y,
-                                             coords.x,
+                initialPosition = Coordinate{coords.x,
+                                             coords.y,
                                              altitude};
                 boundingBox.llLon = coords.x;
                 boundingBox.llLat = coords.y;
@@ -116,7 +116,7 @@ namespace dfv {
 
             // calculate position in relation to initial position
             auto position = calculateRelativePosition(coords,
-                                                      glm::dvec2{initialPosition->lat, initialPosition->lon});
+                                                      glm::dvec2{initialPosition->lon, initialPosition->lat});
 
             flightData.emplace_back(
                     row["OSD.flyTime [s]"].get<float>(),

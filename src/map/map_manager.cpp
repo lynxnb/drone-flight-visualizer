@@ -23,24 +23,24 @@ namespace dfv {
                                    static_cast<double>(point.y));
         }
 
-        pathNodes = {};
-        pathNodes.reserve(dronePath.size());
-        pathNodes.emplace_back(0.001 + 46.1949826657642, 0.001 + 9.73403023222216, 10);
+        //pathNodes = {};
+        //pathNodes.reserve(dronePath.size());
+        //pathNodes.emplace_back(0.001 + 46.1949826657642, 0.001 + 9.73403023222216, 10);
 
-        box.llLat = -0.008 + 46.1949826657642;
-        box.llLon = -0.008 + 9.73403023222216;
-        box.urLat = +0.016 + 46.1949826657642;
-        box.urLon = +0.016 + 9.73403023222216;
+        //box.llLat = -0.008 + 46.1949826657642;
+        //box.llLon = -0.008 + 9.73403023222216;
+        //box.urLat = +0.016 + 46.1949826657642;
+        //box.urLon = +0.016 + 9.73403023222216;
 
         mapMeshFuture = std::async(std::launch::async, [box, initialPos, pathNodes = std::move(pathNodes)]() mutable {
-            constexpr double sparsity = 100;
-            constexpr double box_size = 0.008; // Example box size
-            constexpr double node_density_coefficient = 0.5; // Example coefficient
+            constexpr float sparsity = 1;
+            constexpr float box_size = 0.02; // Example box size
+            constexpr float node_density_coefficient = 0.5; // Example coefficient
 
             auto boxMatrix = dfv::map::createGrid(box, pathNodes, sparsity, box_size, node_density_coefficient);
 
-            const double lrLatBound = boxMatrix.back().back().dots.back().back().lat;
-            const double lrLonBound = boxMatrix.back().back().dots.back().back().lon;
+            const float lrLatBound = boxMatrix.back().back().dots.back().back().lat;
+            const float lrLonBound = boxMatrix.back().back().dots.back().back().lon;
             return dfv::map::createMeshArray(boxMatrix,
                                              boxMatrix[0][0].dots[0][0].lat,
                                              boxMatrix[0][0].dots[0][0].lon,
