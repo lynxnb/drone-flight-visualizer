@@ -90,47 +90,51 @@ namespace dfv {
         const float feetToMeter = 0.3048;
         using namespace csv;
 
-        auto startTime = clock::now();
+        const auto startTime = clock::now();
+
+        using namespace csv;
         CSVReader reader(csvPath);
         std::vector<FlightDataPoint> flightData;
 
         for (CSVRow &row : reader) {
-            glm::vec2 coords = {row["OSD.longitude"].get<float>(), row["OSD.latitude"].get<float>()};
-            float altitude = row["OSD.altitude [ft]"].get<float>() * feetToMeter;
+            const Coordinate coords = {.lat = row["OSD.latitude"].get<float>(),
+                                       .lon = row["OSD.longitude"].get<float>(),
+                                       .alt = row["OSD.altitude [ft]"].get<float>() * feetToMeter};
 
             // set initial position if not set yet
             if (!initialPosition) {
-                initialPosition = Coordinate{coords.x,
-                                             coords.y,
-                                             altitude};
-                boundingBox.llLon = coords.x;
-                boundingBox.llLat = coords.y;
-                boundingBox.urLon = coords.x;
-                boundingBox.urLat = coords.y;
+                initialPosition = coords;
+                boundingBox.llLon = coords.lon;
+                boundingBox.llLat = coords.lat;
+                boundingBox.urLon = coords.lon;
+                boundingBox.urLat = coords.lat;
+
+                boundingBox.llLat = std::min(boundingBox.llLat, coords.lat);
+                boundingBox.llLon = std::min(boundingBox.llLon, coords.lon);
+                boundingBox.urLat = std::max(boundingBox.urLat, coords.lat);
+                boundingBox.urLon = std::max(boundingBox.urLon, coords.lon);
+
+                // calculate position in relation to initial position
+
+                // calculate position in relation to initial position
+                Coordinate relativeCoords = calculateRelativePosition(coords, *initialPosition);
+
+                flightData.emplace_back(
+                        row["OSD.flyTime [s]"].get<float>(),
+                        relativeCoords.lon,
+                        relativeCoords.alt,
+                        relativeCoords.lat,
+                        glm::radians(row["OSD.yaw"].get<float>()),
+                        glm::radians(row["OSD.pitch"].get<float>()),
+                        glm::radians(row["OSD.roll"].get<float>()));
             }
 
-            boundingBox.llLat = std::min(boundingBox.llLat, coords.y);
-            boundingBox.llLon = std::min(boundingBox.llLon, coords.x);
-            boundingBox.urLat = std::max(boundingBox.urLat, coords.y);
-            boundingBox.urLon = std::max(boundingBox.urLon, coords.x);
+            const auto endTime = clock::now();
+            const auto duration = duration_cast<milliseconds>(endTime - startTime);
+            std::cout << "Flight data read in " << duration.count() << "ms" << std::endl;
 
-            // calculate position in relation to initial position
-            auto position = calculateRelativePosition(coords,
-                                                      glm::dvec2{initialPosition->lon, initialPosition->lat});
-
-            flightData.emplace_back(
-                    row["OSD.flyTime [s]"].get<float>(),
-                    position.x,
-                    static_cast<float>(altitude),
-                    position.y,
-                    glm::radians(row["OSD.yaw"].get<float>()),
-                    glm::radians(row["OSD.pitch"].get<float>()),
-                    glm::radians(row["OSD.roll"].get<float>()));
+            return flightData;
         }
-        auto endTime = clock::now();
-        auto duration = duration_cast<milliseconds>(endTime - startTime);
-        std::cout << "Flight data read in " << duration.count() << "ms" << std::endl;
-        return flightData;
-    }
 
-} // namespace dfv
+    } // namespace dfv
+}

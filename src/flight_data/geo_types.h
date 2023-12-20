@@ -7,18 +7,21 @@ namespace dfv {
      * @brief A coordinate in latitude, longitude and altitude.
      */
     struct Coordinate {
-        double lon;
-        double lat;
-        double alt; //!< Altitude in meters
+        float lat;
+        float lon;
+        float alt; //!< Altitude in meters
     };
 
-    constexpr double SCALING_FACTOR = 100000.0; //  0.00001 = 1.11 meter
+    constexpr float SCALING_FACTOR = 100000.0; //  0.00001 = 1.11 meter
 
-    inline glm::vec2 calculateRelativePosition(glm::dvec2 position, glm::dvec2 inRelationTo) {
-
-        auto x = (position.x - inRelationTo.x) * SCALING_FACTOR;
-        auto y = (position.y - inRelationTo.y) * SCALING_FACTOR;
-
-        return {x, y};
+    /**
+     * @brief Calculates the relative position of a coordinate in relation to another coordinate.
+     * @note The altitude of the returned coordinate is unchanged.
+     * @return The relative position of the coordinate, in meters.
+     */
+    inline Coordinate calculateRelativePosition(const Coordinate &position, const Coordinate &inRelationTo) {
+        return {.lat = (position.lat - inRelationTo.lat) * SCALING_FACTOR,
+                .lon = (position.lon - inRelationTo.lon) * SCALING_FACTOR,
+                .alt = position.alt};
     }
 } // namespace dfv
