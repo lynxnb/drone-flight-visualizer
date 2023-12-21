@@ -109,7 +109,6 @@ namespace dfv {
         engine.camera.up = {0.f, 1.f, 0.f};
 
         const auto ufoMesh = engine.createMesh("ufo", objectModelPath);
-        const auto defaultMat = engine.getMaterial("defaultmesh");
 
         // adds the drone to the scene setting material and position
         auto [ufo, ufoHandle] = engine.allocateRenderObject();

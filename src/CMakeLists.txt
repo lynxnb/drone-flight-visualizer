@@ -12,6 +12,7 @@ set(DFV_SOURCE_COMMON
 set(DFV_SOURCE_MAP
         map/data_fetcher.cpp
         map/map_manager.cpp
+        map/chunk_loader.cpp
 )
 
 
