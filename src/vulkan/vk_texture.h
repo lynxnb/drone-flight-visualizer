@@ -2,7 +2,18 @@
 
 #include <filesystem>
 
+#include "vk_types.h"
+
+#include <span>
+
 namespace dfv {
+    struct Texture {
+        VkExtent3D extent{};
+        VkFormat format{VK_FORMAT_UNDEFINED};
+        AllocatedImage image;
+        VkImageView imageView{VK_NULL_HANDLE};
+    };
+
     /**
      * @brief The class handling the loading of an image using stb_image.
      */
@@ -15,21 +26,21 @@ namespace dfv {
         explicit StbImageLoader(const std::filesystem::path &filename);
 
         /**
-         * @return A pointer to the pixel data, in 32-bit per channel format.
+         * @return A span of the image data.
          * @note The number of channels can be queried with the channels() method.
          */
-        void *data() const;
+        std::span<std::byte> data() const;
 
-        int width() const;
-        int height() const;
-        int channels() const;
+        uint32_t width() const;
+        uint32_t height() const;
+        uint32_t channels() const;
 
         ~StbImageLoader();
 
       private:
-        void *mData{nullptr};
-        int mWidth{};
-        int mHeight{};
-        int mChannels{};
+        std::span<std::byte> mData{};
+        uint32_t mWidth{};
+        uint32_t mHeight{};
+        uint32_t mChannels{};
     };
 } // namespace dfv

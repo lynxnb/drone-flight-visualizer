@@ -20,29 +20,31 @@ namespace dfv {
             return;
         }
 
-        mData = pixels;
-        mWidth = texWidth;
-        mHeight = texHeight;
-        mChannels = texChannels;
+        size_t size = texWidth * texHeight * 4;
+
+        mData = {reinterpret_cast<std::byte *>(pixels), size};
+        mWidth = static_cast<uint32_t>(texWidth);
+        mHeight = static_cast<uint32_t>(texHeight);
+        mChannels = static_cast<uint32_t>(texChannels);
     }
 
-    void *StbImageLoader::data() const {
+    std::span<std::byte> StbImageLoader::data() const {
         return mData;
     }
 
-    int StbImageLoader::width() const {
+    uint32_t StbImageLoader::width() const {
         return mWidth;
     }
 
-    int StbImageLoader::height() const {
+    uint32_t StbImageLoader::height() const {
         return mHeight;
     }
 
-    int StbImageLoader::channels() const {
+    uint32_t StbImageLoader::channels() const {
         return mChannels;
     }
 
     StbImageLoader::~StbImageLoader() {
-        stbi_image_free(mData);
+        stbi_image_free(mData.data());
     }
 } // namespace dfv
