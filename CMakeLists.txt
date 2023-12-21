@@ -61,6 +61,16 @@ include_directories(SYSTEM ${VulkanMemoryAllocator_SOURCE_DIR}/src)
 CPMAddPackage("gh:tinyobjloader/tinyobjloader@1.0.6")
 include_directories(SYSTEM ${tinyobjloader_SOURCE_DIR})
 
+# stb_image: image loading for texture
+CPMAddPackage(
+        NAME stb_image
+        DOWNLOAD_NO_EXTRACT TRUE
+        URL "https://raw.githubusercontent.com/nothings/stb/f4a71b13373436a2866c5d68f8f80ac6f0bc1ffe/stb_image.h"
+        EXCLUDE_FROM_ALL
+        SYSTEM
+)
+include_directories(SYSTEM ${stb_image_SOURCE_DIR})
+
 add_subdirectory(src)
 
 add_subdirectory(shaders)

@@ -5,6 +5,7 @@ set(DFV_SOURCE_COMMON
         vulkan/vk_pipeline.cpp
         vulkan/deletion_queue.cpp
         vulkan/vk_mesh.cpp
+        vulkan/vk_texture.cpp
         vulkan/vk_engine_utils.cpp
         vulkan/vk_engine_init.cpp
 )
