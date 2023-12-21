@@ -4,7 +4,6 @@
 
 #include "vk_engine.h"
 
-#include <tiny_obj_loader.h>
 #include <vulkan/vk_enum_string_helper.h>
 
 #include "vk_initializers.h"
@@ -22,10 +21,10 @@
 
 namespace dfv {
 
-    void VulkanEngine::immediateSubmit(std::function<void(VkCommandBuffer cmd)> &&submitFunc) {
+    void VulkanEngine::immediateSubmit(std::function<void(VkCommandBuffer cmd)> &&submitFunc) const {
         VkCommandBuffer cmd = uploadContext.commandBuffer;
 
-        VkCommandBufferBeginInfo cmdBeginInfo = vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+        const VkCommandBufferBeginInfo cmdBeginInfo = vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
         VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
         // Populate the command buffer with the user supplied function
@@ -33,7 +32,7 @@ namespace dfv {
 
         VK_CHECK(vkEndCommandBuffer(cmd));
 
-        VkSubmitInfo submitInfo = vkinit::submit_info(&cmd);
+        const VkSubmitInfo submitInfo = vkinit::submit_info(&cmd);
         VK_CHECK(vkQueueSubmit(graphicsQueue, 1, &submitInfo, uploadContext.uploadFence));
 
         // Wait for command buffer to finish execution, timeout 10 seconds
@@ -50,7 +49,7 @@ namespace dfv {
         if (!file.is_open())
             return std::nullopt;
 
-        std::streamoff fileSize{file.tellg()};
+        const std::streamoff fileSize{file.tellg()};
         // SpirV expects the buffer to be on uint32, reserve an int vector big enough for the entire file
         std::vector<uint32_t> buffer(fileSize / sizeof(uint32_t));
 
@@ -59,9 +58,9 @@ namespace dfv {
         file.close();
 
         // Create a new shader module, using the buffer we loaded
-        VkShaderModuleCreateInfo createInfo = {.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-                                               .codeSize = buffer.size() * sizeof(uint32_t), // codeSize has to be in bytes
-                                               .pCode = buffer.data()};
+        const VkShaderModuleCreateInfo createInfo = {.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+                                                     .codeSize = buffer.size() * sizeof(uint32_t), // codeSize has to be in bytes
+                                                     .pCode = buffer.data()};
 
         VkShaderModule shaderModule;
         if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
@@ -70,14 +69,14 @@ namespace dfv {
         return {shaderModule};
     }
 
-    AllocatedBuffer VulkanEngine::createUniformBuffer(size_t allocSize, VkBufferUsageFlags usage) const {
-        VkBufferCreateInfo bufferInfo = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-                                         .pNext = nullptr,
-                                         .size = allocSize,
-                                         .usage = usage};
+    AllocatedBuffer VulkanEngine::createUniformBuffer(const size_t allocSize, const VkBufferUsageFlags usage) const {
+        const VkBufferCreateInfo bufferInfo = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                                               .pNext = nullptr,
+                                               .size = allocSize,
+                                               .usage = usage};
 
         // Allocate UBOs on the GPU while allowing CPU writes (but no reads)
-        VmaAllocationCreateInfo vmaAllocInfo = {.usage = VMA_MEMORY_USAGE_CPU_TO_GPU};
+        const VmaAllocationCreateInfo vmaAllocInfo = {.usage = VMA_MEMORY_USAGE_CPU_TO_GPU};
 
         AllocatedBuffer newBuffer = {};
         VK_CHECK(vmaCreateBuffer(allocator, &bufferInfo, &vmaAllocInfo, &newBuffer.buffer, &newBuffer.allocation,
@@ -93,38 +92,38 @@ namespace dfv {
         const size_t stagingBufferSize = vertexBufSize + indexBufSize;
 
         // Allocate staging buffer for vertex + index data
-        VkBufferCreateInfo stagingBufferInfo = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-                                                .pNext = nullptr,
-                                                .size = stagingBufferSize,
-                                                .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT};
+        const VkBufferCreateInfo stagingBufferInfo = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                                                      .pNext = nullptr,
+                                                      .size = stagingBufferSize,
+                                                      .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT};
 
         // Allocate the buffer as writable sequentially from the CPU
-        VmaAllocationCreateInfo stagingAllocInfo = {.usage = VMA_MEMORY_USAGE_CPU_ONLY};
+        const VmaAllocationCreateInfo stagingAllocInfo = {.usage = VMA_MEMORY_USAGE_CPU_ONLY};
         AllocatedBuffer stagingBuffer = {};
         VK_CHECK(vmaCreateBuffer(allocator, &stagingBufferInfo, &stagingAllocInfo,
                                  &stagingBuffer.buffer, &stagingBuffer.allocation, nullptr));
 
         Vertex *stagingVertexData;
-        vmaMapMemory(allocator, stagingBuffer.allocation, (void **) &stagingVertexData);
+        vmaMapMemory(allocator, stagingBuffer.allocation, reinterpret_cast<void **>(&stagingVertexData));
         // Copy vertex data into the staging buffer
         std::ranges::copy(mesh.vertices, stagingVertexData);
 
         // Copy index data past the vertex data
-        auto stagingIndexData = reinterpret_cast<uint32_t *>(stagingVertexData + mesh.vertices.size());
+        const auto stagingIndexData = reinterpret_cast<uint32_t *>(stagingVertexData + mesh.vertices.size());
         std::ranges::copy(mesh.indices, stagingIndexData);
         vmaUnmapMemory(allocator, stagingBuffer.allocation);
 
         // Allocate the vertex and index buffers on the GPU
-        VkBufferCreateInfo vertexBufferInfo = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-                                               .pNext = nullptr,
-                                               .size = vertexBufSize,
-                                               .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT};
-        VkBufferCreateInfo indexBufferInfo = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-                                              .pNext = nullptr,
-                                              .size = indexBufSize,
-                                              .usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT};
+        const VkBufferCreateInfo vertexBufferInfo = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                                                     .pNext = nullptr,
+                                                     .size = vertexBufSize,
+                                                     .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT};
+        const VkBufferCreateInfo indexBufferInfo = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                                                    .pNext = nullptr,
+                                                    .size = indexBufSize,
+                                                    .usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT};
 
-        VmaAllocationCreateInfo allocInfo = {.usage = VMA_MEMORY_USAGE_GPU_ONLY};
+        const VmaAllocationCreateInfo allocInfo = {.usage = VMA_MEMORY_USAGE_GPU_ONLY};
         VK_CHECK(vmaCreateBuffer(allocator, &vertexBufferInfo, &allocInfo,
                                  &mesh.vertexBuffer.buffer, &mesh.vertexBuffer.allocation, nullptr));
         VK_CHECK(vmaCreateBuffer(allocator, &indexBufferInfo, &allocInfo,
@@ -132,17 +131,17 @@ namespace dfv {
 
         // Submit a GPU command to copy the staging buffer to the vertex and index buffers
         immediateSubmit([&](VkCommandBuffer cmd) {
-            VkBufferCopy vertexCopy = {.srcOffset = 0,
-                                       .dstOffset = 0,
-                                       .size = vertexBufSize};
-            VkBufferCopy indexCopy = {.srcOffset = vertexBufSize,
-                                      .dstOffset = 0,
-                                      .size = indexBufSize};
+            const VkBufferCopy vertexCopy = {.srcOffset = 0,
+                                             .dstOffset = 0,
+                                             .size = vertexBufSize};
+            const VkBufferCopy indexCopy = {.srcOffset = vertexBufSize,
+                                            .dstOffset = 0,
+                                            .size = indexBufSize};
             vkCmdCopyBuffer(cmd, stagingBuffer.buffer, mesh.vertexBuffer.buffer, 1, &vertexCopy);
             vkCmdCopyBuffer(cmd, stagingBuffer.buffer, mesh.indexBuffer.buffer, 1, &indexCopy);
         });
 
-        mainDeletionQueue.pushFunction([=, this]() {
+        mainDeletionQueue.pushFunction([=, this] {
             vmaDestroyBuffer(allocator, mesh.vertexBuffer.buffer, mesh.vertexBuffer.allocation);
             vmaDestroyBuffer(allocator, mesh.indexBuffer.buffer, mesh.indexBuffer.allocation);
         });
@@ -164,11 +163,11 @@ namespace dfv {
     }
 
     Material *VulkanEngine::getMaterial(const std::string &name) {
-        auto it = materials.find(name);
+        const auto it = materials.find(name);
         if (it == materials.end())
             return nullptr;
-        else
-            return &it->second;
+
+        return &it->second;
     }
 
     Mesh *VulkanEngine::createMesh(const std::string &name, const std::filesystem::path &filename) {
@@ -194,11 +193,11 @@ namespace dfv {
     }
 
     Mesh *VulkanEngine::getMesh(const std::string &name) {
-        auto it = meshes.find(name);
+        const auto it = meshes.find(name);
         if (it == meshes.end())
             return nullptr;
-        else
-            return &(*it).second;
+
+        return &it->second;
     }
 
     RenderObjectDescriptor VulkanEngine::allocateRenderObject() {
@@ -206,13 +205,13 @@ namespace dfv {
         return {&object, renderObjects.size() - 1};
     }
 
-    RenderObject *VulkanEngine::getRenderObject(RenderHandle handle) {
+    RenderObject *VulkanEngine::getRenderObject(const RenderHandle handle) {
         return &renderObjects[handle];
     }
 
     size_t VulkanEngine::uniformBufferSizeAlignUp(size_t size) const {
         // Calculate required alignment based on minimum device offset alignment
-        size_t minUboAlignment = traits.minUniformBufferOffsetAlignment;
+        const size_t minUboAlignment = traits.minUniformBufferOffsetAlignment;
         if (minUboAlignment > 0)
             size = (size + minUboAlignment - 1) & ~(minUboAlignment - 1);
 

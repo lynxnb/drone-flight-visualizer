@@ -171,7 +171,7 @@ namespace dfv {
          * Immediately submits a command buffer to the graphics queue and waits for completion.
          * @param submitFunc The function to call to fill the command buffer.
          */
-        void immediateSubmit(std::function<void(VkCommandBuffer cmd)> &&submitFunc);
+        void immediateSubmit(std::function<void(VkCommandBuffer cmd)> &&submitFunc) const;
 
         /**
          * Load a shader module from the given file path.
