@@ -79,9 +79,21 @@ namespace dfv {
         const VmaAllocationCreateInfo vmaAllocInfo = {.usage = VMA_MEMORY_USAGE_CPU_TO_GPU};
 
         AllocatedBuffer newBuffer = {};
-        VK_CHECK(vmaCreateBuffer(allocator, &bufferInfo, &vmaAllocInfo, &newBuffer.buffer, &newBuffer.allocation,
-                                 nullptr));
+        VK_CHECK(vmaCreateBuffer(allocator, &bufferInfo, &vmaAllocInfo, &newBuffer.buffer, &newBuffer.allocation, nullptr));
+        return newBuffer;
+    }
 
+    AllocatedBuffer VulkanEngine::createStagingBuffer(const size_t allocSize) const {
+        const VkBufferCreateInfo bufferInfo = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                                               .pNext = nullptr,
+                                               .size = allocSize,
+                                               .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT};
+
+        // Allocate staging buffer on the CPU
+        const VmaAllocationCreateInfo vmaAllocInfo = {.usage = VMA_MEMORY_USAGE_CPU_ONLY};
+
+        AllocatedBuffer newBuffer = {};
+        VK_CHECK(vmaCreateBuffer(allocator, &bufferInfo, &vmaAllocInfo, &newBuffer.buffer, &newBuffer.allocation, nullptr));
         return newBuffer;
     }
 
@@ -92,16 +104,7 @@ namespace dfv {
         const size_t stagingBufferSize = vertexBufSize + indexBufSize;
 
         // Allocate staging buffer for vertex + index data
-        const VkBufferCreateInfo stagingBufferInfo = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-                                                      .pNext = nullptr,
-                                                      .size = stagingBufferSize,
-                                                      .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT};
-
-        // Allocate the buffer as writable sequentially from the CPU
-        const VmaAllocationCreateInfo stagingAllocInfo = {.usage = VMA_MEMORY_USAGE_CPU_ONLY};
-        AllocatedBuffer stagingBuffer = {};
-        VK_CHECK(vmaCreateBuffer(allocator, &stagingBufferInfo, &stagingAllocInfo,
-                                 &stagingBuffer.buffer, &stagingBuffer.allocation, nullptr));
+        const AllocatedBuffer stagingBuffer = createStagingBuffer(stagingBufferSize);
 
         Vertex *stagingVertexData;
         vmaMapMemory(allocator, stagingBuffer.allocation, reinterpret_cast<void **>(&stagingVertexData));
@@ -144,6 +147,80 @@ namespace dfv {
         mainDeletionQueue.pushFunction([=, this] {
             vmaDestroyBuffer(allocator, mesh.vertexBuffer.buffer, mesh.vertexBuffer.allocation);
             vmaDestroyBuffer(allocator, mesh.indexBuffer.buffer, mesh.indexBuffer.allocation);
+        });
+
+        // Immediately destroy the staging buffer
+        vmaDestroyBuffer(allocator, stagingBuffer.buffer, stagingBuffer.allocation);
+    }
+
+    void VulkanEngine::uploadTexture(Texture &texture, std::span<std::byte> data) {
+        // Allocate a staging buffer for texture data
+        const AllocatedBuffer stagingBuffer = createStagingBuffer(data.size_bytes());
+
+        // Copy data to the staging buffer
+        std::byte *dest;
+        vmaMapMemory(allocator, stagingBuffer.allocation, reinterpret_cast<void **>(&dest));
+        std::ranges::copy(data, dest);
+        vmaUnmapMemory(allocator, stagingBuffer.allocation);
+
+        const VkImageCreateInfo imageInfo = vkinit::image_create_info(texture.format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, texture.extent);
+
+        // Allocate the image on the GPU
+        const VmaAllocationCreateInfo imageAllocInfo = {.usage = VMA_MEMORY_USAGE_GPU_ONLY};
+
+        // Allocate and create the image
+        VK_CHECK(vmaCreateImage(allocator, &imageInfo, &imageAllocInfo, &texture.image.image, &texture.image.allocation, nullptr));
+
+        immediateSubmit([&](VkCommandBuffer cmd) {
+            const VkImageSubresourceRange range = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                                   .baseMipLevel = 0,
+                                                   .levelCount = 1,
+                                                   .baseArrayLayer = 0,
+                                                   .layerCount = 1};
+
+            const VkImageMemoryBarrier imageBarrierToTransferOptimal = {.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                                                                        .srcAccessMask = 0,
+                                                                        .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                                                                        .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                                                                        .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                                        .image = texture.image.image,
+                                                                        .subresourceRange = range};
+
+            // Use a pipeline barrier to transition the image layout to optimal as transfer destination
+            vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+                                 0, nullptr, 0, nullptr, 1, &imageBarrierToTransferOptimal);
+
+            const VkBufferImageCopy copyRegion = {
+                    .bufferOffset = 0,
+                    .bufferRowLength = 0,
+                    .bufferImageHeight = 0,
+                    .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                         .mipLevel = 0,
+                                         .baseArrayLayer = 0,
+                                         .layerCount = 1},
+                    .imageExtent = texture.extent
+            };
+
+            // Perform the copy from staging buffer to destination image
+            vkCmdCopyBufferToImage(cmd, stagingBuffer.buffer, texture.image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+
+            VkImageMemoryBarrier imageBarrierToShaderOptimal = imageBarrierToTransferOptimal;
+            imageBarrierToShaderOptimal.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            imageBarrierToShaderOptimal.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            imageBarrierToShaderOptimal.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            imageBarrierToShaderOptimal.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+            // Transition the image layout to optimal for shader reads
+            vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+                                 0, nullptr, 0, nullptr, 1, &imageBarrierToShaderOptimal);
+        });
+
+        const VkImageViewCreateInfo viewInfo = vkinit::imageview_create_info(texture.format, texture.image.image, VK_IMAGE_ASPECT_COLOR_BIT);
+        VK_CHECK(vkCreateImageView(device, &viewInfo, nullptr, &texture.imageView));
+
+        mainDeletionQueue.pushFunction([=, this] {
+            vkDestroyImageView(device, texture.imageView, nullptr);
+            vmaDestroyImage(allocator, texture.image.image, texture.image.allocation);
         });
 
         // Immediately destroy the staging buffer
@@ -195,6 +272,42 @@ namespace dfv {
     Mesh *VulkanEngine::getMesh(const std::string &name) {
         const auto it = meshes.find(name);
         if (it == meshes.end())
+            return nullptr;
+
+        return &it->second;
+    }
+
+    Texture *VulkanEngine::createTexture(const std::string &name, const std::filesystem::path &filename) {
+        const StbImageLoader loader{filename};
+
+        Texture texture = {
+                .extent = {.width = loader.width(),
+                           .height = loader.height(),
+                           .depth = 1},
+                .format = VK_FORMAT_R8G8B8A8_SRGB,
+        };
+        uploadTexture(texture, loader.data());
+
+        auto [textureIt, isNewInsertion] = textures.insert_or_assign(name, texture);
+        if (!isNewInsertion)
+            std::cerr << "Warning: texture '" << name << "' was overwritten" << std::endl;
+
+        return &textureIt->second;
+    }
+
+    Texture *VulkanEngine::insertTexture(const std::string &name, Texture &&texture, const std::span<std::byte> data) {
+        uploadTexture(texture, data);
+
+        auto [textureIt, isNewInsertion] = textures.insert_or_assign(name, texture);
+        if (!isNewInsertion)
+            std::cerr << "Warning: texture '" << name << "' was overwritten" << std::endl;
+
+        return &textureIt->second;
+    }
+
+    Texture *VulkanEngine::getTexture(const std::string &name) {
+        const auto it = textures.find(name);
+        if (it == textures.end())
             return nullptr;
 
         return &it->second;

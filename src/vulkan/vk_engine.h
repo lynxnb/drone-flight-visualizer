@@ -12,6 +12,7 @@
 #include "uniform_types.h"
 #include "vk_mesh.h"
 #include "vk_pipeline.h"
+#include "vk_texture.h"
 #include "vk_traits.h"
 #include "vk_types.h"
 
@@ -106,6 +107,31 @@ namespace dfv {
         Mesh *getMesh(const std::string &name);
 
         /**
+         * Creates a new texture with the given name from an image file.
+         * @param name The name of the texture, used to identify it later.
+         * @param filename The path to the image file to load.
+         * @return A pointer to the created texture.
+         */
+        Texture *createTexture(const std::string &name, const std::filesystem::path &filename);
+
+        /**
+         * Inserts a texture from existing data into the engine.
+         * Currently only the R8G8B8A8 format is supported.
+         * @param name The name of the texture, used to identify it later.
+         * @param texture A texture object the extent and format set.
+         * @param data A span of the pixel data to use for the texture.
+         * @return A pointer to the inserted texture.
+         */
+        Texture *insertTexture(const std::string &name, Texture &&texture, std::span<std::byte> data);
+
+        /**
+         * Gets the texture with the given name.
+         * @param name The name of the texture to get.
+         * @return The texture with the given name, or nullptr if no texture with that name exists.
+         */
+        Texture *getTexture(const std::string &name);
+
+        /**
          * Allocates a new render object in the engine.
          * @return A structure holding a pointer to the allocated render object and its handle for later retrieval.
          */
@@ -189,10 +215,24 @@ namespace dfv {
         AllocatedBuffer createUniformBuffer(size_t allocSize, VkBufferUsageFlags usage) const;
 
         /**
+         * Creates a new staging buffer with the given parameters.
+         * @param allocSize The size of the buffer to allocate.
+         * @return The created staging buffer.
+         */
+        AllocatedBuffer createStagingBuffer(size_t allocSize) const;
+
+        /**
          * Uploads the given mesh to the GPU.
          * @param mesh The mesh to upload.
          */
         void uploadMesh(Mesh &mesh);
+
+        /**
+         * Uploads the given texture to the GPU.
+         * @param texture The texture to upload.
+         * @param data The data to upload.
+         */
+        void uploadTexture(Texture &texture, std::span<std::byte> data);
 
         /**
          * Aligns the given size to the minimum uniform buffer offset alignment requirements.
@@ -261,6 +301,7 @@ namespace dfv {
 
         std::unordered_map<std::string, Mesh> meshes; //!< Meshes loaded by the engine
         std::unordered_map<std::string, Material> materials; //!< Materials loaded by the engine
+        std::unordered_map<std::string, Texture> textures; //!< Textures loaded by the engine
 
         uniform::SceneData sceneParameters{}; //!< Scene parameters to use during rendering
         AllocatedBuffer sceneParametersBuffer; //!< Buffer containing the scene parameters
