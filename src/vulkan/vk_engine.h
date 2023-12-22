@@ -295,6 +295,7 @@ namespace dfv {
 
         VkDescriptorSetLayout globalSetLayout{VK_NULL_HANDLE}; //!< The layout for the global descriptor set
         VkDescriptorSetLayout objectSetLayout{VK_NULL_HANDLE}; //!< The layout for the object descriptor set
+        VkDescriptorSetLayout materialSetLayout{VK_NULL_HANDLE}; //!< The layout for the material descriptor set, containing one sampler for a single texture
         VkDescriptorPool descriptorPool{VK_NULL_HANDLE}; //!< Global descriptor pool
 
         std::vector<RenderObject> renderObjects; //!< The objects to render

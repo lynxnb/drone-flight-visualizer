@@ -255,7 +255,8 @@ namespace dfv {
     void VulkanEngine::initDescriptors() {
         std::array poolSizes = {
                 VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10},
-                VkDescriptorPoolSize{        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10}
+                VkDescriptorPoolSize{        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10},
+                VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10}
         };
 
         const VkDescriptorPoolCreateInfo poolInfo = {.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
@@ -286,8 +287,18 @@ namespace dfv {
                                                                .bindingCount = objectBindings.size(),
                                                                .pBindings = objectBindings.data()};
 
+        // Set 2: Per-material data (textures)
+        const VkDescriptorSetLayoutBinding samplerBinding = vkinit::descriptorset_layout_binding(
+                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 0);
+
+        VkDescriptorSetLayoutCreateInfo materialSetInfo = {.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+                                                           .flags = 0,
+                                                           .bindingCount = 1,
+                                                           .pBindings = &samplerBinding};
+
         vkCreateDescriptorSetLayout(device, &globalSetInfo, nullptr, &globalSetLayout);
         vkCreateDescriptorSetLayout(device, &objectSetInfo, nullptr, &objectSetLayout);
+        vkCreateDescriptorSetLayout(device, &materialSetInfo, nullptr, &materialSetLayout);
 
         const size_t sceneParamBufferSize = MaxFramesInFlight * uniformBufferSizeAlignUp(sizeof(uniform::SceneData));
         sceneParametersBuffer = createUniformBuffer(sceneParamBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
@@ -342,6 +353,7 @@ namespace dfv {
 
             vkDestroyDescriptorSetLayout(device, globalSetLayout, nullptr);
             vkDestroyDescriptorSetLayout(device, objectSetLayout, nullptr);
+            vkDestroyDescriptorSetLayout(device, materialSetLayout, nullptr);
             vkDestroyDescriptorPool(device, descriptorPool, nullptr);
         });
     }
@@ -398,14 +410,16 @@ namespace dfv {
 
         // Create the default mesh pipeline
         createMaterial(pipelineBuilder, meshPipelineLayout, "shaders/default.vert.spv", "shaders/default_lit.frag.spv", "defaultmesh");
-        // Create the drone mesh pipeline
+        // Create the drone pipeline
         createMaterial(pipelineBuilder, meshPipelineLayout, "shaders/drone.vert.spv", "shaders/drone_lighting.frag.spv", "drone");
-        // Create the map mesh pipeline
-        createMaterial(pipelineBuilder, meshPipelineLayout, "shaders/map.vert.spv", "shaders/map_lighting.frag.spv", "map");
-        // Create the triangle tester mesh pipeline
+        // Create the simple map pipeline
+        createMaterial(pipelineBuilder, meshPipelineLayout, "shaders/map.vert.spv", "shaders/map_simple.frag.spv", "map_simple");
+        // Create the textured map pipeline
+        createMaterial(pipelineBuilder, meshPipelineLayout, "shaders/map.vert.spv", "shaders/map_textured.frag.spv", "map_textured");
+        // Create the triangle tester pipeline
         createMaterial(pipelineBuilder, meshPipelineLayout, "shaders/triangle_tester.vert.spv", "shaders/triangle_tester.frag.spv", "triangle_tester");
 
-        mainDeletionQueue.pushFunction([=, this]() {
+        mainDeletionQueue.pushFunction([=, this] {
             vkDestroyPipelineLayout(device, meshPipelineLayout, nullptr);
         });
     }
