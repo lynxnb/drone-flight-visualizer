@@ -405,9 +405,6 @@ namespace dfv {
         VkPipelineLayout meshPipelineLayout;
         VK_CHECK(vkCreatePipelineLayout(device, &meshPipelineLayoutInfo, nullptr, &meshPipelineLayout));
 
-        // Use the push constants layout
-        pipelineBuilder.pipelineLayout = meshPipelineLayout;
-
         // Create the default mesh pipeline
         createMaterial(pipelineBuilder, meshPipelineLayout, "shaders/default.vert.spv", "shaders/default_lit.frag.spv", "defaultmesh");
         // Create the drone pipeline
@@ -424,7 +421,7 @@ namespace dfv {
         });
     }
 
-    void VulkanEngine::createMaterial(PipelineBuilder &pipelineBuilder, VkPipelineLayout &meshPipelineLayout, const std::string &vertexShaderPath, const std::string &fragmentShaderPath, const std::string &materialName) {
+    void VulkanEngine::createMaterial(PipelineBuilder &pipelineBuilder, VkPipelineLayout pipelineLayout, const std::string &vertexShaderPath, const std::string &fragmentShaderPath, const std::string &materialName) {
         // Compile default mesh vertex shader
         auto meshVertShader = loadShaderModule(vertexShaderPath);
         if (!meshVertShader)
@@ -438,6 +435,8 @@ namespace dfv {
         else
             std::cout << "Fragment shader: " << fragmentShaderPath << " successfully loaded" << std::endl;
 
+        pipelineBuilder.pipelineLayout = pipelineLayout;
+
         // Add the shader to the pipeline
         pipelineBuilder.shaderStages.push_back(
                 vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, *meshVertShader));
@@ -447,7 +446,7 @@ namespace dfv {
         // Build the mesh triangle pipeline
         VkPipeline meshPipeline = pipelineBuilder.buildPipeline(device, renderPass);
 
-        createMaterial(materialName, meshPipeline, meshPipelineLayout);
+        createMaterial(materialName, meshPipeline, pipelineLayout);
 
         // Delete all the vulkan shaders
         vkDestroyShaderModule(device, *meshVertShader, nullptr);

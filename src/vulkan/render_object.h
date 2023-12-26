@@ -7,8 +7,8 @@
 namespace dfv {
 
     struct Material {
-        VkPipeline pipeline;
-        VkPipelineLayout pipelineLayout;
+        VkPipeline pipeline{VK_NULL_HANDLE};
+        VkPipelineLayout pipelineLayout{VK_NULL_HANDLE};
     };
 
     using RenderHandle = size_t; //!< The handle type for render objects
