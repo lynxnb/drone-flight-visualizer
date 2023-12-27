@@ -1,6 +1,7 @@
 #include "chunk_loader.h"
 
 #include <iostream>
+#include <span>
 
 #include "cpr/api.h"
 #include "cpr/cprtypes.h"
@@ -8,6 +9,7 @@
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 
+#include <utils/env.h>
 #include <utils/exepath.h>
 #include <utils/time_types.h>
 #include <vulkan/vk_mesh.h>
@@ -240,5 +242,43 @@ namespace dfv {
         std::cout << "Normal buffer creation took " << duration_cast<milliseconds>(end - start) << std::endl;
 
         return mesh;
+    }
+
+    std::vector<std::byte> ChunkLoader::downloadTextureData() const {
+        // Get the image based on the bounding box
+        const auto latCenter = (bbox.llLat + bbox.urLat) / 2;
+        const auto lonCenter = (bbox.llLon + bbox.urLon) / 2;
+
+        const auto latDimension = std::abs(bbox.urLat - bbox.llLat);
+        const auto lonDimension = std::abs(bbox.urLon - bbox.llLon);
+        const auto dimension = std::max(latDimension, lonDimension);
+
+        auto apiKey = env["NASA_API_KEY"];
+        if (apiKey.empty()) {
+            std::cerr << "NASA API key not found, falling back to DEMO_KEY" << std::endl;
+            apiKey = "DEMO_KEY";
+        }
+
+        const auto start = clock::now();
+        // clang-format off
+        const cpr::Response response = cpr::Get(cpr::Url("https://api.nasa.gov/planetary/earth/imagery"),
+                                                cpr::Parameters{
+                                                        {"lon", std::to_string(lonCenter)},
+                                                        {"lat", std::to_string(latCenter)},
+                                                        {"dim", std::to_string(dimension)},
+                                                        {"date", "2021-01-01"},
+                                                        {"api_key", apiKey},
+                                                });
+        // clang-format on
+        const auto end = clock::now();
+        std::cout << "Map texture fetching request took " << duration_cast<milliseconds>(end - start) << std::endl;
+
+        if (response.status_code != 200) {
+            std::cerr << "Texture data request returned with error code: " << response.status_code << std::endl;
+            return {};
+        }
+
+        std::span text{reinterpret_cast<const std::byte *>(response.text.data()), response.text.size()};
+        return {text.begin(), text.end()};
     }
 } // namespace dfv

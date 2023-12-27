@@ -13,7 +13,7 @@ namespace dfv {
         /**
          * @brief Constructs a new chunk loader.
          * @param pointCount The number of points in each dimension of the grid.
-         * @param bbox The bounding box of the map.
+         * @param bbox The bounding box of the chunk.
          * @param initialPosition The initial position of the flying object.
          */
         ChunkLoader(int pointCount, const FlightBoundingBox &bbox, const Coordinate &initialPosition);
@@ -36,9 +36,15 @@ namespace dfv {
          */
         Mesh createMesh(const std::vector<Coordinate> &coordinates) const;
 
+        /**
+         * @brief Downloads the texture data from the NASA Imagery API.
+         * @return A vector of bytes containing the texture data in PNG format.
+         */
+        std::vector<std::byte> downloadTextureData() const;
+
       private:
         const int pointCount; //!< The number of points in each dimension of the grid
-        const FlightBoundingBox &bbox; //!< The bounding box of the map
-        const Coordinate &initialPosition; //!< The initial position of the flying object
+        const FlightBoundingBox bbox; //!< The bounding box of the map
+        const Coordinate initialPosition; //!< The initial position of the flying object
     };
 } // namespace dfv
