@@ -147,12 +147,16 @@ namespace dfv {
     void ChunkLoader::fetchAndPopulateElevation(std::vector<Coordinate> &coordinates) const {
         // Try loading the Google API key from google_api_key.txt
         const std::filesystem::path googleApiKeyPath = getexepath().parent_path() / "google_api_key.txt";
-        if (std::filesystem::exists(googleApiKeyPath)) {
-            std::cout << "Fetching map using Google Maps APIs, api key file detected" << std::endl;
+        std::string googleApiKey = env["GOOGLE_API_KEY"];
+
+        if (googleApiKey.empty() && std::filesystem::is_regular_file(googleApiKeyPath)) {
             std::ifstream googleApiKeyFile{googleApiKeyPath};
-            std::string apiKey;
-            std::getline(googleApiKeyFile, apiKey);
-            fetchAndPopulateElevationGoogle(coordinates, apiKey);
+            std::getline(googleApiKeyFile, googleApiKey);
+        }
+
+        if (!googleApiKey.empty()) {
+            std::cout << "Fetching map using Google Maps APIs" << std::endl;
+            fetchAndPopulateElevationGoogle(coordinates, googleApiKey);
         } else {
             std::cout << "Fetching map using Open Elevations APIs" << std::endl;
             fetchAndPopulateElevationOSM(coordinates);
