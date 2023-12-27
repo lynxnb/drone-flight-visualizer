@@ -138,6 +138,13 @@ namespace dfv {
         RenderObjectDescriptor allocateRenderObject();
 
         /**
+         * @brief Applies the given texture to the render object.
+         * @param handle The handle of the render object to apply the texture to.
+         * @param texture The texture to apply.
+         */
+        void applyTexture(RenderHandle handle, const Texture *texture);
+
+        /**
          * Gets the render object with the given handle.
          * @param handle The handle of the render object to get.
          * @return The render object, or nullptr if no render object with that handle exists.

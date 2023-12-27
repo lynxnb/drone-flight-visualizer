@@ -398,12 +398,20 @@ namespace dfv {
         meshPipelineLayoutInfo.pPushConstantRanges = &pushConstant;
         meshPipelineLayoutInfo.pushConstantRangeCount = 1;
 
+        VkPipelineLayoutCreateInfo texturePipelineLayoutInfo = meshPipelineLayoutInfo;
+
         const std::array setLayouts = {globalSetLayout, objectSetLayout};
         meshPipelineLayoutInfo.pSetLayouts = setLayouts.data();
         meshPipelineLayoutInfo.setLayoutCount = setLayouts.size();
 
+        const std::array textureSetLayouts = {globalSetLayout, objectSetLayout, materialSetLayout};
+        texturePipelineLayoutInfo.pSetLayouts = textureSetLayouts.data();
+        texturePipelineLayoutInfo.setLayoutCount = textureSetLayouts.size();
+
         VkPipelineLayout meshPipelineLayout;
         VK_CHECK(vkCreatePipelineLayout(device, &meshPipelineLayoutInfo, nullptr, &meshPipelineLayout));
+        VkPipelineLayout texturePipelineLayout;
+        VK_CHECK(vkCreatePipelineLayout(device, &texturePipelineLayoutInfo, nullptr, &texturePipelineLayout));
 
         // Create the default mesh pipeline
         createMaterial(pipelineBuilder, meshPipelineLayout, "shaders/default.vert.spv", "shaders/default_lit.frag.spv", "defaultmesh");
@@ -412,12 +420,13 @@ namespace dfv {
         // Create the simple map pipeline
         createMaterial(pipelineBuilder, meshPipelineLayout, "shaders/map.vert.spv", "shaders/map_simple.frag.spv", "map_simple");
         // Create the textured map pipeline
-        createMaterial(pipelineBuilder, meshPipelineLayout, "shaders/map.vert.spv", "shaders/map_textured.frag.spv", "map_textured");
+        createMaterial(pipelineBuilder, texturePipelineLayout, "shaders/map.vert.spv", "shaders/map_textured.frag.spv", "map_textured");
         // Create the triangle tester pipeline
         createMaterial(pipelineBuilder, meshPipelineLayout, "shaders/triangle_tester.vert.spv", "shaders/triangle_tester.frag.spv", "triangle_tester");
 
         mainDeletionQueue.pushFunction([=, this] {
             vkDestroyPipelineLayout(device, meshPipelineLayout, nullptr);
+            vkDestroyPipelineLayout(device, texturePipelineLayout, nullptr);
         });
     }
 

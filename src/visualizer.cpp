@@ -117,8 +117,6 @@ namespace dfv {
                 .transform = glm::mat4{1.f}};
 
         objectRenderHandle = ufoHandle;
-
-        auto obamaTexture = engine.createTexture("obama", "assets/textures/obama.jpg");
     }
 
     void Visualizer::update(const seconds_f deltaTime) {

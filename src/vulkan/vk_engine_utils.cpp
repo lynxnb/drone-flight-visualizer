@@ -318,6 +318,41 @@ namespace dfv {
         return {&object, renderObjects.size() - 1};
     }
 
+    void VulkanEngine::applyTexture(const RenderHandle handle, const Texture *texture) {
+        if (!texture) {
+            std::cerr << "Warning: trying to apply a null texture to a render object" << std::endl;
+            return;
+        }
+
+        const auto &renderObj = *getRenderObject(handle);
+
+        const VkSamplerCreateInfo samplerInfo = vkinit::sampler_create_info(VK_FILTER_LINEAR);
+        VkSampler blockySampler;
+        vkCreateSampler(device, &samplerInfo, nullptr, &blockySampler);
+
+        mainDeletionQueue.pushFunction([=, this] {
+            vkDestroySampler(device, blockySampler, nullptr);
+        });
+
+        // Allocate the descriptor set for the material set
+        const VkDescriptorSetAllocateInfo allocInfo = {.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+                                                       .descriptorPool = descriptorPool,
+                                                       .descriptorSetCount = 1,
+                                                       .pSetLayouts = &materialSetLayout};
+
+        vkAllocateDescriptorSets(device, &allocInfo, &renderObj.material->textureSet);
+
+        // Write to the descriptor set so that it points to the given texture
+        VkDescriptorImageInfo imageBufferInfo = {.sampler = blockySampler,
+                                                 .imageView = texture->imageView,
+                                                 .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+
+        const VkWriteDescriptorSet textureSetWrite = vkinit::write_descriptor_image(
+                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, renderObj.material->textureSet, &imageBufferInfo, 0);
+
+        vkUpdateDescriptorSets(device, 1, &textureSetWrite, 0, nullptr);
+    }
+
     RenderObject *VulkanEngine::getRenderObject(const RenderHandle handle) {
         return &renderObjects[handle];
     }

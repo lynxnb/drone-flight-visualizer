@@ -183,6 +183,12 @@ namespace dfv {
                 // Bind descriptor set 1 (object data)
                 vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipelineLayout, 1, 1,
                                         &frame.objectDescriptor, 0, nullptr);
+
+                // Bind the texture descriptor if the material has one
+                if (object.material->textureSet != VK_NULL_HANDLE) {
+                    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipelineLayout, 2, 1,
+                                            &object.material->textureSet, 0, nullptr);
+                }
             }
 
             // Upload the model transform matrix to the GPU via push constants

@@ -40,4 +40,8 @@ namespace dfv::vkinit {
 
     VkSubmitInfo submit_info(VkCommandBuffer *commandBuffers);
 
+    VkSamplerCreateInfo sampler_create_info(VkFilter filters, VkSamplerAddressMode samplerAddressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
+
+    VkWriteDescriptorSet write_descriptor_image(VkDescriptorType type, VkDescriptorSet dstSet, VkDescriptorImageInfo *imageInfo, uint32_t binding);
+
 } // namespace dfv::vkinit

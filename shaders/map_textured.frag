@@ -46,9 +46,7 @@ void main() {
     vec3 lightDir = sceneData.sunlightDirection;
     vec3 lightColor = sceneData.sunlightColor.rgb;
 
-    vec3 DiffSpec = BRDF(EyeDir, Norm, lightDir, droneColor, lightColor, 100.0f);
+    vec3 DiffSpec = BRDF(EyeDir, Norm, lightDir, texture(tex1, fragUV).xyz, lightColor, 100.0f);
 
-    vec3 Ambient = droneColor * 0.05f;
-
-    outFragColor = vec4(clamp(0.95 * (DiffSpec)*lightColor.rgb + Ambient, 0.0, 1.0), 1.0f);
+    outFragColor = vec4(clamp(0.95 * (DiffSpec)*lightColor.rgb, 0.0, 1.0), 1.0f);
 }
