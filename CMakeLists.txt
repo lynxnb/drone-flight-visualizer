@@ -10,6 +10,11 @@ set(OUTPUT_BINARY_DIR "${PROJECT_SOURCE_DIR}/bin/${CMAKE_BUILD_TYPE}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_BINARY_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
+# Disable MSVC deprecation warnings
+if (WIN32)
+    add_compile_definitions(_CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_DEPRECATE)
+endif ()
+
 # CPM.cmake: package management utility for CMake
 set(CPM_SOURCE_CACHE ${CMAKE_SOURCE_DIR}/libraries)
 include(cmake/CPM.cmake)
