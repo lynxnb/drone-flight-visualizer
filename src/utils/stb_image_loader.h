@@ -16,6 +16,12 @@ namespace dfv {
         explicit StbImageLoader(const std::filesystem::path &filename);
 
         /**
+         * @brief Constructs a new StbImageLoader object and decodes the image from a span of bytes.
+         * @param data The span of bytes containing the image data.
+         */
+        explicit StbImageLoader(std::span<std::byte> data);
+
+        /**
          * @return A span of the image data.
          * @note The number of channels can be queried with the channels() method.
          */

@@ -28,6 +28,24 @@ namespace dfv {
         mChannels = static_cast<uint32_t>(texChannels);
     }
 
+    StbImageLoader::StbImageLoader(const std::span<std::byte> data) {
+        int texWidth, texHeight, texChannels;
+        stbi_uc *pixels = stbi_load_from_memory(reinterpret_cast<stbi_uc *>(data.data()), static_cast<int>(data.size_bytes()),
+                                                &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+
+        if (!pixels) {
+            std::cerr << "Failed to load texture data from buffer of size 0x" << std::hex << data.size_bytes() << std::endl;
+            return;
+        }
+
+        size_t size = texWidth * texHeight * 4;
+
+        mData = {reinterpret_cast<std::byte *>(pixels), size};
+        mWidth = static_cast<uint32_t>(texWidth);
+        mHeight = static_cast<uint32_t>(texHeight);
+        mChannels = static_cast<uint32_t>(texChannels);
+    }
+
     std::span<std::byte> StbImageLoader::data() const {
         return mData;
     }
