@@ -7,6 +7,7 @@ set(DFV_SOURCE_COMMON
         vulkan/vk_mesh.cpp
         vulkan/vk_engine_utils.cpp
         vulkan/vk_engine_init.cpp
+        utils/env.cpp
         utils/stb_image_loader.cpp
 )
 
