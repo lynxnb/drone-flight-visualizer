@@ -126,6 +126,8 @@ namespace dfv {
         setObjectTransform(glm::vec3{point.x, point.y, point.z},
                            glm::vec3{point.yaw, point.pitch, point.roll});
 
+        static RenderHandle sMapHandle{NullHandle};
+
         // Try to add the map to the engine if it's ready
         auto meshOpt = mapManager.getMapMesh();
         if (meshOpt) {
@@ -133,6 +135,13 @@ namespace dfv {
             *mapObject = {.mesh = engine.insertMesh("map", std::move(*meshOpt)),
                           .material = engine.getMaterial("map_simple"),
                           .transform = glm::mat4{1.f}};
+            sMapHandle = mapHandle;
+        }
+
+        auto textureOpt = mapManager.getMapTexture();
+        if (textureOpt) {
+            const auto texture = engine.insertTexture("map", *textureOpt, true);
+            engine.applyTexture(sMapHandle, texture, engine.getMaterial("map_textured"));
         }
 
         // Update camera

@@ -22,13 +22,12 @@ namespace dfv {
         std::optional<Mesh> getMapMesh();
 
         /**
-         * @brief Loads a map mesh from the given bounding box.
-         * @param bbox The boundaries of the map to load. The map will be loaded from a grid of points within this bounding box.
-         * @param initialPosition The initial position of the flying object. Map coordinates will be relative to this position.
+         * @brief Returns the map texture if it is ready, or an empty optional otherwise.
          */
-        static Mesh loadMap(const FlightBoundingBox &bbox, const Coordinate &initialPosition);
+        std::optional<std::vector<std::byte>> getMapTexture();
 
       private:
         std::future<Mesh> mapMeshFuture;
+        std::future<std::vector<std::byte>> mapTextureFuture;
     };
 } // namespace dfv

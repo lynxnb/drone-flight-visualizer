@@ -9,8 +9,26 @@ namespace dfv {
         const auto initialPos = flightData.getInitialPosition();
 
         if (uniformGrid) {
-            mapMeshFuture = std::async(std::launch::async, [bbox, initialPos] {
-                return loadMap(bbox, initialPos);
+            constexpr int PointCount = 50;
+            constexpr double BboxExpandFactor = 0.05;
+
+            const FlightBoundingBox expandedBbox = {
+                    .llLat = bbox.llLat - BboxExpandFactor,
+                    .llLon = bbox.llLon - BboxExpandFactor,
+                    .urLat = bbox.urLat + BboxExpandFactor,
+                    .urLon = bbox.urLon + BboxExpandFactor};
+
+            auto loader = std::make_shared<ChunkLoader>(PointCount, expandedBbox, initialPos);
+
+            mapMeshFuture = std::async(std::launch::async, [loader] {
+                std::vector<Coordinate> coordinates = loader->generateGrid();
+                loader->fetchAndPopulateElevation(coordinates);
+
+                return loader->createMesh(coordinates);
+            });
+
+            mapTextureFuture = std::async(std::launch::async, [loader] {
+                return loader->downloadTextureData();
             });
         } else {
             constexpr float BOX_OFFSET = 0.05;
@@ -53,29 +71,24 @@ namespace dfv {
             try {
                 return mapMeshFuture.get();
             } catch (const std::exception &e) {
-                std::cerr << "Map loading encountered an exception: " << e.what() << std::endl;
+                std::cerr << "Map mesh loading encountered an exception: " << e.what() << std::endl;
             }
         }
 
         return std::nullopt;
     }
 
-    Mesh MapManager::loadMap(const FlightBoundingBox &bbox, const Coordinate &initialPosition) {
-        constexpr int PointCount = 50;
-        constexpr double BboxExpandFactor = 0.05;
+    std::optional<std::vector<std::byte>> MapManager::getMapTexture() {
+        using namespace std::chrono_literals;
+        // Wait for the mesh to be ready, even if the texture is ready
+        if (!mapMeshFuture.valid() && mapTextureFuture.valid() && mapTextureFuture.wait_for(0ms) == std::future_status::ready) {
+            try {
+                return mapTextureFuture.get();
+            } catch (const std::exception &e) {
+                std::cerr << "Map texture loading encountered an exception: " << e.what() << std::endl;
+            }
+        }
 
-        const FlightBoundingBox expandedBbox = {
-                .llLat = bbox.llLat - BboxExpandFactor,
-                .llLon = bbox.llLon - BboxExpandFactor,
-                .urLat = bbox.urLat + BboxExpandFactor,
-                .urLon = bbox.urLon + BboxExpandFactor};
-
-        const ChunkLoader loader{PointCount, expandedBbox, initialPosition};
-
-        std::vector<Coordinate> coordinates = loader.generateGrid();
-        loader.fetchAndPopulateElevation(coordinates);
-
-        return loader.createMesh(coordinates);
+        return std::nullopt;
     }
-
 } // namespace dfv
