@@ -1,4 +1,4 @@
-#include "vk_texture.h"
+#include "stb_image_loader.h"
 
 #include <iostream>
 

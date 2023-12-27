@@ -7,6 +7,7 @@
 #include <vulkan/vk_enum_string_helper.h>
 
 #include "vk_initializers.h"
+#include <utils/stb_image_loader.h>
 
 #define SOURCE_LOCATION __builtin_FILE() << ":" << __builtin_LINE() << " (" << __builtin_FUNCTION() << ")"
 
