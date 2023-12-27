@@ -339,13 +339,16 @@ namespace dfv {
         return {&object, renderObjects.size() - 1};
     }
 
-    void VulkanEngine::applyTexture(const RenderHandle handle, const Texture *texture) {
+    void VulkanEngine::applyTexture(const RenderHandle handle, const Texture *texture, Material *texMaterial) {
         if (!texture) {
             std::cerr << "Warning: trying to apply a null texture to a render object" << std::endl;
             return;
         }
 
-        const auto &renderObj = *getRenderObject(handle);
+        auto &renderObj = *getRenderObject(handle);
+        // Switch to the new material if specified
+        if (texMaterial)
+            renderObj.material = texMaterial;
 
         const VkSamplerCreateInfo samplerInfo = vkinit::sampler_create_info(VK_FILTER_LINEAR);
         VkSampler blockySampler;

@@ -143,8 +143,9 @@ namespace dfv {
          * @brief Applies the given texture to the render object.
          * @param handle The handle of the render object to apply the texture to.
          * @param texture The texture to apply.
+         * @param texMaterial An optional material to switch to when applying the texture.
          */
-        void applyTexture(RenderHandle handle, const Texture *texture);
+        void applyTexture(RenderHandle handle, const Texture *texture, Material *texMaterial = nullptr);
 
         /**
          * Gets the render object with the given handle.
