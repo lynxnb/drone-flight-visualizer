@@ -2,6 +2,7 @@
 
 #include <array>
 #include <filesystem>
+#include <span>
 #include <vector>
 
 #include <vk_mem_alloc.h>
@@ -118,11 +119,12 @@ namespace dfv {
          * Inserts a texture from existing data into the engine.
          * Currently only the R8G8B8A8 format is supported.
          * @param name The name of the texture, used to identify it later.
-         * @param texture A texture object the extent and format set.
          * @param data A span of the pixel data to use for the texture.
+         * @param decode Whether to decode the texture data from encoded formats.
+         * @param extent The extent of the texture. If decoding is enabled, the extent is calculated from the data.
          * @return A pointer to the inserted texture.
          */
-        Texture *insertTexture(const std::string &name, Texture &&texture, std::span<std::byte> data);
+        Texture *insertTexture(const std::string &name, std::span<std::byte> data, bool decode = false, VkExtent3D extent = {});
 
         /**
          * Gets the texture with the given name.

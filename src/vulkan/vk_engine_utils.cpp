@@ -296,8 +296,28 @@ namespace dfv {
         return &textureIt->second;
     }
 
-    Texture *VulkanEngine::insertTexture(const std::string &name, Texture &&texture, const std::span<std::byte> data) {
-        uploadTexture(texture, data);
+    Texture *VulkanEngine::insertTexture(const std::string &name, const std::span<std::byte> data, const bool decode, const VkExtent3D extent) {
+        Texture texture = {
+                .extent = extent,
+                .format = VK_FORMAT_R8G8B8A8_SRGB,
+        };
+
+        // Decode the texture data if requested
+        if (decode) {
+            const StbImageLoader loader{data};
+
+            const auto decodedData = loader.data();
+            if (decodedData.empty())
+                return nullptr;
+
+            texture.extent = {.width = loader.width(),
+                              .height = loader.height(),
+                              .depth = 1};
+
+            uploadTexture(texture, decodedData);
+        } else {
+            uploadTexture(texture, data);
+        }
 
         auto [textureIt, isNewInsertion] = textures.insert_or_assign(name, texture);
         if (!isNewInsertion)
