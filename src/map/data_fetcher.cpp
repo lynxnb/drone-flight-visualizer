@@ -13,6 +13,7 @@
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
+#include <utils/time_types.h>
 
 namespace dfv::map {
     namespace {
@@ -535,6 +536,7 @@ namespace dfv::map {
         Mesh mesh = {};
         float elevation_scale = 1;
 
+        auto start = clock::now();
         for (int ii = 0; ii < box_matrix.size(); ++ii) {
             for (int ie = 0; ie < box_matrix[0].size(); ++ie) {
                 structs::DiscreteBoxInfo *box = &box_matrix[ii][ie];
@@ -671,11 +673,14 @@ namespace dfv::map {
                 }
             }
         }
+        auto end = clock::now();
+        std::cout << "Vertex buffer creation took " << duration_cast<milliseconds>(end - start) << std::endl;
 
         std::vector<uint32_t> vertex_normal_accumulator(mesh.vertices.size(), 0);
 
         std::cout << "Nodes : " << mesh.vertices.size() << " Triangles: " << mesh.indices.size() / 3 << std::endl;
 
+        start = clock::now();
         for (int i = 0; i < mesh.indices.size(); i += 3) {
             Vertex &v1 = mesh.vertices[mesh.indices[i]];
             Vertex &v2 = mesh.vertices[mesh.indices[i + 1]];
@@ -721,6 +726,8 @@ namespace dfv::map {
         for (int i = 0; i < mesh.vertices.size(); ++i) {
             mesh.vertices[i].normal /= static_cast<float>(vertex_normal_accumulator[i]);
         }
+        end = clock::now();
+        std::cout << "Normal buffer creation took " << duration_cast<milliseconds>(end - start) << std::endl;
 
         return mesh;
     }
