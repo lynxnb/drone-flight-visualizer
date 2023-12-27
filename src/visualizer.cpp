@@ -23,7 +23,7 @@ namespace dfv {
         time = flightData.getStartTime();
 
         // Tell the map manager to start loading the map
-        mapManager.startLoad(flightData);
+        mapManager.startLoad(flightData, true);
 
         engine.init();
         createScene();
