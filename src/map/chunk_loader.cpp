@@ -170,8 +170,8 @@ namespace dfv {
         mesh.vertices.reserve(coordinates.size());
         for (const auto &coord : coordinates) {
             const auto relativeCoord = calculateRelativePosition(coord, initialPosition);
-            const auto u = (coord.lat - bbox.llLat) / (bbox.urLat - bbox.llLat);
-            const auto v = (coord.lon - bbox.llLon) / (bbox.urLon - bbox.llLon);
+            const auto u = (coord.lon - bbox.llLon) / (bbox.urLon - bbox.llLon);
+            const auto v = 1 - (coord.lat - bbox.llLat) / (bbox.urLat - bbox.llLat);
 
             mesh.vertices.push_back(Vertex{
                     .position = {relativeCoord.lon, relativeCoord.alt, relativeCoord.lat},
