@@ -1,5 +1,6 @@
 ﻿#include "vk_engine.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <iostream>
 
