@@ -7,7 +7,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(OUTPUT_BINARY_DIR "${PROJECT_SOURCE_DIR}/bin/${CMAKE_BUILD_TYPE}")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_BINARY_DIR}")
+# Disallow multi-configuration generators append a per-configuration subdirectory with $<0:>
+# TODO: get rid of per-configuration folders and let the generator handle it
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_BINARY_DIR}/$<0:>")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
 # Disable MSVC deprecation warnings
