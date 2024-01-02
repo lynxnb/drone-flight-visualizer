@@ -11,9 +11,9 @@ layout (location = 0) out vec4 outFragColor;
 
 layout (set = 0, binding = 0) uniform SceneData {
     vec4 ambientColor;
-    vec3 sunlightDirection; //w for sun power
+    vec3 sunlightDirection;//w for sun power
     vec4 sunlightColor;
-    vec3 eyePos; // position of the camera
+    vec3 eyePos;// position of the camera
 } sceneData;
 
 // Map color: grass green #29a415
@@ -26,12 +26,27 @@ vec3 BRDF(vec3 V, vec3 N, vec3 L, vec3 Md, vec3 Ms, float gamma) {
     // vec3 Md - main color of the surface
     // vec3 Ms - specular color of the surface
     // float gamma - Exponent for power specular term
-    vec3 diffuse = Md * max(dot(L, N),0.0);
-    //vec3 r = 2*(N * dot(L, N)) - L;
-    vec3 r = -reflect(L,N); // glsl has a built in function for this
 
-    float specularFactor = 0.1;  // the specular factor adjuts the reflectivity of the surface
-    vec3 specular = specularFactor * Ms * pow(clamp(dot(V,r),0,1.0f), gamma);
+    float sigma = 1.2f;
+    // Oren-Nayar diffuse value
+    float omega_i = acos(dot(L, N));
+    float omega_r = acos(dot(V, N));
+    float alpha = max(omega_i, omega_r);
+    float beta = min(omega_i, omega_r);
+    float A = 1 - 0.5 * (sigma * sigma / (sigma * sigma + 0.33));
+    float B = 0.45 * (sigma * sigma / (sigma * sigma + 0.09));
+
+    vec3 v_i = normalize(L - dot(L, N) * N);
+    vec3 v_r = normalize(V - dot(V, N) * N);
+    float G = max(0, dot(v_i, v_r));
+    vec3 Lo = Md *clamp(dot(L, N), 0, 1.0);
+    vec3 diffuse = Lo*(A + B * G * sin(alpha) * tan(beta));
+
+    //vec3 r = 2*(N * dot(L, N)) - L;
+    vec3 r = -reflect(L, N);// glsl has a built in function for this
+
+    float specularFactor = 0.1;// the specular factor adjuts the reflectivity of the surface
+    vec3 specular = specularFactor * Ms * pow(clamp(dot(V, r), 0, 1.0f), gamma);
     return diffuse + specular;
 }
 
