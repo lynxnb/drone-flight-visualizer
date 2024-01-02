@@ -3,9 +3,9 @@
 #include <filesystem>
 
 #include "flight_data/flight_data.h"
-#include <utils/time_types.h>
 #include "vulkan/surface_wrapper.h"
 #include "vulkan/vk_engine.h"
+#include <utils/time_types.h>
 
 #include <map/map_manager.h>
 
@@ -105,6 +105,12 @@ namespace dfv {
          * @param multiplier The new time multiplier. 0 to pause, 1 to resume, 2 to double the speed, etc.
          */
         void changeTimeMultiplier(float multiplier = 2.f);
+
+        /**
+         * @brief Adds to the time multiplier of the drone visualization.
+         * @param addend The amount to add to the time multiplier.
+         */
+        void addToTimeMultiplier(float addend = 2.f);
 
       protected:
         /**

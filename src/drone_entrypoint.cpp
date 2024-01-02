@@ -118,6 +118,15 @@ void setupInput(dfv::raii::Glfw &glfw, dfv::Visualizer &visualizer) {
             case GLFW_KEY_R:
                 visualizerRef.recenterCamera();
                 break;
+            case GLFW_KEY_J:
+                visualizerRef.addToTimeMultiplier(-1);
+                break;
+            case GLFW_KEY_K:
+                visualizerRef.changeTimeMultiplier(0);
+                break;
+            case GLFW_KEY_L:
+                visualizerRef.addToTimeMultiplier(1);
+                break;
             case GLFW_KEY_ENTER:
                 if (action == GLFW_PRESS && mods == GLFW_MOD_ALT)
                     glfwRef.toggleFullscreen();

@@ -229,4 +229,8 @@ namespace dfv {
         droneTimeMultiplier = multiplier;
     }
 
+    void Visualizer::addToTimeMultiplier(float addend) {
+        droneTimeMultiplier += addend;
+    }
+
 } // namespace dfv
