@@ -13,13 +13,13 @@ namespace dfv::map {
 
     std::vector<std::vector<structs::Node>> createGridSlave(float llLat, float llLon, float urLat, float urLon, float sparsity);
 
-    std::vector<std::vector<structs::Node>> createGridSlaveMock(float llLat, float llLon, float urLat, float urLon, float spacingMeters);
+    std::vector<std::vector<structs::Node>> createGridSlaveMock(float llLat, float llLon, float urLat, float urLon);
 
     auto createGrid(structs::DiscreteBox box, std::vector<structs::Node> &drone_path, float sparsity, float box_size, float node_density_coefficient) -> std::vector<std::vector<structs::DiscreteBoxInfo>>;
 
     void populateElevation(std::vector<structs::Node> &nodes);
 
-    Mesh createMeshArray(std::vector<std::vector<structs::DiscreteBoxInfo>> &box_matrix, float llLatBound, float llLonBound, float urLatBound, float urLonBound, Coordinate initialPosition);
+    Mesh createMeshArray(std::vector<std::vector<structs::DiscreteBoxInfo>> &box_matrix, double llLatBound, double llLonBound, double urLatBound, double urLonBound, Coordinate initialPosition);
 
     void PopulateBatchWithElevationOpenElevation(std::vector<std::reference_wrapper<structs::Node *>> &nodes);
 

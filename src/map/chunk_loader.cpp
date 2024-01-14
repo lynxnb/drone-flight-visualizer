@@ -265,18 +265,21 @@ namespace dfv {
 
         const auto start = clock::now();
         // clang-format off
-        const cpr::Response response = cpr::Get(cpr::Url("https://api.nasa.gov/planetary/earth/imagery"),
+       const cpr::Response response = cpr::Get(cpr::Url("https://api.nasa.gov/planetary/earth/imagery"),
                                                 cpr::Parameters{
                                                         {"lon", std::to_string(lonCenter)},
-                                                        {"lat", std::to_string(latCenter)},
+                                                       {"lat", std::to_string(latCenter)},
                                                         {"dim", std::to_string(dimension)},
-                                                        {"date", "2021-01-01"},
+                                                        {"date", "2017-10-28"},
                                                         {"api_key", apiKey},
                                                 });
+
+        //const cpr::Response response = cpr::Get(cpr::Url("https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Color_wheel_gradient_square.svg/768px-Color_wheel_gradient_square.svg.png?20230205190147"));
         // clang-format on
         const auto end = clock::now();
         std::cout << "Map texture fetching request took " << duration_cast<milliseconds>(end - start) << std::endl;
 
+        //cpr::Response response = cpr::Get(cpr::Url("https://earthengine.googleapis.com/v1alpha/projects/earthengine-legacy/thumbnails/02bbe0554e8e48934964f13b98d8a47f-e55575ff098219f916e75a68fd22167b:getPixels"));
         if (response.status_code != 200) {
             std::cerr << "Texture data request returned with error code: " << response.status_code << std::endl;
             return {};

@@ -35,8 +35,7 @@ namespace dfv {
             dfv::structs::DiscreteBox box = {.llLat = bbox.llLat - BOX_OFFSET,
                                              .llLon = bbox.llLon - BOX_OFFSET,
                                              .urLat = bbox.urLat + BOX_OFFSET,
-                                             .urLon = bbox.urLon + BOX_OFFSET,
-                                             .spacingMeters = 0};
+                                             .urLon = bbox.urLon + BOX_OFFSET};
 
             const auto &dronePath = flightData.getPath();
             std::vector<structs::Node> pathNodes;
@@ -48,19 +47,28 @@ namespace dfv {
             }
 
             mapMeshFuture = std::async(std::launch::async, [box, initialPos, pathNodes = std::move(pathNodes)]() mutable {
-                constexpr float sparsity = 1;
+                constexpr float sparsity = 10;
                 constexpr float box_size = 0.02; // Example box size
                 constexpr float node_density_coefficient = 0.5; // Example coefficient
 
                 auto boxMatrix = dfv::map::createGrid(box, pathNodes, sparsity, box_size, node_density_coefficient);
 
-                const float lrLatBound = boxMatrix.back().back().dots.back().back().lat;
-                const float lrLonBound = boxMatrix.back().back().dots.back().back().lon;
                 return dfv::map::createMeshArray(boxMatrix,
-                                                 boxMatrix[0][0].dots[0][0].lat,
-                                                 boxMatrix[0][0].dots[0][0].lon,
-                                                 lrLatBound,
-                                                 lrLonBound, initialPos);
+                                                 box.llLat,
+                                                 box.llLon,
+                                                 box.urLon,
+                                                 box.urLon, initialPos);
+            });
+
+            FlightBoundingBox fbox = {.llLat = box.llLat,
+                                             .llLon = box.llLon,
+                                             .urLat = box.urLat,
+                                             .urLon = box.urLon};
+
+            auto loader = std::make_shared<ChunkLoader>(0, fbox, initialPos);
+
+            mapTextureFuture = std::async(std::launch::async, [loader] {
+                return loader->downloadTextureData();
             });
         }
     }

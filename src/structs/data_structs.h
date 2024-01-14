@@ -12,6 +12,8 @@ namespace dfv::structs {
         float x;
         float y;
         float z = 0;
+        float ux;
+        float uy;
         unsigned long long vertex_index = -1;
 
         std::string toString() const {
@@ -59,7 +61,6 @@ namespace dfv::structs {
         double llLon = 10000;
         double urLat = -10000;
         double urLon = -10000;
-        float spacingMeters;
     };
 
     struct DiscreteBoxInfo {

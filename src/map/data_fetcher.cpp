@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cmath>
 #include <math.h>
+#include <utils/env.h>
 #include <cpr/cpr.h>
 #include <cstdlib> // Include for getenv
 #include <glm/geometric.hpp>
@@ -189,8 +190,7 @@ namespace dfv::map {
             directory = execPath.substr(0, last_slash_idx);
         }
 
-        std::string apiKeyFilePath = directory + "/google_api_key.txt"; // Assuming the file is named 'google_api_key.txt'
-        std::string googleApiKey = ReadApiKeyFromFile(apiKeyFilePath);
+        std::string googleApiKey = env["GOOGLE_API_KEY"];
 
         std::cout << "Fetching " << nodes->size() << " Nodes Elevation" << std::endl;
         int batch_size = 0;
@@ -226,12 +226,12 @@ namespace dfv::map {
     void sewBoxesSlave(std::vector<Node> &commonNodes, std::vector<Node> &sparseNodes, Mesh &mesh, int orientation) {
         bool reverseOrientationX = sparseNodes[0].game_node->x > commonNodes[0].game_node->x;
         bool reverseOrientationZ = sparseNodes[0].game_node->z > commonNodes[0].game_node->z;
-        int sparseIndex = orientation == 0 ? 1 : 0;
-        for (int k = orientation == 0 ? 1 : 0; k < commonNodes.size() - 1; ++k) {
+        int sparseIndex = 0;
+        for (int k = 0; k < commonNodes.size() - 1; ++k) {
             if(orientation == 1 && commonNodes[k].lat < sparseNodes[sparseIndex].lat){
                 continue;
             }
-            if (sparseIndex + 2 > sparseNodes.size() || (orientation == 0 && sparseIndex + 3 > sparseNodes.size() )) {
+            if (sparseIndex + 2 > sparseNodes.size() ) {
                 break;
             }
 
@@ -368,7 +368,7 @@ namespace dfv::map {
 
                 // Create the box and fill in the information
                 structs::DiscreteBoxInfo boxInfo{};
-                boxInfo.box = {minLat, minLon, maxLat, maxLon, box.spacingMeters};
+                boxInfo.box = {minLat, minLon, maxLat, maxLon};
 
                 boxInfo.is_on_path = false;
                 for (const auto &node : drone_path) {
@@ -530,9 +530,9 @@ namespace dfv::map {
         return glm::normalize(normal);
     }
 
-    Mesh createMeshArray(std::vector<std::vector<structs::DiscreteBoxInfo>> &box_matrix, float llLatBound, float llLonBound, float urLatBound, float urLonBound, Coordinate initialPosition) {
-        double totalLatWorldLatSpan = urLatBound - llLatBound;
-        double totalLonWorldLatSpan = urLonBound - llLonBound;
+    Mesh createMeshArray(std::vector<std::vector<structs::DiscreteBoxInfo>> &box_matrix, double llLatBound, double llLonBound, double urLatBound, double urLonBound, Coordinate initialPosition) {
+        double worldLatSpan = urLatBound - llLatBound;
+        double worldLonSpan = urLonBound - llLonBound;
         Mesh mesh = {};
         float elevation_scale = 1;
 
@@ -546,37 +546,43 @@ namespace dfv::map {
                     for (int e = 0; e < box->dots[0].size() - 1; ++e) {
                         if (box->dots[i][e].game_node == nullptr) {
                             box->dots[i][e].game_node = new GameNode();
+                            // box->dots[i][e].game_node->ux = std::max(1.0, (box->dots[i][e].lon - llLonBound) / worldLonSpan);
+                            // box->dots[i][e].game_node->uy = std::min(0.0,1 - (box->dots[i][e].lat - llLatBound) / worldLatSpan);
                             box->dots[i][e].game_node->x = (box->dots[i][e].lon - initialPosition.lon) * SCALING_FACTOR;
                             box->dots[i][e].game_node->z = (box->dots[i][e].lat - initialPosition.lat) * SCALING_FACTOR;
                             box->dots[i][e].game_node->y = box->dots[i][e].elev * elevation_scale;
                             mesh.vertices.push_back({
                                     {box->dots[i][e].game_node->x, box->dots[i][e].game_node->y, box->dots[i][e].game_node->z},
                                     {0.f, 0.f, 0.f},
-                                    {0.f, 0.f}
+                                    {box->dots[i][e].game_node->ux, box->dots[i][e].game_node->uy}
                             });
                             box->dots[i][e].game_node->vertex_index = mesh.vertices.size() - 1;
                         }
                         if (box->dots[i][e + 1].game_node == nullptr) {
                             box->dots[i][e + 1].game_node = new GameNode();
+                            // box->dots[i][e + 1].game_node->ux = std::max(1.0,(box->dots[i][e + 1].lon - llLonBound) / worldLonSpan);
+                            // box->dots[i][e + 1].game_node->uy = std::min(0.0,1 - (box->dots[i][e + 1].lat - llLatBound) / worldLatSpan);
                             box->dots[i][e + 1].game_node->x = (box->dots[i][e + 1].lon - initialPosition.lon) * SCALING_FACTOR;
                             box->dots[i][e + 1].game_node->z = (box->dots[i][e + 1].lat - initialPosition.lat) * SCALING_FACTOR;
                             box->dots[i][e + 1].game_node->y = box->dots[i][e + 1].elev * elevation_scale;
                             mesh.vertices.push_back({
                                     {box->dots[i][e + 1].game_node->x, box->dots[i][e + 1].game_node->y, box->dots[i][e + 1].game_node->z},
                                     {0.f, 0.f, 0.f},
-                                    {0.f, 0.f}
+                                    {box->dots[i][e + 1].game_node->ux, box->dots[i][e + 1].game_node->uy}
                             });
                             box->dots[i][e + 1].game_node->vertex_index = mesh.vertices.size() - 1;
                         }
                         if (box->dots[i + 1][e].game_node == nullptr) {
                             box->dots[i + 1][e].game_node = new GameNode();
+                            // box->dots[i + 1][e].game_node->ux = std::max(1.0,(box->dots[i + 1][e].lon - llLonBound) / worldLonSpan);
+                            // box->dots[i + 1][e].game_node->uy = std::min(0.0,1 - (box->dots[i + 1][e].lat - llLatBound) / worldLatSpan);
                             box->dots[i + 1][e].game_node->x = (box->dots[i + 1][e].lon - initialPosition.lon) * SCALING_FACTOR;
                             box->dots[i + 1][e].game_node->z = (box->dots[i + 1][e].lat - initialPosition.lat) * SCALING_FACTOR;
                             box->dots[i + 1][e].game_node->y = box->dots[i + 1][e].elev * elevation_scale;
                             mesh.vertices.push_back({
                                     {box->dots[i + 1][e].game_node->x, box->dots[i + 1][e].game_node->y, box->dots[i + 1][e].game_node->z},
                                     {0.f, 0.f, 0.f},
-                                    {0.f, 0.f}
+                                    {box->dots[i + 1][e].game_node->ux, box->dots[i + 1][e].game_node->uy}
                             });
                             box->dots[i + 1][e].game_node->vertex_index = mesh.vertices.size() - 1;
                         }
@@ -590,13 +596,15 @@ namespace dfv::map {
                     for (int e = 0; e < box->dots[0].size() - 1; ++e) {
                         if (box->dots[i + 1][e + 1].game_node == nullptr) {
                             box->dots[i + 1][e + 1].game_node = new GameNode();
+                            // box->dots[i + 1][e + 1].game_node->ux = std::max(1.0,(box->dots[i + 1][e + 1].lon - llLonBound) / worldLonSpan);
+                            // box->dots[i + 1][e + 1].game_node->uy = std::min(0.0,1 - (box->dots[i + 1][e + 1].lat - llLatBound) / worldLatSpan);
                             box->dots[i + 1][e + 1].game_node->x = (box->dots[i + 1][e + 1].lon - initialPosition.lon) * SCALING_FACTOR;
                             box->dots[i + 1][e + 1].game_node->z = (box->dots[i + 1][e + 1].lat - initialPosition.lat) * SCALING_FACTOR;
                             box->dots[i + 1][e + 1].game_node->y = box->dots[i + 1][e + 1].elev * elevation_scale;
                             mesh.vertices.push_back({
                                     {box->dots[i + 1][e + 1].game_node->x, box->dots[i + 1][e + 1].game_node->y, box->dots[i + 1][e + 1].game_node->z},
                                     {0.f, 0.f, 0.f},
-                                    {0.f, 0.f}
+                                    {box->dots[i + 1][e + 1].game_node->ux, box->dots[i + 1][e + 1].game_node->uy}
                             });
                             box->dots[i + 1][e + 1].game_node->vertex_index = mesh.vertices.size() - 1;
                         }
@@ -605,6 +613,26 @@ namespace dfv::map {
                             mesh.indices.push_back(box->dots[i + 1][e + 1].game_node->vertex_index);
                             mesh.indices.push_back(box->dots[i + 1][e].game_node->vertex_index);
                         }
+                    }
+                }
+            }
+        }
+
+        for (int ii = 0; ii < box_matrix.size(); ++ii) {
+            for (int ie = 0; ie < box_matrix[0].size(); ++ie) {
+                structs::DiscreteBoxInfo *box = &box_matrix[ii][ie];
+
+                //Set UVs
+                auto minX = box_matrix[0][0].dots[0][0].game_node->x;
+                auto maxX = box_matrix[0].back().dots[0].back().game_node->x;
+                auto minZ = box_matrix[0][0].dots[0][0].game_node->z;
+                auto maxZ = box_matrix.back()[0].dots.back()[0].game_node->z;
+                //Fill every node with UVs
+                for (auto &row : box->dots) {
+                    for (auto &inode : row) {
+                        inode.game_node->ux = (inode.game_node->x - minX) / (maxX - minX);
+                        inode.game_node->uy = (inode.game_node->z - minZ) / (maxZ - minZ);
+                        mesh.vertices[inode.game_node->vertex_index].uv = {inode.game_node->ux, inode.game_node->uy};
                     }
                 }
 
@@ -737,7 +765,7 @@ namespace dfv::map {
         int i = 0;
         allNodes.reserve(boxes.size());
         for (structs::DiscreteBox box : boxes) {
-            allNodes.push_back(createGridSlaveMock(box.llLat, box.llLon, box.urLat, box.urLon, box.spacingMeters));
+            allNodes.push_back(createGridSlaveMock(box.llLat, box.llLon, box.urLat, box.urLon));
         }
         std::vector<std::vector<structs::Node>> nodesBox;
         double northernmostcurrent = -100;
@@ -837,7 +865,7 @@ namespace dfv::map {
         return nodes;
     }
 
-    std::vector<std::vector<structs::Node>> createGridSlaveMock(float llLat, float llLon, float urLat, float urLon, float spacingMeters) {
+    std::vector<std::vector<structs::Node>> createGridSlaveMock(float llLat, float llLon, float urLat, float urLon) {
         std::vector<std::vector<structs::Node>> nodes;
 
         // Calculate the middle latitude and longitude
