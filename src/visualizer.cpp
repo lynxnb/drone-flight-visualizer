@@ -8,7 +8,7 @@
 namespace dfv {
     Visualizer::Visualizer(const VisualizerCreateInfo &createInfo)
         : flightData(createInfo.flightData), surface(createInfo.surface), engine(createInfo.surface),
-          objectModelPath(createInfo.objectModelPath), objectScale(createInfo.objectScale) {}
+          droneModelPath(createInfo.droneModelPath), droneScale(createInfo.droneScale) {}
 
     Visualizer::~Visualizer() {
         engine.cleanup();
@@ -56,12 +56,12 @@ namespace dfv {
     }
 
     void Visualizer::setObjectTransform(const glm::vec3 &position, const glm::vec3 &attitude) {
-        const auto ufo = engine.getRenderObject(objectRenderHandle);
-        ufo->transform = glm::translate(position) *
-                         glm::rotate(attitude.x, glm::vec3{0.f, 1.f, 0.f}) * // yaw
-                         glm::rotate(attitude.y, glm::vec3{1.f, 0.f, 0.f}) * // pitch
-                         glm::rotate(attitude.z, glm::vec3{0.f, 0.f, 1.f}) * // roll
-                         glm::scale(glm::vec3{objectScale});
+        const auto drone = engine.getRenderObject(droneRenderHandle);
+        drone->transform = glm::translate(position) *
+                           glm::rotate(attitude.x, glm::vec3{0.f, 1.f, 0.f}) * // yaw
+                           glm::rotate(attitude.y, glm::vec3{1.f, 0.f, 0.f}) * // pitch
+                           glm::rotate(attitude.z, glm::vec3{0.f, 0.f, 1.f}) * // roll
+                           glm::scale(glm::vec3{droneScale});
     }
 
     void Visualizer::setCameraMovement(const CameraMovement &movement) {
@@ -96,7 +96,7 @@ namespace dfv {
     }
 
     void Visualizer::createScene() {
-        if (!is_regular_file(objectModelPath))
+        if (!is_regular_file(droneModelPath))
             throw std::runtime_error("Invalid object model file provided");
 
         const auto firstDataPoint = flightData.getPoint(flightData.getStartTime());
@@ -108,19 +108,19 @@ namespace dfv {
         engine.camera.updateFront();
         engine.camera.up = {0.f, 1.f, 0.f};
 
-        const auto ufoMesh = engine.createMesh("ufo", objectModelPath);
+        const auto droneMesh = engine.createMesh("drone", droneModelPath);
 
         // adds the drone to the scene setting material and position
-        auto [ufo, ufoHandle] = engine.allocateRenderObject();
-        *ufo = {.mesh = ufoMesh,
-                .material = engine.getMaterial("drone"),
-                .transform = glm::mat4{1.f}};
+        auto [drone, droneHandle] = engine.allocateRenderObject();
+        *drone = {.mesh = droneMesh,
+                  .material = engine.getMaterial("drone"),
+                  .transform = glm::mat4{1.f}};
 
-        objectRenderHandle = ufoHandle;
+        droneRenderHandle = droneHandle;
     }
 
     void Visualizer::update(const seconds_f deltaTime) {
-        time += deltaTime * droneTimeMultiplier;
+        time += deltaTime * timeMultiplier;
 
         auto point = flightData.getPoint(time);
         setObjectTransform(glm::vec3{point.x, point.y, point.z},
@@ -194,7 +194,7 @@ namespace dfv {
 
             case CameraMode::Follow1stPerson: {
                 glm::vec3 target = {dataPoint.x,
-                                    dataPoint.y + 0.3f, // Float the camera slightly above the object
+                                    dataPoint.y + 0.4f, // Float the camera slightly above the object
                                     dataPoint.z};
 
                 // TODO: implement configurable vertical first-person offset
@@ -226,11 +226,11 @@ namespace dfv {
     }
 
     void Visualizer::changeTimeMultiplier(const float multiplier) {
-        droneTimeMultiplier = multiplier;
+        timeMultiplier = multiplier;
     }
 
     void Visualizer::addToTimeMultiplier(float addend) {
-        droneTimeMultiplier += addend;
+        timeMultiplier += addend;
     }
 
 } // namespace dfv

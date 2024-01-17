@@ -16,8 +16,8 @@ namespace dfv {
     struct VisualizerCreateInfo {
         SurfaceWrapper &surface; //!< The surface to render to, must be valid for the lifetime of the visualizer
         FlightData &flightData; //!< The data source to visualize, must be valid for the lifetime of the visualizer
-        std::filesystem::path objectModelPath; //!< The path to the flying object 3D model
-        float objectScale; //!< The scale of the flying object model relative to the world coordinates (1u = 1m)
+        std::filesystem::path droneModelPath; //!< The path to the flying object 3D model
+        float droneScale; //!< The scale of the flying object model relative to the world coordinates (1u = 1m)
     };
 
     /**
@@ -161,13 +161,13 @@ namespace dfv {
         float cameraRotationSpeed{glm::radians(60.f)}; //!< The speed of the camera rotation in radians/s
         CameraMovement cameraMovement{}; //!< The current movement state of the camera
 
-        std::filesystem::path objectModelPath; //!< The path to the flying object 3D model
-        float objectScale; //!< The scale of the flying object model
-        RenderHandle objectRenderHandle{}; //!< The render handle of the flying object
+        std::filesystem::path droneModelPath; //!< The path to the flying object 3D model
+        float droneScale; //!< The scale of the flying object model
+        RenderHandle droneRenderHandle{}; //!< The render handle of the flying object
 
         seconds_f time{0}; //!< The current time of the visualization
+        float timeMultiplier{1.f}; //!< A multiplier used during the update of the time of the visualization
 
         Stats stats{}; //!< The statistics of the visualizer
-        float droneTimeMultiplier{1.f}; //!< The time multiplier of the drone visualization
     };
 } // namespace dfv

@@ -18,8 +18,8 @@ int main() {
 
     const dfv::VisualizerCreateInfo createInfo{.surface = surface,
                                                .flightData = data,
-                                               .objectModelPath = "assets/models/monkey_smooth.obj",
-                                               .objectScale = 1.f};
+                                               .droneModelPath = "assets/models/monkey_smooth.obj",
+                                               .droneScale = 1.f};
 
     dfv::Visualizer visualizer{createInfo};
     visualizer.start();

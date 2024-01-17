@@ -39,8 +39,8 @@ int main(const int argc, char **argv) {
 
     const dfv::VisualizerCreateInfo createInfo{.surface = surface,
                                                .flightData = data,
-                                               .objectModelPath = "assets/models/model.obj",
-                                               .objectScale = 0.04f};
+                                               .droneModelPath = "assets/models/model.obj",
+                                               .droneScale = 0.04f};
 
     dfv::Visualizer visualizer{createInfo};
     visualizer.start();
