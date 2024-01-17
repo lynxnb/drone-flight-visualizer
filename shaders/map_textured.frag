@@ -44,8 +44,7 @@ vec3 BRDF(vec3 V, vec3 N, vec3 L, vec3 Md, vec3 Ms, float gamma) {
     vec3 Lo = Md *clamp(dot(L, N), 0, 1.0);
     vec3 diffuse = Lo*(A + B * G * sin(alpha) * tan(beta));
 
-    //vec3 r = 2*(N * dot(L, N)) - L;
-    vec3 r = -reflect(L,N); // glsl has a built in function for this
+    vec3 r = -reflect(L, N); // glsl built in for: 2 * (N * dot(L, N)) - L
 
     float specularFactor = 0.1;  // the specular factor adjuts the reflectivity of the surface
     vec3 specular = specularFactor * Ms * pow(clamp(dot(V,r),0,1.0f), gamma);
