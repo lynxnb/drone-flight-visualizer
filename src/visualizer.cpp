@@ -106,7 +106,6 @@ namespace dfv {
                                  glm::vec3{0.f, 1.f, -5.f};
         engine.camera.orientation = {glm::radians(90.f), 0.f, 0.f};
         engine.camera.updateFront();
-        engine.camera.up = {0.f, 1.f, 0.f};
 
         const auto droneMesh = engine.createMesh("drone", droneModelPath);
 

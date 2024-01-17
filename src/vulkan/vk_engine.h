@@ -165,7 +165,7 @@ namespace dfv {
             glm::vec3 position{}; //!< The position of the camera
             glm::vec3 orientation{}; //!< The orientation of the camera in radians (yaw, pitch, roll)
             glm::vec3 front{}; //!< Normalized vector pointing in the direction the camera is facing
-            glm::vec3 up{}; //!< The up vector
+            const glm::vec3 up{0.f, 1.f, 0.f}; //!< The up vector
 
             float fov{glm::radians(70.f)}; //!< Field of view in radians
             float nearPlane{0.1f}; //!< Near plane distance
