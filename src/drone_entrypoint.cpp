@@ -92,6 +92,18 @@ void setupInput(dfv::raii::Glfw &glfw, dfv::Visualizer &visualizer) {
             case keyNegative:                                       \
                 movement.axis -= action == GLFW_PRESS ? 1.f : -1.f; \
                 break
+
+        #define CASE_PRESS(key)             \
+            case key:                       \
+                if (action != GLFW_PRESS) { \
+                    break;                  \
+                } else
+
+        #define CASE_RELEASE(key)             \
+            case key:                         \
+                if (action != GLFW_RELEASE) { \
+                    break;                    \
+                } else
         // clang-format on
 
         switch (key) {
@@ -100,37 +112,47 @@ void setupInput(dfv::raii::Glfw &glfw, dfv::Visualizer &visualizer) {
             CASE_INPUT_AXIS(heave, GLFW_KEY_SPACE, GLFW_KEY_LEFT_CONTROL);
             CASE_INPUT_AXIS(tilt, GLFW_KEY_UP, GLFW_KEY_DOWN);
             CASE_INPUT_AXIS(pan, GLFW_KEY_LEFT, GLFW_KEY_RIGHT);
-            case GLFW_KEY_ESCAPE:
+            CASE_PRESS(GLFW_KEY_ESCAPE) {
                 glfwSetWindowShouldClose(window, GLFW_TRUE);
                 break;
-            case GLFW_KEY_1:
+            }
+            CASE_PRESS(GLFW_KEY_1) {
                 visualizerRef.setCameraMode(dfv::CameraMode::Free);
                 break;
-            case GLFW_KEY_2:
+            }
+            CASE_PRESS(GLFW_KEY_2) {
                 visualizerRef.setCameraMode(dfv::CameraMode::LockedOn);
                 break;
-            case GLFW_KEY_3:
+            }
+            CASE_PRESS(GLFW_KEY_3) {
                 visualizerRef.setCameraMode(dfv::CameraMode::Follow1stPerson);
                 break;
-            case GLFW_KEY_4:
+            }
+            CASE_PRESS(GLFW_KEY_4) {
                 visualizerRef.setCameraMode(dfv::CameraMode::Follow3rdPerson);
                 break;
-            case GLFW_KEY_R:
+            }
+            CASE_PRESS(GLFW_KEY_R) {
                 visualizerRef.recenterCamera();
                 break;
-            case GLFW_KEY_J:
+            }
+            CASE_PRESS(GLFW_KEY_J) {
                 visualizerRef.addToTimeMultiplier(-1);
                 break;
-            case GLFW_KEY_K:
+            }
+            CASE_PRESS(GLFW_KEY_K) {
                 visualizerRef.changeTimeMultiplier(0);
                 break;
-            case GLFW_KEY_L:
+            }
+            CASE_PRESS(GLFW_KEY_L) {
                 visualizerRef.addToTimeMultiplier(1);
                 break;
-            case GLFW_KEY_ENTER:
-                if (action == GLFW_PRESS && mods == GLFW_MOD_ALT)
+            }
+            CASE_PRESS(GLFW_KEY_ENTER) {
+                if (mods == GLFW_MOD_ALT)
                     glfwRef.toggleFullscreen();
                 break;
+            }
             default:
                 break;
         }
