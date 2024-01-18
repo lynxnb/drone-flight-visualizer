@@ -78,15 +78,15 @@ namespace dfv {
     }
 
     seconds_f DroneFlightData::getDuration() {
-        return seconds_f{flightDataPoints.end()->timestamp};
+        return seconds_f{flightDataPoints.back().timestamp};
     }
 
     seconds_f DroneFlightData::getStartTime() {
-        return seconds_f{flightDataPoints.begin()->timestamp};
+        return seconds_f{flightDataPoints.front().timestamp};
     }
 
     seconds_f DroneFlightData::getEndTime() {
-        return seconds_f{flightDataPoints.end()->timestamp};
+        return seconds_f{flightDataPoints.back().timestamp};
     }
 
     FlightBoundingBox DroneFlightData::getBoundingBox() {
