@@ -7,6 +7,9 @@
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
+#include <backends/imgui_impl_vulkan.h>
+#include <imgui.h>
+
 #include "vk_initializers.h"
 #include "vk_pipeline.h"
 
@@ -260,7 +263,7 @@ namespace dfv {
         };
 
         const VkDescriptorPoolCreateInfo poolInfo = {.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-                                                     .flags = 0,
+                                                     .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
                                                      .maxSets = 10,
                                                      .poolSizeCount = poolSizes.size(),
                                                      .pPoolSizes = poolSizes.data()};
@@ -526,5 +529,35 @@ namespace dfv {
         mainDeletionQueue.pushFunction([=, this] {
             vkDestroyFence(device, uploadContext.uploadFence, nullptr);
         });
+    }
+
+    void VulkanEngine::initImgui() {
+        // Setup Dear ImGui context
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGuiIO &io = ImGui::GetIO();
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad; // Enable Gamepad Controls
+
+        // Setup Dear ImGui style
+        ImGui::StyleColorsDark();
+
+        // Setup Platform/Renderer backends
+        surfaceWrap.initImgui();
+        ImGui_ImplVulkan_InitInfo init_info = {};
+        init_info.Instance = instance;
+        init_info.PhysicalDevice = chosenGPU;
+        init_info.Device = device;
+        init_info.QueueFamily = graphicsQueueFamily;
+        init_info.Queue = graphicsQueue;
+        init_info.PipelineCache = VK_NULL_HANDLE;
+        init_info.DescriptorPool = descriptorPool;
+        init_info.Subpass = 0;
+        init_info.MinImageCount = swapchainImages.size();
+        init_info.ImageCount = swapchainImages.size();
+        init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+        init_info.Allocator = VK_NULL_HANDLE;
+        init_info.CheckVkResultFn = nullptr;
+        ImGui_ImplVulkan_Init(&init_info, renderPass);
     }
 } // namespace dfv

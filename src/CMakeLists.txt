@@ -37,6 +37,7 @@ target_link_libraries(drone_flight_visualizer PRIVATE
         glfw
         glm
         tinyobjloader
+        imgui
 )
 
 add_dependencies(drone_flight_visualizer Shaders)
@@ -58,6 +59,7 @@ target_link_libraries(mock_visualizer PRIVATE
         glfw
         glm
         tinyobjloader
+        imgui
 )
 
 add_dependencies(mock_visualizer Shaders)
@@ -80,6 +82,7 @@ target_link_libraries(mesh_visualizer PRIVATE
         glfw
         glm
         tinyobjloader
+        imgui
 )
 
 add_dependencies(mesh_visualizer Shaders)

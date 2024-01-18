@@ -4,6 +4,7 @@
 #include <map/map_manager.h>
 
 #include <glm/gtx/transform.hpp>
+#include <imgui.h>
 
 namespace dfv {
     Visualizer::Visualizer(const VisualizerCreateInfo &createInfo)
@@ -146,6 +147,8 @@ namespace dfv {
         // Update camera
         updateCamera(deltaTime, point);
 
+        updateUi(point);
+
         // Run user-defined updates
         onUpdate(deltaTime);
     }
@@ -222,6 +225,11 @@ namespace dfv {
                 engine.camera.updateOrientation();
             } break;
         }
+    }
+
+    void Visualizer::updateUi(const FlightDataPoint &dataPoint) {
+        engine.submitUi([] {
+        });
     }
 
     void Visualizer::changeTimeMultiplier(const float multiplier) {

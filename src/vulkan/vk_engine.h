@@ -69,6 +69,11 @@ namespace dfv {
         void draw();
 
         /**
+         * @brief Draws the UI for the next frame by calling the provided function.
+         */
+        void submitUi(std::function<void()> &&uiFunc);
+
+        /**
          * Creates a new render material with the given name.
          * @param name The name of the material, used to identify it later.
          * @param pipeline The pipeline to use for this material.
@@ -199,6 +204,11 @@ namespace dfv {
         void drawObjects(VkCommandBuffer cmdBuf);
 
         /**
+         * Draws the ImGui overlay.
+         */
+        void drawImgui(VkCommandBuffer cmdBuf);
+
+        /**
          * Gets the frame data to use for the current frame.
          */
         FrameData &getCurrentFrame();
@@ -260,6 +270,8 @@ namespace dfv {
 
         void initCommands();
         void initSyncStructures();
+
+        void initImgui();
 
         void recreateSwapchain();
 

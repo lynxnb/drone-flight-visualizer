@@ -152,6 +152,11 @@ namespace dfv {
          */
         void updateCamera(seconds_f deltaTime, FlightDataPoint &dataPoint);
 
+        /**
+         * @brief Updates the UI of the visualizer.
+         */
+        void updateUi(const FlightDataPoint &dataPoint);
+
         SurfaceWrapper &surface; //!< The surface to render to
         VulkanEngine engine; //!< The engine that handles rendering
         MapManager mapManager; //!< The class that handles map loading

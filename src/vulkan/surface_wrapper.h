@@ -22,5 +22,20 @@ namespace dfv {
          * @brief Retrieves the extent of the surface.
          */
         virtual VkExtent2D getExtent() const = 0;
+
+        /**
+         * @brief Initializes surface-specific ImGui resources.
+         */
+        virtual void initImgui() const = 0;
+
+        /**
+         * @brief Performs per-frame surface-specific ImGui operations.
+         */
+        virtual void onFrameImgui() const = 0;
+
+        /**
+         * @brief Destroys surface-specific ImGui resources.
+         */
+        virtual void destroyImgui() const = 0;
     };
 } // namespace dfv

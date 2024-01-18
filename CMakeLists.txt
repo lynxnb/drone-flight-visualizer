@@ -78,6 +78,20 @@ CPMAddPackage(
 )
 include_directories(SYSTEM ${stb_image_SOURCE_DIR})
 
+# ImGUI: UI
+CPMAddPackage("gh:ocornut/imgui@1.90.1")
+include_directories(SYSTEM ${imgui_SOURCE_DIR})
+add_library(imgui
+        ${imgui_SOURCE_DIR}/imgui.cpp
+        ${imgui_SOURCE_DIR}/imgui_draw.cpp
+        ${imgui_SOURCE_DIR}/imgui_tables.cpp
+        ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+        ${imgui_SOURCE_DIR}/imgui_demo.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
+)
+target_include_directories(imgui PUBLIC ${imgui_SOURCE_DIR})
+
 add_subdirectory(src)
 
 add_subdirectory(shaders)

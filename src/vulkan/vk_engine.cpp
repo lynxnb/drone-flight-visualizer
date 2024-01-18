@@ -4,6 +4,9 @@
 #include <cstdlib>
 #include <iostream>
 
+#include <backends/imgui_impl_vulkan.h>
+#include <imgui.h>
+
 #include <VkBootstrap.h>
 #include <glm/gtx/transform.hpp>
 #include <vulkan/vk_enum_string_helper.h>
@@ -42,6 +45,8 @@ namespace dfv {
 
         // Creates synchronization structures
         initSyncStructures();
+
+        initImgui();
 
         isInitialized = true;
     }
@@ -95,6 +100,8 @@ namespace dfv {
         vkCmdSetScissor(cmd, 0, 1, &rpInfo.renderArea);
 
         drawObjects(cmd);
+        // Draw ImGui on top of the scene
+        drawImgui(cmd);
 
         vkCmdEndRenderPass(cmd);
 
@@ -211,6 +218,23 @@ namespace dfv {
         }
     }
 
+    void VulkanEngine::drawImgui(VkCommandBuffer cmdBuf) {
+        // Prepare ImGui data for rendering
+        ImGui::Render();
+        // Record ImGui primitives into command buffer
+        ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmdBuf);
+    }
+
+    void VulkanEngine::submitUi(std::function<void()> &&uiFunc) {
+        ImGui_ImplVulkan_NewFrame();
+        surfaceWrap.onFrameImgui();
+        ImGui::NewFrame();
+
+        uiFunc();
+
+        ImGui::EndFrame();
+    }
+
     void VulkanEngine::cleanup() {
         if (!isInitialized)
             return;
@@ -220,6 +244,11 @@ namespace dfv {
             return frame.renderFence;
         });
         vkWaitForFences(device, fences.size(), fences.data(), true, 1000000000);
+
+        vkDeviceWaitIdle(device);
+        ImGui_ImplVulkan_Shutdown();
+        surfaceWrap.destroyImgui();
+        ImGui::DestroyContext();
 
         mainDeletionQueue.flush();
         swapchainDeletionQueue.flush();

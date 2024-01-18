@@ -13,6 +13,12 @@ namespace dfv {
 
         VkExtent2D getExtent() const override;
 
+        void initImgui() const override;
+
+        void onFrameImgui() const override;
+
+        void destroyImgui() const override;
+
       private:
         GLFWwindow *window{nullptr};
     };
