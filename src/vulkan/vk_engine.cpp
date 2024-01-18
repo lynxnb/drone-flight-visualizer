@@ -55,6 +55,12 @@ namespace dfv {
         auto &frame = getCurrentFrame();
         VkCommandBuffer cmd = frame.mainCommandBuffer;
 
+        // Try recreating the swapchain if minimized
+        if (isMinimized) {
+            recreateSwapchain();
+            return;
+        }
+
         // Wait until the GPU has finished rendering the last frame, 1 second timeout
         VK_CHECK(vkWaitForFences(device, 1, &frame.renderFence, true, 1000000000));
         VK_CHECK(vkResetFences(device, 1, &frame.renderFence));

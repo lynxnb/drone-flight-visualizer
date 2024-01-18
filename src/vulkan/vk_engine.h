@@ -280,6 +280,7 @@ namespace dfv {
 
         bool isInitialized{false};
         uint32_t frameNumber{0};
+        bool isMinimized{false};
 
         VulkanTraits traits; //!< Vulkan traits of the current device
 

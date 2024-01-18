@@ -96,6 +96,14 @@ namespace dfv {
         vkWaitForFences(device, fences.size(), fences.data(), true, 1000000000);
         swapchainDeletionQueue.flush();
 
+        // Ignore window minimization
+        const auto newExtent = surfaceWrap.getExtent();
+        if (newExtent.width == 0 && newExtent.height == 0) {
+            isMinimized = true;
+            return;
+        }
+        isMinimized = false;
+
         initSwapchain();
         initFramebuffers();
 
