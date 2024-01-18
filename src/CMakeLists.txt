@@ -45,8 +45,9 @@ add_dependencies(drone_flight_visualizer Assets)
 
 
 # mock visualizer
-add_executable(mock_visualizer
+add_executable(mock_visualizer EXCLUDE_FROM_ALL
         ${DFV_SOURCE_COMMON}
+        ${DFV_SOURCE_MAP}
         glfw/glfw_surface.cpp
         flight_data/mock_flight_data.cpp
         mock_entrypoint.cpp
@@ -54,6 +55,7 @@ add_executable(mock_visualizer
 target_include_directories(mock_visualizer PRIVATE ".")
 
 target_link_libraries(mock_visualizer PRIVATE
+        cpr::cpr
         Vulkan::Vulkan
         vk-bootstrap::vk-bootstrap
         glfw
@@ -64,27 +66,3 @@ target_link_libraries(mock_visualizer PRIVATE
 
 add_dependencies(mock_visualizer Shaders)
 add_dependencies(mock_visualizer Assets)
-
-# mesh visualizer
-add_executable(mesh_visualizer
-        ${DFV_SOURCE_COMMON}
-        ${DFV_SOURCE_MAP}
-        glfw/glfw_surface.cpp
-        flight_data/mock_flight_data.cpp
-        mesh_entrypoint.cpp
-)
-target_include_directories(mesh_visualizer PRIVATE ".")
-
-target_link_libraries(mesh_visualizer PRIVATE
-        cpr::cpr
-        Vulkan::Vulkan
-        vk-bootstrap::vk-bootstrap
-        glfw
-        glm
-        tinyobjloader
-        imgui
-)
-
-add_dependencies(mesh_visualizer Shaders)
-add_dependencies(mesh_visualizer Assets)
-

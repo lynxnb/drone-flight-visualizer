@@ -6,24 +6,24 @@
 
 namespace dfv {
     static constexpr std::array dataset = {
-            FlightDataPoint{0.0,      2.0, 0.0,      0.0, 0.0,      0.0, 0.0},
-            FlightDataPoint{1.0,  1.41421, 0.0,  1.41421, 0.0, 0.628319, 0.0},
-            FlightDataPoint{2.0,      0.0, 0.0,      2.0, 0.0,  1.25664, 0.0},
-            FlightDataPoint{3.0, -1.41421, 0.0,  1.41421, 0.0,  1.88496, 0.0},
-            FlightDataPoint{4.0,     -2.0, 0.0,      0.0, 0.0,  2.51327, 0.0},
-            FlightDataPoint{5.0, -1.41421, 0.0, -1.41421, 0.0,  3.14159, 0.0},
-            FlightDataPoint{6.0,      0.0, 0.0,     -2.0, 0.0,  3.76991, 0.0},
-            FlightDataPoint{7.0,  1.41421, 0.0, -1.41421, 0.0,  4.39822, 0.0},
-            FlightDataPoint{8.0,      2.0, 0.0,      0.0, 0.0,  5.02654, 0.0},
+            FlightDataPoint{0.0,      2.0, 0.0,      0.0,      0.0, 0.0, 0.0},
+            FlightDataPoint{1.0,  1.41421, 0.0,  1.41421, 0.628319, 0.0, 0.0},
+            FlightDataPoint{2.0,      0.0, 0.0,      2.0,  1.25664, 0.0, 0.0},
+            FlightDataPoint{3.0, -1.41421, 0.0,  1.41421,  1.88496, 0.0, 0.0},
+            FlightDataPoint{4.0,     -2.0, 0.0,      0.0,  2.51327, 0.0, 0.0},
+            FlightDataPoint{5.0, -1.41421, 0.0, -1.41421,  3.14159, 0.0, 0.0},
+            FlightDataPoint{6.0,      0.0, 0.0,     -2.0,  3.76991, 0.0, 0.0},
+            FlightDataPoint{7.0,  1.41421, 0.0, -1.41421,  4.39822, 0.0, 0.0},
+            FlightDataPoint{8.0,      2.0, 0.0,      0.0,  5.02654, 0.0, 0.0},
     };
 
     static constexpr FlightBoundingBox boundingBox = [] {
         FlightBoundingBox box{};
         for (const auto &point : dataset) {
-            box.llLat = std::min(box.llLat, point.x);
-            box.llLon = std::min(box.llLon, point.y);
-            box.urLat = std::max(box.urLat, point.x);
-            box.urLon = std::max(box.urLon, point.y);
+            box.llLat = std::min(box.llLat, static_cast<double>(point.x));
+            box.llLon = std::min(box.llLon, static_cast<double>(point.y));
+            box.urLat = std::max(box.urLat, static_cast<double>(point.x));
+            box.urLon = std::max(box.urLon, static_cast<double>(point.y));
         }
 
         return box;
@@ -99,5 +99,10 @@ namespace dfv {
 
     FlightBoundingBox MockFlightData::getBoundingBox() {
         return boundingBox;
+    }
+
+    std::vector<FlightDataPoint> &MockFlightData::getPath() {
+        static std::vector<FlightDataPoint> path{dataset.begin(), dataset.end()};
+        return path;
     }
 } // namespace dfv
