@@ -229,48 +229,111 @@ namespace dfv {
 
     void Visualizer::updateUi(const FlightDataPoint &dataPoint) {
         engine.submitUi([&] {
-            static int location = 0;
             // normalize between min and max altitude
-            float normalizedAltitude = (dataPoint.y - flightData.getMinimumAltitude()) / (flightData.getMaximumAltitude() - flightData.getMinimumAltitude());
+            const float normalizedAltitude =
+                    (dataPoint.y - flightData.getMinimumAltitude()) / (flightData.getMaximumAltitude() - flightData.getMinimumAltitude());
             // float pointer to normalizedAltitude
-            static std::array<float,100> values = {};
+            static std::array<float, 100> values = {};
             static int valuesOffset = 0;
             values[valuesOffset++ % values.size()] = normalizedAltitude;
 
-            ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
-            if (location >= 0)
-            {
-                const float PAD = 10.0f;
-                const ImGuiViewport* viewport = ImGui::GetMainViewport();
-                ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
-                ImVec2 work_size = viewport->WorkSize;
-                ImVec2 window_pos, window_pos_pivot;
-                window_pos.x = (location & 1) ? (work_pos.x + work_size.x - PAD) : (work_pos.x + PAD);
-                window_pos.y = (location & 2) ? (work_pos.y + work_size.y - PAD) : (work_pos.y + PAD);
-                window_pos_pivot.x = (location & 1) ? 1.0f : 0.0f;
-                window_pos_pivot.y = (location & 2) ? 1.0f : 0.0f;
-                ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
-                window_flags |= ImGuiWindowFlags_NoMove;
-            }
-            else if (location == -2)
-            {
-                // Center window
-                ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-                window_flags |= ImGuiWindowFlags_NoMove;
-            }
-            ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
-            if (ImGui::Begin("Drone data", nullptr, window_flags))
-            {
+            const ImGuiWindowFlags overlayFlags = ImGuiWindowFlags_NoDecoration |
+                                                  ImGuiWindowFlags_AlwaysAutoResize |
+                                                  ImGuiWindowFlags_NoSavedSettings |
+                                                  ImGuiWindowFlags_NoFocusOnAppearing |
+                                                  ImGuiWindowFlags_NoNav |
+                                                  ImGuiWindowFlags_NoMove;
+
+            const ImGuiViewport *viewport = ImGui::GetMainViewport();
+            const ImVec2 workPos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
+            const ImVec2 workSize = viewport->WorkSize;
+
+            constexpr float OVERLAY_PAD = 10.0f;
+            const ImVec2 overlayPos = {workPos.x + OVERLAY_PAD,
+                                       workPos.y + OVERLAY_PAD};
+            ImGui::SetNextWindowPos(overlayPos, ImGuiCond_Always, {0.f, 0.f});
+            ImGui::SetNextWindowBgAlpha(0.5f); // Transparent background
+            if (ImGui::Begin("Drone data", nullptr, overlayFlags)) {
                 ImGui::Text("Position");
-                ImGui::Text("x: %.2f y: %.2f z: %.2f",dataPoint.x, dataPoint.y, dataPoint.z);
+                ImGui::Text("x: %.2f y: %.2f z: %.2f", dataPoint.x, dataPoint.y, dataPoint.z);
                 ImGui::Separator();
 
-                int roundedMaximum = (int)flightData.getMaximumAltitude();
-                std::string maxAltitudeString = std::to_string(roundedMaximum) + "m";
+                const int roundedMaximum = static_cast<int>(flightData.getMaximumAltitude());
+                const std::string maxAltitudeString = std::to_string(roundedMaximum) + "m";
                 ImGui::PlotLines(maxAltitudeString.c_str(), values.data(), values.size(), valuesOffset, "Altitude graph", 0.f, 1.0f, ImVec2(0, 80.0f));
                 ImGui::Separator();
-
             }
+            ImGui::End();
+
+            const ImGuiWindowFlags playerFlags = ImGuiWindowFlags_NoDecoration |
+                                                 ImGuiWindowFlags_AlwaysAutoResize |
+                                                 ImGuiWindowFlags_NoSavedSettings |
+                                                 ImGuiWindowFlags_NoFocusOnAppearing |
+                                                 ImGuiWindowFlags_NoNav |
+                                                 ImGuiWindowFlags_NoMove |
+                                                 ImGuiWindowFlags_NoTitleBar;
+
+            constexpr float PLAYER_PAD = 60.0f;
+            const ImVec2 playerPos = {workPos.x + workSize.x / 2.f,
+                                      workPos.y + workSize.y - PLAYER_PAD};
+            ImGui::SetNextWindowPos(playerPos, ImGuiCond_Always, {0.5f, 1.f});
+            ImGui::SetNextWindowBgAlpha(0.5f);
+            ImGui::Begin("Player controls", nullptr, playerFlags);
+
+            // Progress bar
+            const float progress = (time - flightData.getStartTime()) / (flightData.getEndTime() - flightData.getStartTime());
+            ImGui::ProgressBar(progress, ImVec2(workSize.x / 3, 0.f), "");
+
+            ImGui::SameLine();
+            // Time text
+            const float normTime = time.count() - flightData.getStartTime().count();
+            // Format time as HH:MM:SS
+            ImGui::Text("%02d:%02d:%02d", static_cast<int>(normTime / 3600),
+                        static_cast<int>(normTime / 60) % 60,
+                        static_cast<int>(normTime) % 60);
+
+            // Backward button
+            if (ImGui::Button("Backward"))
+                addToTimeMultiplier(-1.f);
+
+            ImGui::SameLine();
+            // Play button
+            if (ImGui::Button("Play"))
+                changeTimeMultiplier(1.f);
+
+            ImGui::SameLine();
+            // Pause button
+            if (ImGui::Button("Pause"))
+                changeTimeMultiplier(0.f);
+
+            ImGui::SameLine();
+            // Fast forward button
+            if (ImGui::Button("Fast forward"))
+                addToTimeMultiplier(1.f);
+
+            ImGui::SameLine();
+            // Multiplier text
+            ImGui::Text("x%.1f", timeMultiplier);
+
+            ImGui::SameLine();
+            ImGui::Text("Camera: ");
+
+            ImGui::SameLine();
+            if (ImGui::Button("Free"))
+                setCameraMode(CameraMode::Free);
+
+            ImGui::SameLine();
+            if (ImGui::Button("Locked"))
+                setCameraMode(CameraMode::LockedOn);
+
+            ImGui::SameLine();
+            if (ImGui::Button("1st"))
+                setCameraMode(CameraMode::Follow1stPerson);
+
+            ImGui::SameLine();
+            if (ImGui::Button("3rd"))
+                setCameraMode(CameraMode::Follow3rdPerson);
+
             ImGui::End();
         });
     }
