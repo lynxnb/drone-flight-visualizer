@@ -50,6 +50,8 @@ namespace dfv {
 
         virtual Coordinate getInitialPosition() = 0;
         virtual FlightDataPoint getPoint(seconds_f timestamp) = 0;
+        virtual float getMaximumAltitude() = 0;
+        virtual float getMinimumAltitude() = 0;
 
         virtual seconds_f getDuration() = 0;
         virtual seconds_f getStartTime() = 0;

@@ -15,6 +15,8 @@ namespace dfv {
         seconds_f getDuration() override;
         seconds_f getStartTime() override;
         seconds_f getEndTime() override;
+        float getMaximumAltitude() override;
+        float getMinimumAltitude() override;
 
         FlightBoundingBox getBoundingBox() override;
         std::vector<FlightDataPoint> &getPath() override;

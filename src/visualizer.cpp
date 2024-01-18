@@ -228,7 +228,50 @@ namespace dfv {
     }
 
     void Visualizer::updateUi(const FlightDataPoint &dataPoint) {
-        engine.submitUi([] {
+        engine.submitUi([&] {
+            static int location = 0;
+            // normalize between min and max altitude
+            float normalizedAltitude = (dataPoint.y - flightData.getMinimumAltitude()) / (flightData.getMaximumAltitude() - flightData.getMinimumAltitude());
+            // float pointer to normalizedAltitude
+            static std::array<float,100> values = {};
+            static int valuesOffset = 0;
+            values[valuesOffset++ % values.size()] = normalizedAltitude;
+
+            ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+            if (location >= 0)
+            {
+                const float PAD = 10.0f;
+                const ImGuiViewport* viewport = ImGui::GetMainViewport();
+                ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
+                ImVec2 work_size = viewport->WorkSize;
+                ImVec2 window_pos, window_pos_pivot;
+                window_pos.x = (location & 1) ? (work_pos.x + work_size.x - PAD) : (work_pos.x + PAD);
+                window_pos.y = (location & 2) ? (work_pos.y + work_size.y - PAD) : (work_pos.y + PAD);
+                window_pos_pivot.x = (location & 1) ? 1.0f : 0.0f;
+                window_pos_pivot.y = (location & 2) ? 1.0f : 0.0f;
+                ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+                window_flags |= ImGuiWindowFlags_NoMove;
+            }
+            else if (location == -2)
+            {
+                // Center window
+                ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+                window_flags |= ImGuiWindowFlags_NoMove;
+            }
+            ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
+            if (ImGui::Begin("Drone data", nullptr, window_flags))
+            {
+                ImGui::Text("Position");
+                ImGui::Text("x: %.2f y: %.2f z: %.2f",dataPoint.x, dataPoint.y, dataPoint.z);
+                ImGui::Separator();
+
+                int roundedMaximum = (int)flightData.getMaximumAltitude();
+                std::string maxAltitudeString = std::to_string(roundedMaximum) + "m";
+                ImGui::PlotLines(maxAltitudeString.c_str(), values.data(), values.size(), valuesOffset, "Altitude graph", 0.f, 1.0f, ImVec2(0, 80.0f));
+                ImGui::Separator();
+
+            }
+            ImGui::End();
         });
     }
 

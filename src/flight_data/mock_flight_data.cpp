@@ -97,6 +97,14 @@ namespace dfv {
         return seconds_f{dataset.back().timestamp};
     }
 
+    float MockFlightData::getMaximumAltitude() {
+        return 0.0;
+    }
+
+    float MockFlightData::getMinimumAltitude() {
+        return 0;
+    }
+
     FlightBoundingBox MockFlightData::getBoundingBox() {
         return boundingBox;
     }

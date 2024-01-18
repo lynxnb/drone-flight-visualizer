@@ -13,6 +13,8 @@ namespace dfv {
 
         Coordinate getInitialPosition() override;
         FlightDataPoint getPoint(seconds_f timestamp) override;
+        float getMaximumAltitude() override;
+        float getMinimumAltitude() override;
 
         seconds_f getDuration() override;
         seconds_f getStartTime() override;
@@ -29,5 +31,7 @@ namespace dfv {
         std::vector<FlightDataPoint> flightDataPoints;
         std::optional<Coordinate> initialPosition;
         FlightBoundingBox boundingBox;
+        float maximumAltitude = 0;
+        float minimumAltitude = 0;
     };
 } // namespace dfv

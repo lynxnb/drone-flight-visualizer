@@ -70,6 +70,13 @@ namespace dfv {
                 .roll = lerpAngle(pointIt->roll, nextPointIt->roll)};
     }
 
+    float DroneFlightData::getMaximumAltitude() {
+        return maximumAltitude;
+    }
+    float DroneFlightData::getMinimumAltitude() {
+        return minimumAltitude;
+    }
+
     seconds_f DroneFlightData::getDuration() {
         return seconds_f{flightDataPoints.end()->timestamp};
     }
@@ -108,7 +115,13 @@ namespace dfv {
                 boundingBox.llLat = coords.lat;
                 boundingBox.urLon = coords.lon;
                 boundingBox.urLat = coords.lat;
+                maximumAltitude = (float)coords.alt;
+                minimumAltitude = (float)coords.alt;
             }
+            // set maximumAltitude
+            maximumAltitude = std::max(maximumAltitude, (float)coords.alt);
+
+            minimumAltitude = std::min(minimumAltitude, (float)coords.alt);
 
             boundingBox.llLat = std::min(boundingBox.llLat, coords.lat);
             boundingBox.llLon = std::min(boundingBox.llLon, coords.lon);
@@ -134,5 +147,7 @@ namespace dfv {
 
         return flightData;
     }
+
+
 
 } // namespace dfv
