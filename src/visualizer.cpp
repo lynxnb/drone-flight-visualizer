@@ -120,6 +120,9 @@ namespace dfv {
         droneRenderHandle = droneHandle;
     }
 
+    static bool IsMapMeshLoaded = false;
+    static bool IsMapTexLoaded = false;
+
     void Visualizer::update(const seconds_f deltaTime) {
         time += deltaTime * timeMultiplier;
 
@@ -137,12 +140,14 @@ namespace dfv {
                           .material = engine.getMaterial("map_simple"),
                           .transform = glm::mat4{1.f}};
             sMapHandle = mapHandle;
+            IsMapMeshLoaded = true;
         }
 
         auto textureOpt = mapManager.getMapTexture();
         if (textureOpt) {
             const auto texture = engine.insertTexture("map", *textureOpt, true);
             engine.applyTexture(sMapHandle, texture, engine.getMaterial("map_textured"));
+            IsMapTexLoaded = true;
         }
 
         // Update camera
@@ -245,7 +250,7 @@ namespace dfv {
     void Visualizer::updateUi(const FlightDataPoint &dataPoint) {
         engine.submitUi([&] {
             // Last 100 altitude values for plotting
-            static std::array<float, 100> values = {};
+            static std::array<float, 1000> values = {};
             static int valuesOffset = 0;
             values[valuesOffset++ % values.size()] = dataPoint.y;
 
@@ -266,16 +271,23 @@ namespace dfv {
             ImGui::SetNextWindowPos(overlayPos, ImGuiCond_Always, {0.f, 0.f});
             ImGui::SetNextWindowBgAlpha(0.65f); // Transparent background
             if (ImGui::Begin("Overlay", nullptr, overlayFlags)) {
+                ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
                 ImGui::Text("Timestamp: %.3fs", time.count());
+
                 ImGui::SeparatorText("Drone");
                 ImGui::Text("X: %8.2f  Y: %8.2f  Z: %8.2f", dataPoint.x, dataPoint.y, dataPoint.z);
                 ImGui::Text("Y: %8.2f  P: %8.2f  R: %8.2f", glm::degrees(dataPoint.yaw), glm::degrees(dataPoint.pitch), glm::degrees(dataPoint.roll));
+
                 ImGui::SeparatorText("Camera");
                 ImGui::Text("X: %8.2f  Y: %8.2f  X: %8.2f", engine.camera.position.x, engine.camera.position.y, engine.camera.position.z);
 
-                ImGui::SeparatorText("Altitude");
+                ImGui::SeparatorText("Map");
+                std::string loading = std::format("Loading {:c}", R"(|/-\)"[static_cast<int>(ImGui::GetTime() / 0.05f) & 3]);
+                ImGui::Text("Mesh: %s", IsMapMeshLoaded ? "Ready" : loading.c_str());
+                ImGui::Text("Texture: %s", IsMapTexLoaded ? "Ready" : loading.c_str());
 
-                std::string altitude = std::format("{:.2f}", dataPoint.y);
+                ImGui::SeparatorText("Plots");
+                std::string altitude = std::format("{:.2f}m", dataPoint.y);
                 ImGui::PlotLines(altitude.c_str(), values.data(), values.size(), valuesOffset, "Altitude (m)",
                                  flightData.getMinimumAltitude(), flightData.getMaximumAltitude(), ImVec2(0, 80.0f));
             }
