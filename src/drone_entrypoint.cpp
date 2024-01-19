@@ -160,6 +160,10 @@ void setupInput(dfv::raii::Glfw &glfw, dfv::Visualizer &visualizer) {
         visualizerRef.setCameraMovement(movement);
     });
 
+    // Don't use mouse input for now because we want to use the mouse to interact with ImGui
+    return;
+
+    // ReSharper disable CppDFAUnreachableCode
     static double lastCursorX, lastCursorY;
 
     static auto cursorPosCallback = [](GLFWwindow * /*window*/, const double xpos, const double ypos) {
@@ -175,8 +179,6 @@ void setupInput(dfv::raii::Glfw &glfw, dfv::Visualizer &visualizer) {
         visualizerRef.turnCamera({xoffset, yoffset, 0.f});
     };
 
-    glfwSetInputMode(glfw.window(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
     // We set the callback once to get the initial cursor position, to avoid a camera jump when the cursor first enters the window
     // We then set the callback to the actual callback
     glfwSetCursorPosCallback(glfw.window(), [](GLFWwindow *window, const double xpos, const double ypos) {
@@ -184,4 +186,5 @@ void setupInput(dfv::raii::Glfw &glfw, dfv::Visualizer &visualizer) {
         lastCursorY = ypos;
         glfwSetCursorPosCallback(window, cursorPosCallback);
     });
+    // ReSharper restore CppDFAUnreachableCode
 }
