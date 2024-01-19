@@ -188,9 +188,23 @@ namespace dfv {
                                     dataPoint.y,
                                     dataPoint.z};
 
+                glm::vec3 heading = {std::sin(dataPoint.yaw),
+                                     0.f,
+                                     std::cos(dataPoint.yaw)};
+
                 engine.camera.position += positionMask * cameraMovementSpeed * deltaTime.count();
+                // Avoid sitting directly on top of the object
+                if (target.x == engine.camera.position.x && target.z == engine.camera.position.z)
+                    engine.camera.position -= heading * cameraMovementSpeed * deltaTime.count();
+
+                auto direction = glm::normalize(target - engine.camera.position);
+                auto distance = glm::length(engine.camera.position - target);
+                // Avoid getting too close to the object
+                if (distance < 1.f)
+                    engine.camera.position = target - direction * 1.f;
+
                 // Look in the direction of the object
-                engine.camera.front = glm::normalize(target - engine.camera.position);
+                engine.camera.front = direction;
                 engine.camera.updateOrientation();
             } break;
 
