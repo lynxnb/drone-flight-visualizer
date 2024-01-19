@@ -1,4 +1,5 @@
 #include <chrono>
+#include <format>
 
 #include "visualizer.h"
 #include <map/map_manager.h>
@@ -243,13 +244,10 @@ namespace dfv {
 
     void Visualizer::updateUi(const FlightDataPoint &dataPoint) {
         engine.submitUi([&] {
-            // normalize between min and max altitude
-            const float normalizedAltitude =
-                    (dataPoint.y - flightData.getMinimumAltitude()) / (flightData.getMaximumAltitude() - flightData.getMinimumAltitude());
-            // float pointer to normalizedAltitude
+            // Last 100 altitude values for plotting
             static std::array<float, 100> values = {};
             static int valuesOffset = 0;
-            values[valuesOffset++ % values.size()] = normalizedAltitude;
+            values[valuesOffset++ % values.size()] = dataPoint.y;
 
             const ImGuiWindowFlags overlayFlags = ImGuiWindowFlags_NoDecoration |
                                                   ImGuiWindowFlags_AlwaysAutoResize |
@@ -266,46 +264,60 @@ namespace dfv {
             const ImVec2 overlayPos = {workPos.x + OVERLAY_PAD,
                                        workPos.y + OVERLAY_PAD};
             ImGui::SetNextWindowPos(overlayPos, ImGuiCond_Always, {0.f, 0.f});
-            ImGui::SetNextWindowBgAlpha(0.5f); // Transparent background
-            if (ImGui::Begin("Drone data", nullptr, overlayFlags)) {
-                ImGui::Text("Position");
-                ImGui::Text("x: %.2f y: %.2f z: %.2f", dataPoint.x, dataPoint.y, dataPoint.z);
-                ImGui::Separator();
+            ImGui::SetNextWindowBgAlpha(0.65f); // Transparent background
+            if (ImGui::Begin("Overlay", nullptr, overlayFlags)) {
+                ImGui::Text("Timestamp: %.3fs", time.count());
+                ImGui::SeparatorText("Drone");
+                ImGui::Text("X: %8.2f  Y: %8.2f  Z: %8.2f", dataPoint.x, dataPoint.y, dataPoint.z);
+                ImGui::Text("Y: %8.2f  P: %8.2f  R: %8.2f", glm::degrees(dataPoint.yaw), glm::degrees(dataPoint.pitch), glm::degrees(dataPoint.roll));
+                ImGui::SeparatorText("Camera");
+                ImGui::Text("X: %8.2f  Y: %8.2f  X: %8.2f", engine.camera.position.x, engine.camera.position.y, engine.camera.position.z);
 
-                const int roundedMaximum = static_cast<int>(flightData.getMaximumAltitude());
-                const std::string maxAltitudeString = std::to_string(roundedMaximum) + "m";
-                ImGui::PlotLines(maxAltitudeString.c_str(), values.data(), values.size(), valuesOffset, "Altitude graph", 0.f, 1.0f, ImVec2(0, 80.0f));
-                ImGui::Separator();
+                ImGui::SeparatorText("Altitude");
+
+                std::string altitude = std::format("{:.2f}", dataPoint.y);
+                ImGui::PlotLines(altitude.c_str(), values.data(), values.size(), valuesOffset, "Altitude (m)",
+                                 flightData.getMinimumAltitude(), flightData.getMaximumAltitude(), ImVec2(0, 80.0f));
             }
             ImGui::End();
 
             const ImGuiWindowFlags playerFlags = ImGuiWindowFlags_NoDecoration |
-                                                 ImGuiWindowFlags_AlwaysAutoResize |
                                                  ImGuiWindowFlags_NoSavedSettings |
                                                  ImGuiWindowFlags_NoFocusOnAppearing |
                                                  ImGuiWindowFlags_NoNav |
                                                  ImGuiWindowFlags_NoMove |
                                                  ImGuiWindowFlags_NoTitleBar;
 
-            constexpr float PLAYER_PAD = 60.0f;
+            constexpr float PLAYER_PAD = 50.0f;
             const ImVec2 playerPos = {workPos.x + workSize.x / 2.f,
                                       workPos.y + workSize.y - PLAYER_PAD};
             ImGui::SetNextWindowPos(playerPos, ImGuiCond_Always, {0.5f, 1.f});
-            ImGui::SetNextWindowBgAlpha(0.5f);
+            ImGui::SetNextWindowBgAlpha(0.65f);
             ImGui::Begin("Player controls", nullptr, playerFlags);
 
             // Progress bar
             const float progress = (time - flightData.getStartTime()) / (flightData.getEndTime() - flightData.getStartTime());
-            ImGui::ProgressBar(progress, ImVec2(workSize.x / 3, 0.f), "");
+
+            auto style = ImGui::GetStyle();
+            // Properly pad the right side of the progress bar to fit the time text
+            float padding = style.ItemSpacing.x + style.FramePadding.x * 2.f + style.WindowPadding.x;
+            ImGui::ProgressBar(progress, ImVec2(ImGui::GetWindowWidth() - ImGui::CalcTextSize("HH:MM:SS").x - padding, 0.f), "");
 
             ImGui::SameLine();
-            // Time text
+            // Time text as HH:MM:SS
             const float normTime = time.count() - flightData.getStartTime().count();
-            // Format time as HH:MM:SS
             ImGui::Text("%02d:%02d:%02d", static_cast<int>(normTime / 3600),
                         static_cast<int>(normTime / 60) % 60,
                         static_cast<int>(normTime) % 60);
 
+            // Restart
+            if (ImGui::Button("Restart"))
+                time = flightData.getStartTime();
+
+            ImGui::SameLine();
+            ImGui::Text("|");
+
+            ImGui::SameLine();
             // Backward button
             if (ImGui::Button("Backward"))
                 addToTimeMultiplier(-1.f);
@@ -330,7 +342,7 @@ namespace dfv {
             ImGui::Text("x%.1f", timeMultiplier);
 
             ImGui::SameLine();
-            ImGui::Text("Camera: ");
+            ImGui::Text("  Camera:");
 
             ImGui::SameLine();
             if (ImGui::Button("Free"))
@@ -347,6 +359,13 @@ namespace dfv {
             ImGui::SameLine();
             if (ImGui::Button("3rd"))
                 setCameraMode(CameraMode::Follow3rdPerson);
+
+            ImGui::SameLine();
+            ImGui::Text("|");
+
+            ImGui::SameLine();
+            if (ImGui::Button("Recenter"))
+                recenterCamera();
 
             ImGui::End();
         });
