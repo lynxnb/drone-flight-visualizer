@@ -161,7 +161,7 @@ namespace dfv {
         VulkanEngine engine; //!< The engine that handles rendering
         MapManager mapManager; //!< The class that handles map loading
 
-        CameraMode cameraMode{CameraMode::Free}; //!< The current camera mode
+        CameraMode cameraMode{CameraMode::Follow3rdPerson}; //!< The current camera mode
         float cameraMovementSpeed{10.f}; //!< The speed of the camera movement in m/s
         float cameraRotationSpeed{glm::radians(60.f)}; //!< The speed of the camera rotation in radians/s
         CameraMovement cameraMovement{}; //!< The current movement state of the camera
